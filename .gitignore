@@ -1,0 +1,5 @@
+.idea
+*.config
+auth/*
+!auth/README.md
+!*.config-example

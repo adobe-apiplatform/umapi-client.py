@@ -3,3 +3,5 @@
 auth/*
 !auth/README.md
 !*.config-example
+*.pyc
+*egg-info*

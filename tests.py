@@ -1,4 +1,5 @@
 import mock
+import json
 from umapi import UMAPI, Action
 from umapi.error import UMAPIError, UMAPIRetryError
 from umapi.auth import Auth
@@ -78,21 +79,21 @@ def test_action_obj_create():
     action = Action(user="user@example.com").do(
         createAdobeID={"email": "user@example.com"}
     )
-    assert action.json() == '{"do": [{"createAdobeID": {"email": "user@example.com"}}], "user": "user@example.com"}'
+    assert json.dumps(action.data) == '{"do": [{"createAdobeID": {"email": "user@example.com"}}], "user": "user@example.com"}'
 
 
 def test_action_obj_remove():
     action = Action(user="user@example.com").do(
         removeFromOrg={}
     )
-    assert action.json() == '{"do": [{"removeFromOrg": {}}], "user": "user@example.com"}'
+    assert json.dumps(action.data) == '{"do": [{"removeFromOrg": {}}], "user": "user@example.com"}'
 
 
 def test_action_obj_update():
     action = Action(user="user@example.com").do(
         update={"firstname": "example", "lastname": "user"}
     )
-    assert action.json() == '{"do": [{"update": {"lastname": "user", "firstname": "example"}}], "user": "user@example.com"}'
+    assert json.dumps(action.data) == '{"do": [{"update": {"lastname": "user", "firstname": "example"}}], "user": "user@example.com"}'
 
 
 def test_action_obj_multi():
@@ -101,4 +102,4 @@ def test_action_obj_multi():
         add=["product1", "product2"],
         remove=["product3"]
     )
-    assert action.json() == '{"do": [{"createAdobeID": {"email": "user@example.com"}}, {"add": {"product": ["product1", "product2"]}}, {"remove": {"product": ["product3"]}}], "user": "user@example.com"}'
+    assert json.dumps(action.data) == '{"do": [{"createAdobeID": {"email": "user@example.com"}}, {"add": {"product": ["product1", "product2"]}}, {"remove": {"product": ["product3"]}}], "user": "user@example.com"}'

@@ -17,11 +17,11 @@ class UMAPI(object):
     def action(self, org_id, action):
         if not isinstance(action, Action):
             if hasattr(action, "__getitem__") or hasattr(action, "__iter__"):
-                actions = [a.json() for a in action]
+                actions = [a.data for a in action]
             else:
                 raise ActionFormatError("action must be iterable, indexable or Action object")
         else:
-            actions = [action.json()]
+            actions = [action.data]
         return self._call('/action/%s' % org_id, requests.post, actions)
 
     def _call(self, method, call, params=None):
@@ -56,6 +56,3 @@ class Action(object):
             else:
                 self.data["do"].append({k: v})
         return self
-
-    def json(self):
-        return json.dumps(self.data)

@@ -11,6 +11,22 @@ class UMAPI(object):
     def users(self, org_id, page=0):
         return self._call('/users/%s/%d' % (org_id, page), requests.get)
 
+    def groups(self, org_id, page=0):
+        return self._call('/groups/%s/%d' % (org_id, page), requests.get)
+
+    def user_create(self, org_id, user_id, usertype="AdobeID", attr={}):
+        if not attr:
+            attr = {"email": user_id}
+        params = {
+            "user": user_id,
+            "do": [
+                {
+                    "create" + usertype: attr,
+                }
+            ]
+        }
+        return self._call('/action/%s' % org_id, requests.post, params)
+
     def _call(self, method, call, params={}):
         data = ''
         if params:

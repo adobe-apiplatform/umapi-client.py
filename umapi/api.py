@@ -1,6 +1,6 @@
 import requests
 import json
-from error import UMAPIError, UMAPIRetryError
+from error import UMAPIError, UMAPIRetryError, ActionFormatError
 
 
 class UMAPI(object):
@@ -14,33 +14,17 @@ class UMAPI(object):
     def groups(self, org_id, page=0):
         return self._call('/groups/%s/%d' % (org_id, page), requests.get)
 
-    def user_create(self, org_id, user_id, usertype="AdobeID", attr={}):
-        if not attr:
-            attr = {"email": user_id}
-        params = {
-            "user": user_id,
-            "do": [
-                {
-                    "create" + usertype: attr,
-                }
-            ]
-        }
-        return self._call('/action/%s' % org_id, requests.post, params)
+    def action(self, org_id, action):
+        if not isinstance(action, Action):
+            if hasattr(action, "__getitem__") or hasattr(action, "__iter__"):
+                actions = [a.json() for a in action]
+            else:
+                raise ActionFormatError("action must be iterable, indexable or Action object")
+        else:
+            actions = [action.json()]
+        return self._call('/action/%s' % org_id, requests.post, actions)
 
-    def product_add(self, org_id, user_id, prods):
-        params = {
-            "user": user_id,
-            "do": [
-                {
-                    "add": {
-                        "product": prods
-                    }
-                }
-            ]
-        }
-        return self._call('/action/%s' % org_id, requests.post, params)
-
-    def _call(self, method, call, params={}):
+    def _call(self, method, call, params=None):
         data = ''
         if params:
             data = json.dumps(params)
@@ -51,3 +35,27 @@ class UMAPI(object):
             raise UMAPIRetryError(res)
         else:
             raise UMAPIError(res)
+
+
+class Action(object):
+    def __init__(self, user):
+        self.data = {"user": user}
+
+    def do(self, *args, **kwargs):
+        self.data["do"] = []
+        # add "create" first
+        for k, v in kwargs.items():
+            if k.startswith("create"):
+                self.data["do"].append({k: v})
+                del kwargs[k]
+
+        # now do the other actions
+        for k, v in kwargs.items():
+            if k in ['add', 'remove']:
+                self.data["do"].append({k: {"product": v}})
+            else:
+                self.data["do"].append({k: v})
+        return self
+
+    def json(self):
+        return json.dumps(self.data)

@@ -6,3 +6,7 @@ class UMAPIError(Exception):
 
 class UMAPIRetryError(UMAPIError):
     pass
+
+
+class ActionFormatError(Exception):
+    pass

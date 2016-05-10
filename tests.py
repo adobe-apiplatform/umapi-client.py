@@ -1,5 +1,5 @@
 import mock
-from umapi import UMAPI
+from umapi import UMAPI, Action
 from umapi.error import UMAPIError, UMAPIRetryError
 from umapi.auth import Auth
 from nose.tools import *
@@ -46,19 +46,59 @@ def test_list_groups(mock_requests):
 
 @mock.patch('umapi.api.requests.post', side_effect=mocked_requests_call)
 def test_user_create(mock_requests):
-    """Goal of this test is to ensure that we are working with the requests
-        library and handling errors appropriately"""
+    """Test User Creation"""
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/success', auth)
-    assert api.user_create(None, None, "user@example.com") == '{}'
+
+    action = Action(user="user@example.com").do(
+        createAdobeID={"email": "user@example.com"}
+    )
+
+    assert api.action(None, action) == '{}'
+
     api = UMAPI('http://example.com/failure', auth)
-    assert_raises(UMAPIError, api.user_create, None, None, "user@example.com")
+    assert_raises(UMAPIError, api.action, None, action)
     api = UMAPI('http://example.com/retry', auth)
-    assert_raises(UMAPIRetryError, api.user_create, None, None, "user@example.com")
+    assert_raises(UMAPIRetryError, api.action, None, action)
 
 
 @mock.patch('umapi.api.requests.post', side_effect=mocked_requests_call)
 def test_product_add(mock_requests):
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/success', auth)
-    assert api.product_add(None, None, [])
+
+    action = Action(user="user@example.com").do(
+        add=["product1", "product2"]
+    )
+
+    assert api.action(None, action) == '{}'
+
+
+def test_action_obj_create():
+    action = Action(user="user@example.com").do(
+        createAdobeID={"email": "user@example.com"}
+    )
+    assert action.json() == '{"do": [{"createAdobeID": {"email": "user@example.com"}}], "user": "user@example.com"}'
+
+
+def test_action_obj_remove():
+    action = Action(user="user@example.com").do(
+        removeFromOrg={}
+    )
+    assert action.json() == '{"do": [{"removeFromOrg": {}}], "user": "user@example.com"}'
+
+
+def test_action_obj_update():
+    action = Action(user="user@example.com").do(
+        update={"firstname": "example", "lastname": "user"}
+    )
+    assert action.json() == '{"do": [{"update": {"lastname": "user", "firstname": "example"}}], "user": "user@example.com"}'
+
+
+def test_action_obj_multi():
+    action = Action(user="user@example.com").do(
+        createAdobeID={"email": "user@example.com"},
+        add=["product1", "product2"],
+        remove=["product3"]
+    )
+    assert action.json() == '{"do": [{"createAdobeID": {"email": "user@example.com"}}, {"add": {"product": ["product1", "product2"]}}, {"remove": {"product": ["product3"]}}], "user": "user@example.com"}'

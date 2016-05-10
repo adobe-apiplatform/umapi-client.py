@@ -42,10 +42,6 @@ def test_list_groups(mock_requests):
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/success', auth)
     assert api.groups(None) == '{}'
-    api = UMAPI('http://example.com/failure', auth)
-    assert_raises(UMAPIError, api.groups, None)
-    api = UMAPI('http://example.com/retry', auth)
-    assert_raises(UMAPIRetryError, api.groups, None)
 
 
 @mock.patch('umapi.api.requests.post', side_effect=mocked_requests_call)
@@ -59,3 +55,10 @@ def test_user_create(mock_requests):
     assert_raises(UMAPIError, api.user_create, None, None, "user@example.com")
     api = UMAPI('http://example.com/retry', auth)
     assert_raises(UMAPIRetryError, api.user_create, None, None, "user@example.com")
+
+
+@mock.patch('umapi.api.requests.post', side_effect=mocked_requests_call)
+def test_product_add(mock_requests):
+    auth = mock.create_autospec(Auth)
+    api = UMAPI('http://example.com/success', auth)
+    assert api.product_add(None, None, [])

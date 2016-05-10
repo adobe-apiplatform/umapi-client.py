@@ -27,6 +27,19 @@ class UMAPI(object):
         }
         return self._call('/action/%s' % org_id, requests.post, params)
 
+    def product_add(self, org_id, user_id, prods):
+        params = {
+            "user": user_id,
+            "do": [
+                {
+                    "add": {
+                        "product": prods
+                    }
+                }
+            ]
+        }
+        return self._call('/action/%s' % org_id, requests.post, params)
+
     def _call(self, method, call, params={}):
         data = ''
         if params:

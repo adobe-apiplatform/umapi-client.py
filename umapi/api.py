@@ -5,10 +5,10 @@ from error import UMAPIError, UMAPIRetryError
 
 class UMAPI(object):
     def __init__(self, endpoint, auth):
-        self.endpoint = endpoint
+        self.endpoint = str(endpoint)
         self.auth = auth
 
-    def users(self, org_id, page):
+    def users(self, org_id, page=0):
         return self._call('/users/%s/%d' % (org_id, page), requests.get)
 
     def _call(self, method, call, params={}):

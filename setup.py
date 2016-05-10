@@ -13,5 +13,7 @@ setup(name='umapi',
             'requests',
             'cryptography',
             'PyJWT',
+            'mock',
+            'nose>=1.0'
       ],
       zip_safe=False)

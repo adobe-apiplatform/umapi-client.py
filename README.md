@@ -114,3 +114,53 @@ groups = api.groups(org_id, page=0) # Organization ID is required, page is optio
 ```
 
 ## Perform an Action
+
+This example introduces the `Action` object, which represents an action or group of actions to perform on a user.  These actions include, but are not limited to, user creation, addition or removal of product entitlements, user update, and user deletion.
+
+```python
+from umapi import UMAPI, Action
+
+api = UMAPI(api_endpoint, auth)
+
+action = Action(user="user@example.com").do(
+  createAdobeID={"email": "user@example.com"}
+)
+
+status = api.action(org_id, action)
+```
+
+## Perform a Multi-Step Action
+
+```python
+from umapi import UMAPI, Action
+
+api = UMAPI(api_endpoint, auth)
+
+action = Action(user="user@example.com").do(
+  createAdobeID={"email": "user@example.com"},
+  add=["product1", "product2"]
+)
+
+status = api.action(org_id, action)
+```
+
+## Perform Multiple Actions in One Call
+
+A group of Actions can be wrapped in some type of collection or iterable (typically a list) and passed to `UMAPI.action`.  See the [adobe.io documentation](https://www.adobe.io/products/usermanagement/docs/samples/samplemultiuser) for more details.
+
+```python
+from umapi import UMAPI, Action
+
+api = UMAPI(api_endpoint, auth)
+
+actions = [
+    Action(user="user@example.com").do(
+        remove=["product1"]
+    ),
+    Action(user="user@example.com").do(
+        add=["product2"]
+    ),
+]
+
+status = api.action(org_id, actions)
+```

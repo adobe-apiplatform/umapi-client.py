@@ -2,6 +2,7 @@ import time
 import jwt
 import requests
 import json
+import datetime as dt
 from urllib import urlencode
 
 
@@ -37,6 +38,7 @@ class AccessRequest(object):
         self.api_key = api_key
         self.client_secret = client_secret
         self.jwt_token = jwt_token
+        self.expiry = None
 
     def __call__(self):
         headers = {
@@ -54,7 +56,13 @@ class AccessRequest(object):
             raise Exception("Access Request Error (%s) [Text: %s, Headers: %s]" % (res.status_code,
                                                                                    res.text, res.headers))
 
-        return json.loads(res.text)['access_token']
+        self.set_expiry(res.json()['expires_in'])
+
+        return res.json()['access_token']
+
+    def set_expiry(self, expires_in):
+        expires_in = int(round(expires_in/1000))
+        self.expiry = dt.datetime.now() + dt.timedelta(seconds=expires_in)
 
 
 class Auth(requests.auth.AuthBase):

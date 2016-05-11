@@ -297,8 +297,60 @@ This Action object models the object needed to create an Adobe ID.  It is conver
     }
   ]
 }
-
 ```
+
+The Action object always requires the user ID, but supports additional top-level action properties such as `requestID` and `domain`.  It reads these attributes from `**kwargs` so there are no restrictions on which of these attributes can be provided.
+
+Example Python:
+
+```python
+Action(user="user", requestID="abc123", domain="example.com").do(
+  createEnterpriseID={"email": "user@example.com"}
+)
+```
+
+Equivalent JSON:
+
+```json
+{
+  "user": "user",
+  "requestID": "abc123",
+  "domain": "example.com",
+  "do": [
+    {
+      "addAdobeID": {
+        "createEnterpriseID": "user@example.com"
+      }
+    }
+  ]
+}
+```
+
+#### `Action.do`
+
+The `Action` object has one method - `do`.  This is used to define a list of actions to perform on the user for the call.
+
+Like the object constructor, `do()` gets its parameters from `**kwargs`.  However, there are no required attributes.
+
+The name of each `do()` argument should correspond to a key of the "do" container.  Those keys include "addAdobeID", "createEnterpriseID", "add", "remove", etc.  Refer to the [official documentation](https://www.adobe.io/products/usermanagement/docs/gettingstarted) for more details.
+
+`do()` parameter values should be objects (strings, dicts, lists, etc) strucutred in the way expected by the API.
+
+Example:
+
+```python
+Action(user="user", domain="example.com").do(
+  createEnterpriseID={"email": "user@example.com", "firstname": "Example", "lastname": "User"}
+)
+```
+
+In that example, the "createEnterpriseID" portion of the JSON would render like this:
+
+```json
+"createEnterpriseID": {"email": "user@example.com", "firstname": "Example", "lastname": "User"}
+```
+
+The exact structure of the `createEnterpriseID` parameter object is preserved.
 
 ## umapi.auth
 

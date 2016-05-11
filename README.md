@@ -184,6 +184,8 @@ api = UMAPI(
 )
 ```
 
+Any call made this this object can raise the `UMAPIError` and `UMAPIRetryError`.  `UMAPI.action` can additionally raise `UMAPIRequestError` for responses containing an error result type, and `ActionFormatError` when an invalid action object is provided.
+
 #### `UMAPI.users`
 
 Get a list of users.
@@ -250,7 +252,53 @@ Also of interest is the `lastPage` attribute of the response object.  See the `U
 
 #### `UMAPI.action`
 
+Perform some kind of action - create users, add/remove groups, edit users, etc.  `UMAPI.action` depends on the Action object, which is detailed in the Action section of this documentation.
+
+Requires both the org_id and action parameters.
+
+Example:
+
+```python
+action = Action(user="user@example.com").do(
+  update={"firstname": "Example", "lastname": "User"}
+)
+result = api.action(
+  org_id="test_org_id",
+  action=action
+)
+```
+
+The result object returned is the complete result object returned by the User Management API.  If the response contains a result type of "error", then the action call will raise a `UMAPIRequestError`.  Success and partial result types do not raise any exceptions.
+
+The exact format of the result object is detailed on the [adobe.io documentation page for Management calls](https://www.adobe.io/products/usermanagement/docs/api/manageref).
+
 ### Action
+
+The `Action` object models input to the UMAPI Management interface.  More specifically, it models an element of the action array that serves as the top-level object to management calls.
+
+Example:
+
+```python
+Action(user="user@example.com").do(
+  addAdobeID={"email": "user@example.com"}
+)
+```
+
+This Action object models the object needed to create an Adobe ID.  It is converted internally to this JSON:
+
+```json
+{
+  "user": "user@example.com",
+  "do": [
+    {
+      "addAdobeID": {
+        "email": "user@example.com"
+      }
+    }
+  ]
+}
+
+```
 
 ## umapi.auth
 

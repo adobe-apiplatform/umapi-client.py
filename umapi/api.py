@@ -9,7 +9,7 @@ class UMAPI(object):
         self.auth = auth
 
     def users(self, org_id, page=0):
-        return self._call('/users/%s/%d' % (org_id, page), requests.get)
+        return self._call('/users/%s/%d' % (org_id, page), requests.get)['users']
 
     def groups(self, org_id, page=0):
         return self._call('/groups/%s/%d' % (org_id, page), requests.get)

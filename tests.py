@@ -9,27 +9,43 @@ from nose.tools import *
 # This method will be used by the mock to replace requests.get
 def mocked_requests_call(*args, **kwargs):
     class MockResponse:
-        def __init__(self, status_code):
+        def __init__(self, status_code, data):
             self.status_code = status_code
+            self.data = data
 
         def json(self):
-            return '{}'
+            return json.dumps(self.data)
 
     if 'http://example.com/success' in args[0]:
-        return MockResponse(200)
+        return MockResponse(200, {"result": "success"})
+    elif 'http://example.com/error' in args[0]:
+        return MockResponse(200, {"result": "error"})
     elif 'http://example.com/retry' in args[0]:
-        return MockResponse(429)
+        return MockResponse(429, {})
     else:
-        return MockResponse(404)
+        return MockResponse(404, {})
 
 
 @mock.patch('umapi.api.requests.get', side_effect=mocked_requests_call)
-def test_list_users(mock_requests):
-    """Goal of this test is to ensure that we are working with the requests
-        library and handling errors appropriately"""
+def test_list_users_success(mock_requests):
+    """Test Users List - SUCCESS"""
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/success', auth)
-    assert api.users(None) == '{}'
+    assert api.users(None) == '{"result": "success"}'
+
+
+@mock.patch('umapi.api.requests.get', side_effect=mocked_requests_call)
+def test_list_users_error(mock_requests):
+    """Test Users List - ERROR"""
+    auth = mock.create_autospec(Auth)
+    api = UMAPI('http://example.com/error', auth)
+    assert api.users(None) == '{"result": "error"}'
+
+
+@mock.patch('umapi.api.requests.get', side_effect=mocked_requests_call)
+def test_list_users_failure(mock_requests):
+    """Test Users List - FAILURE"""
+    auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/failure', auth)
     assert_raises(UMAPIError, api.users, None)
     api = UMAPI('http://example.com/retry', auth)
@@ -37,17 +53,16 @@ def test_list_users(mock_requests):
 
 
 @mock.patch('umapi.api.requests.get', side_effect=mocked_requests_call)
-def test_list_groups(mock_requests):
-    """Goal of this test is to ensure that we are working with the requests
-        library and handling errors appropriately"""
+def test_list_groups_success(mock_requests):
+    """Test Groups List - SUCCESS"""
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/success', auth)
-    assert api.groups(None) == '{}'
+    assert api.groups(None) == '{"result": "success"}'
 
 
 @mock.patch('umapi.api.requests.post', side_effect=mocked_requests_call)
-def test_user_create(mock_requests):
-    """Test User Creation"""
+def test_user_create_success(mock_requests):
+    """Test User Creation - SUCCESS"""
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/success', auth)
 
@@ -55,7 +70,30 @@ def test_user_create(mock_requests):
         createAdobeID={"email": "user@example.com"}
     )
 
-    assert api.action(None, action) == '{}'
+    assert api.action(None, action) == '{"result": "success"}'
+
+
+@mock.patch('umapi.api.requests.post', side_effect=mocked_requests_call)
+def test_user_create_error(mock_requests):
+    """Test User Creation - ERROR"""
+    auth = mock.create_autospec(Auth)
+    api = UMAPI('http://example.com/error', auth)
+
+    action = Action(user="user@example.com").do(
+        createAdobeID={"email": "user@example.com"}
+    )
+
+    assert api.action(None, action) == '{"result": "error"}'
+
+
+@mock.patch('umapi.api.requests.post', side_effect=mocked_requests_call)
+def test_user_create_success(mock_requests):
+    """Test User Creation - FAILURE"""
+    auth = mock.create_autospec(Auth)
+
+    action = Action(user="user@example.com").do(
+        createAdobeID={"email": "user@example.com"}
+    )
 
     api = UMAPI('http://example.com/failure', auth)
     assert_raises(UMAPIError, api.action, None, action)
@@ -65,6 +103,7 @@ def test_user_create(mock_requests):
 
 @mock.patch('umapi.api.requests.post', side_effect=mocked_requests_call)
 def test_product_add(mock_requests):
+    """Test Product Add - SUCCESS"""
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/success', auth)
 
@@ -72,10 +111,11 @@ def test_product_add(mock_requests):
         add=["product1", "product2"]
     )
 
-    assert api.action(None, action) == '{}'
+    assert api.action(None, action) == '{"result": "success"}'
 
 
 def test_action_obj_create():
+    """"Create a user creation action object and make sure that we can serialize it in the expected format"""
     action = Action(user="user@example.com").do(
         createAdobeID={"email": "user@example.com"}
     )
@@ -83,6 +123,7 @@ def test_action_obj_create():
 
 
 def test_action_obj_remove():
+    """"Create a user removal action object"""
     action = Action(user="user@example.com").do(
         removeFromOrg={}
     )
@@ -90,6 +131,7 @@ def test_action_obj_remove():
 
 
 def test_action_obj_update():
+    """Create a user update action object"""
     action = Action(user="user@example.com").do(
         update={"firstname": "example", "lastname": "user"}
     )
@@ -97,6 +139,7 @@ def test_action_obj_update():
 
 
 def test_action_obj_multi():
+    """Create a multi-action action object"""
     action = Action(user="user@example.com").do(
         createAdobeID={"email": "user@example.com"},
         add=["product1", "product2"],

@@ -67,7 +67,7 @@ def test_user_create_success(mock_requests):
     api = UMAPI('http://example.com/success', auth)
 
     action = Action(user="user@example.com").do(
-        createAdobeID={"email": "user@example.com"}
+        addAdobeID={"email": "user@example.com"}
     )
 
     assert api.action(None, action) == {"result": "success"}
@@ -80,7 +80,7 @@ def test_user_create_error(mock_requests):
     api = UMAPI('http://example.com/error', auth)
 
     action = Action(user="user@example.com").do(
-        createAdobeID={"email": "user@example.com"}
+        addAdobeID={"email": "user@example.com"}
     )
 
     assert_raises(UMAPIRequestError, api.action, None, action)
@@ -92,7 +92,7 @@ def test_user_create_success(mock_requests):
     auth = mock.create_autospec(Auth)
 
     action = Action(user="user@example.com").do(
-        createAdobeID={"email": "user@example.com"}
+        addAdobeID={"email": "user@example.com"}
     )
 
     api = UMAPI('http://example.com/failure', auth)
@@ -126,9 +126,9 @@ def test_action_format_error(mock_requests):
 def test_action_obj_create():
     """"Create a user creation action object and make sure that we can serialize it in the expected format"""
     action = Action(user="user@example.com").do(
-        createAdobeID={"email": "user@example.com"}
+        addAdobeID={"email": "user@example.com"}
     )
-    assert json.dumps(action.data) == '{"do": [{"createAdobeID": {"email": "user@example.com"}}], "user": "user@example.com"}'
+    assert json.dumps(action.data) == '{"do": [{"addAdobeID": {"email": "user@example.com"}}], "user": "user@example.com"}'
 
 
 def test_action_obj_remove():
@@ -150,8 +150,16 @@ def test_action_obj_update():
 def test_action_obj_multi():
     """Create a multi-action action object"""
     action = Action(user="user@example.com").do(
-        createAdobeID={"email": "user@example.com"},
+        addAdobeID={"email": "user@example.com"},
         add=["product1", "product2"],
         remove=["product3"]
     )
-    assert json.dumps(action.data) == '{"do": [{"createAdobeID": {"email": "user@example.com"}}, {"add": {"product": ["product1", "product2"]}}, {"remove": {"product": ["product3"]}}], "user": "user@example.com"}'
+    assert json.dumps(action.data) == '{"do": [{"addAdobeID": {"email": "user@example.com"}}, {"add": {"product": ["product1", "product2"]}}, {"remove": {"product": ["product3"]}}], "user": "user@example.com"}'
+
+
+def test_action_obj_requestid():
+    """Include a request ID in action object"""
+    action = Action(user="user@example.com", requestID="abc123").do(
+        add=["product1"]
+    )
+    assert json.dumps(action.data) == '{"do": [{"add": {"product": ["product1"]}}], "user": "user@example.com", "requestID": "abc123"}'

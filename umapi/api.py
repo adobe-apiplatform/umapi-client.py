@@ -9,7 +9,7 @@ class UMAPI(object):
         self.auth = auth
 
     def users(self, org_id, page=0):
-        return self._call('/users/%s/%d' % (org_id, page), requests.get)['users']
+        return self._call('/users/%s/%d' % (org_id, page), requests.get)
 
     def groups(self, org_id, page=0):
         return self._call('/groups/%s/%d' % (org_id, page), requests.get)
@@ -45,14 +45,16 @@ class UMAPI(object):
 
 
 class Action(object):
-    def __init__(self, user):
+    def __init__(self, user, *args, **kwargs):
         self.data = {"user": user}
+        for k, v in kwargs.items():
+            self.data[k] = v
 
     def do(self, *args, **kwargs):
         self.data["do"] = []
-        # add "create" first
+        # add "create" / "add" first
         for k, v in kwargs.items():
-            if k.startswith("create"):
+            if k.startswith("create") or k.startswith("addAdobe"):
                 self.data["do"].append({k: v})
                 del kwargs[k]
 

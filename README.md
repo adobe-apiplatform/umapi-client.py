@@ -50,3 +50,24 @@ jwt = JWT(
   open(priv_key_filename, 'r')  # Private certificate is passed as a file-like object
 )
 ```
+
+## Step 2 - Use AccessRequest to Obtain Auth Token
+
+The `AccessRequest` object uses the JWT to call an IMS endpoint to obtain an authorization token.
+
+```python
+from umapi.auth import AccessRequest
+
+token = AccessRequest(
+  "https://" + ims_host + ims_endpoint_jwt,   # Access Request Endpoint (IMS Host + JWT Endpoint)
+  api_key,        # API Key
+  client_secret,  # Client Secret
+  jwt()           # JWT - note that the jwt object is callable - invoking it returns the JWT string expected by AccessRequest
+)
+```
+
+**NOTE**: It is recommended that you only request a new authorization token when the existing token has expired, and not to request a new token with each call or batch of calls.  Once the token is generated, the `AccessRequest` object provides a `datetime` object representing the expiration timestamp of the current token.
+
+```python
+token.expiry
+```

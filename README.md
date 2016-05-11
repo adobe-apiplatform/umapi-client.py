@@ -6,7 +6,7 @@ Python User Management API Interface for Creative Cloud Enterprise
 1. Clone this repository or download the latest stable release.
 2. From the command line, change to the `cce-umapi` directory.
 3. To install, run the command `python setup.py install`.  [**NOTE**: You may need admin/root privileges (using `sudo`) to install new packages in your environment.  It is recommended that you use `virtualenv` to make a virtual python environment.  See the [virtualenvwrapper documentation](http://virtualenvwrapper.readthedocs.io/en/latest/index.html) for more information]
-4. If you encounter errors that repor missing library files, you may need to install the packages `python-dev`, `libssl-dev` and `libffi-dev` (these are the Debian package names - your environment may vary).
+4. If you encounter errors that report missing library files, you may need to install the packages `python-dev`, `libssl-dev` and `libffi-dev` (these are the Debian package names - your environment may vary).
 5. (**optional**) To run tests, use the command `python setup.py nosetests`.
 
 # Getting Started
@@ -351,6 +351,24 @@ In that example, the "createEnterpriseID" portion of the JSON would render like 
 ```
 
 The exact structure of the `createEnterpriseID` parameter object is preserved.
+
+There is one important exception - when using the "add" or "remove" actions, which add/remove groups to/from the user account, `do()` will add the "product" wrapper.  (since, at the time of this writing, "product" is the only valid container for "add"/"remove" actions)
+
+Example:
+
+```python
+action = Action(user="user@example.com").do(
+  add=["product1"]
+)
+```
+
+Note that a list is being passed to the "add" parameter (instead of `{"product": ["product1"]}`).
+
+The "add" portion of the JSON looks like this:
+
+```json
+"add": {"product": ["product1"]}
+```
 
 ## umapi.auth
 

@@ -1,6 +1,6 @@
 import requests
 import json
-from error import UMAPIError, UMAPIRetryError, ActionFormatError
+from error import UMAPIError, UMAPIRetryError, UMAPIRequestError, ActionFormatError
 
 
 class UMAPI(object):
@@ -16,7 +16,7 @@ class UMAPI(object):
 
     def action(self, org_id, action):
         if not isinstance(action, Action):
-            if hasattr(action, "__getitem__") or hasattr(action, "__iter__"):
+            if not isinstance(action, str) and hasattr(action, "__getitem__") or hasattr(action, "__iter__"):
                 actions = [a.data for a in action]
             else:
                 raise ActionFormatError("action must be iterable, indexable or Action object")
@@ -30,7 +30,14 @@ class UMAPI(object):
             data = json.dumps(params)
         res = call(self.endpoint+method, data=data, auth=self.auth)
         if res.status_code == 200:
-            return res.json()
+            result = res.json()
+            if "result" in result:
+                if result["result"] == "error":
+                    raise UMAPIRequestError("Request Error -- %s" % result["errors"][0]["errorCode"])
+                else:
+                    return result
+            else:
+                raise UMAPIRequestError("Request Error -- Unknown Result Status")
         if res.status_code in [429, 502, 503, 504]:
             raise UMAPIRetryError(res)
         else:

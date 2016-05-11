@@ -1,7 +1,7 @@
 import mock
 import json
 from umapi import UMAPI, Action
-from umapi.error import UMAPIError, UMAPIRetryError
+from umapi.error import UMAPIError, UMAPIRetryError, UMAPIRequestError, ActionFormatError
 from umapi.auth import Auth
 from nose.tools import *
 
@@ -14,12 +14,12 @@ def mocked_requests_call(*args, **kwargs):
             self.data = data
 
         def json(self):
-            return json.dumps(self.data)
+            return self.data
 
     if 'http://example.com/success' in args[0]:
         return MockResponse(200, {"result": "success"})
     elif 'http://example.com/error' in args[0]:
-        return MockResponse(200, {"result": "error"})
+        return MockResponse(200, {"result": "error", "errors": [{"errorCode": "test.error"}]})
     elif 'http://example.com/retry' in args[0]:
         return MockResponse(429, {})
     else:
@@ -31,7 +31,7 @@ def test_list_users_success(mock_requests):
     """Test Users List - SUCCESS"""
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/success', auth)
-    assert api.users(None) == '{"result": "success"}'
+    assert api.users(None) == {"result": "success"}
 
 
 @mock.patch('umapi.api.requests.get', side_effect=mocked_requests_call)
@@ -39,7 +39,7 @@ def test_list_users_error(mock_requests):
     """Test Users List - ERROR"""
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/error', auth)
-    assert api.users(None) == '{"result": "error"}'
+    assert_raises(UMAPIRequestError, api.users, None)
 
 
 @mock.patch('umapi.api.requests.get', side_effect=mocked_requests_call)
@@ -57,7 +57,7 @@ def test_list_groups_success(mock_requests):
     """Test Groups List - SUCCESS"""
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/success', auth)
-    assert api.groups(None) == '{"result": "success"}'
+    assert api.groups(None) == {"result": "success"}
 
 
 @mock.patch('umapi.api.requests.post', side_effect=mocked_requests_call)
@@ -70,7 +70,7 @@ def test_user_create_success(mock_requests):
         createAdobeID={"email": "user@example.com"}
     )
 
-    assert api.action(None, action) == '{"result": "success"}'
+    assert api.action(None, action) == {"result": "success"}
 
 
 @mock.patch('umapi.api.requests.post', side_effect=mocked_requests_call)
@@ -83,7 +83,7 @@ def test_user_create_error(mock_requests):
         createAdobeID={"email": "user@example.com"}
     )
 
-    assert api.action(None, action) == '{"result": "error"}'
+    assert_raises(UMAPIRequestError, api.action, None, action)
 
 
 @mock.patch('umapi.api.requests.post', side_effect=mocked_requests_call)
@@ -111,7 +111,16 @@ def test_product_add(mock_requests):
         add=["product1", "product2"]
     )
 
-    assert api.action(None, action) == '{"result": "success"}'
+    assert api.action(None, action) == {"result": "success"}
+
+
+@mock.patch('umapi.api.requests.post', side_effect=mocked_requests_call)
+def test_action_format_error(mock_requests):
+    """Test Action Format Error"""
+    auth = mock.create_autospec(Auth)
+    api = UMAPI('http://example.com/success', auth)
+    action = ''
+    assert_raises(ActionFormatError, api.action, None, action)
 
 
 def test_action_obj_create():

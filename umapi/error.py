@@ -8,5 +8,9 @@ class UMAPIRetryError(UMAPIError):
     pass
 
 
+class UMAPIRequestError(Exception):
+    pass
+
+
 class ActionFormatError(Exception):
     pass

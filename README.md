@@ -146,7 +146,7 @@ status = api.action(org_id, action)
 
 ## Perform Multiple Actions in One Call
 
-A group of Actions can be wrapped in some type of collection or iterable (typically a list) and passed to `UMAPI.action`.  See the [adobe.io documentation](https://www.adobe.io/products/usermanagement/docs/samples/samplemultiuser) for more details.
+A group of Actions can be wrapped in some type of collection or iterable (typically a list) and passed to `UMAPI.action`.
 
 ```python
 from umapi import UMAPI, Action
@@ -164,3 +164,71 @@ actions = [
 
 status = api.action(org_id, actions)
 ```
+
+# Library API Documentation
+
+## Core Objects
+
+### UMAPI
+
+Main User Management API interface class.  Used to make calls to the API.
+
+Requires endpoint URL and auth object.
+
+Example:
+
+```python
+api = UMAPI(
+  endpoint="https://usermanagement-stage.adobe.io/v2/usermanagement",
+  auth=Auth( ... )
+)
+```
+
+#### `UMAPI.users`
+
+Get a list of users.
+
+Requires the org_id.  Takes page number as an optional parameter (default=0).
+
+Example:
+
+```python
+users = api.users(
+  org_id="test_org_id",
+  page=0
+)
+```
+
+The `users` object returned from `api.users` would look like this:
+
+```python
+[{
+    u'status': u'active',
+    u'firstname': u'Example',
+    u'lastname': u'User',
+    u'groups': [u'Example Group'],
+    u'country': u'US',
+    u'type': u'enterpriseID',
+    u'email': u'user@example.com'
+}]
+```
+
+### Action
+
+## umapi.auth
+
+### JWT
+
+### AccessRequest
+
+### Auth
+
+## umapi.error
+
+### UMAPIError
+
+### UMAPIRetryError
+
+### UMAPIRequestError
+
+### ActionFormatError

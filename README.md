@@ -196,10 +196,12 @@ Example:
 users = api.users(
   org_id="test_org_id",
   page=0
-)
+)['users']
 ```
 
-The `users` object returned from `api.users` would look like this:
+The oject returned is the full API response object.  The main aspect is the "users" key, which contains a list of all users for the organization.
+
+Example list of users:
 
 ```python
 [{
@@ -212,6 +214,41 @@ The `users` object returned from `api.users` would look like this:
     u'email': u'user@example.com'
 }]
 ```
+
+The list will contain up to 200 users.  The repsonse object also contains the "lastPage" property, which indicates if the end of the list has been reached.  If the organization contains more than 200 users, then the `lastPage` property can be used to paginate through all user data (by using the `page` parameter to `UMAPI.users`).
+
+#### `UMAPI.groups`
+
+Get a list of permission/product entitlement groups.
+
+Requires the org_id.  Takes page number as an optional parameter (default=0).
+
+Example:
+
+```python
+groups = api.groups(
+  org_id="test_org_id",
+  page=0
+)['groups']
+```
+
+The oject returned is the full API response object.  The main aspect is the "groups" key, which contains a list of all groups for the organization.
+
+Example list of groups:
+
+```python
+[{
+  u'memberCount': u'68',
+  u'groupName': u'Administrators'
+},{
+  u'memberCount': u'4',
+  u'groupName': u'Group 2'
+}]
+```
+
+Also of interest is the `lastPage` attribute of the response object.  See the `UMAPI.users` section for more details.
+
+#### `UMAPI.action`
 
 ### Action
 

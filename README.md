@@ -372,9 +372,48 @@ The "add" portion of the JSON looks like this:
 
 ## umapi.auth
 
+The submodule `umapi.auth` contains the components needed to build the authentication headers needed for API communication.
+
 ### JWT
 
+The `JWT` object builds the JSON Web Token needed to obtain an authorization token, which is the security token needed for API call headers.
+
+| Parameter | Type      | Required? | Notes                                                                    |
+|-----------|-----------|-----------|--------------------------------------------------------------------------|
+| org_id    | str       | Y         | Organization ID (found on Adobe.io integration page)                     |
+| tech_acct | str       | Y         | Technical Account ID (found on Adobe.io integration page)                |
+| ims_host  | str       | Y         | IMS Host - hostname of IMS endpoint (found on adobe.io integration page) |
+| api_key   | str       | Y         | API Key (found on adobe.io integration page)                             |
+| key_file  | file-like | Y         | File-like object that provides the private key (generated on server)     |
+
+The `JWT` object is callable.  Calling it returns the encoded JWT.
+
+Example:
+
+```python
+from umapi.auth import JWT
+
+jwt = JWT(
+  org_id,     # Organization ID
+  tech_acct,  # Techincal Account ID
+  ims_host,   # IMS Host
+  api_key,    # API Key
+  open(priv_key_filename, 'r')  # Private certificate is passed as a file-like object
+)
+
+encoded_jwt = jwt()
+```
+
 ### AccessRequest
+
+The `AccessRequest` object uses the JWT to make a request to IMS to retrieve an authorization token.
+
+| Parameter     | Type      | Required? | Notes                                                                |
+|---------------|-----------|-----------|----------------------------------------------------------------------|
+| endpoint      | str       | Y         | Full IMS Endpoint URL                                                |
+| api_key       | str       | Y         | API Key (found on Adobe.io integration page)                         |
+| client secret | str       | Y         | Client Secret (found on adobe.io integration page)                   |
+| jwt_token     | str       | Y         | Encoded JWT String (generated from JWT object)                       |
 
 ### Auth
 

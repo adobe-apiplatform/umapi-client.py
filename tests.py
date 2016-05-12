@@ -6,7 +6,7 @@ from umapi.auth import Auth
 from nose.tools import *
 
 
-# This method will be used by the mock to replace requests.get
+# This method will be used by the mock to replace requests.get / requests.post
 def mocked_requests_call(*args, **kwargs):
     class MockResponse:
         def __init__(self, status_code, data):

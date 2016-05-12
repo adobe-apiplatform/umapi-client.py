@@ -415,14 +415,65 @@ The `AccessRequest` object uses the JWT to make a request to IMS to retrieve an 
 | client secret | str       | Y         | Client Secret (found on adobe.io integration page)                   |
 | jwt_token     | str       | Y         | Encoded JWT String (generated from JWT object)                       |
 
+Like the `JWT` object, the `AccessRequest` object is callable.  Calling it returns the encoded authorization token string needed by the `Auth` object.
+
+Basic Usage Example:
+
+```python
+from umapi.auth import AccessRequest
+
+token = AccessRequest(
+  "https://" + ims_host + ims_endpoint_jwt,   # Access Request Endpoint (IMS Host + JWT Endpoint)
+  api_key,        # API Key
+  client_secret,  # Client Secret
+  jwt()           # JWT - note that the jwt object is callable - invoking it returns the JWT string expected by AccessRequest
+)
+
+token_str = token()
+```
+
+The `AccessRequest` object also has the propery `expiry`, which is a [datetime](https://docs.python.org/2/library/datetime.html#datetime-objects) object representing the date and time the authorization token expires.  It can be used with persistent token store systems to reduce the number of times a new token is required.
+
+**NOTE**: The `expiry` attribute is not populated until the token is generates (i.e. the token object is called).
+
 ### Auth
+
+The `Auth` object is used by the UMAPI object to build security headers for API calls.  It is a subclass of the [requests auth.AuthBase class](http://docs.python-requests.org/en/master/user/authentication/#new-forms-of-authentication).
+
+| Parameter    | Type | Required? | Notes                                                     |
+|--------------|------|-----------|-----------------------------------------------------------|
+| api_key      | str  | Y         | API Key (found on adobe.io integration page)              |
+| access_token | str  | Y         | Access Token String (generated from AccessRequest object) |
+
+Example:
+
+```python
+from umapi.auth import Auth
+
+token = AccessRequest( ... )
+auth = Auth(api_key, token())  # note that the AccessRequest object is callable - the Auth object requires the token string, not the object itself
+```
 
 ## umapi.error
 
+The `umapi.error` submodule contains all custom Exceptions for the UMAPI library.
+
 ### UMAPIError
+
+Generic Error object that is raised when API returns non-retry or success HTTP status code (i.e. 200, 429, 502, 503, 504).
 
 ### UMAPIRetryError
 
+Error raised when a retry HTTP status code (429, 502, 503, 504).
+
+See the [official documentation](https://www.adobe.io/products/usermanagement/docs/throttling) for more information about handling this type of error.
+
 ### UMAPIRequestError
 
+Error raised when an error status is reported from the API.  The API will return a 200 status code, but the JSON "result" status will be "error".
+
+This currently only occurs when calling `UMAPI.action()`.
+
 ### ActionFormatError
+
+Raised from `UMAPI.action()` when unexpected input is received from the `action` parameter.

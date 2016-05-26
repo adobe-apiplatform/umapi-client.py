@@ -33,7 +33,7 @@ class UMAPI(object):
             result = res.json()
             if "result" in result:
                 if result["result"] == "error":
-                    raise UMAPIRequestError("Request Error -- %s" % result["errors"][0]["errorCode"])
+                    raise UMAPIRequestError(result["errors"][0]["errorCode"])
                 else:
                     return result
             else:
@@ -52,9 +52,9 @@ class Action(object):
 
     def do(self, *args, **kwargs):
         self.data["do"] = []
-        # add "create" / "add" first
+        # add "create" / "add" / "removeFrom" first
         for k, v in kwargs.items():
-            if k.startswith("create") or k.startswith("addAdobe"):
+            if k.startswith("create") or k.startswith("addAdobe") or k.startswith("removeFrom"):
                 self.data["do"].append({k: v})
                 del kwargs[k]
 

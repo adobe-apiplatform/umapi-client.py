@@ -9,7 +9,9 @@ class UMAPIRetryError(UMAPIError):
 
 
 class UMAPIRequestError(Exception):
-    pass
+    def __init__(self, code):
+        Exception.__init__(self, "Request Error -- %s" % code)
+        self.code = code
 
 
 class ActionFormatError(Exception):

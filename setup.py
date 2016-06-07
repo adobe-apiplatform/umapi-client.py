@@ -11,7 +11,7 @@ setup(name='umapi',
       packages=['umapi'],
       install_requires=[
             'requests',
-            'cryptography==1.2.1',
+            'cryptography',
             'PyJWT',
             'mock',
             'nose>=1.0'

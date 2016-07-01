@@ -4,9 +4,10 @@ from error import UMAPIError, UMAPIRetryError, UMAPIRequestError, ActionFormatEr
 
 
 class UMAPI(object):
-    def __init__(self, endpoint, auth):
+    def __init__(self, endpoint, auth, test_mode=False):
         self.endpoint = str(endpoint)
         self.auth = auth
+        self.test_mode = test_mode
 
     def users(self, org_id, page=0):
         return self._call('/users/%s/%d' % (org_id, page), requests.get)
@@ -22,7 +23,10 @@ class UMAPI(object):
                 raise ActionFormatError("action must be iterable, indexable or Action object")
         else:
             actions = [action.data]
-        return self._call('/action/%s' % org_id, requests.post, actions)
+        if self.test_mode:
+            return self._call('/action/%s?testOnly=true' % org_id, requests.post, actions)
+        else:
+            return self._call('/action/%s' % org_id, requests.post, actions)
 
     def _call(self, method, call, params=None):
         data = ''

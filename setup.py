@@ -2,7 +2,7 @@ from setuptools import setup
 
 
 setup(name='umapi',
-      version='0.9.1',
+      version='1.0.0',
       description='Adobe User Management API Interfaces',
       url='git@git.corp.adobe.com:adorton/cce-umapi.git',
       author='Andrew Dorton',

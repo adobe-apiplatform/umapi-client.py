@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 setup(name='umapi',
@@ -8,9 +8,9 @@ setup(name='umapi',
       author='Andrew Dorton',
       author_email='adorton@adobe.com',
       license='Copyright Adobe Systems',
-      packages=['umapi'],
+      packages=find_packages(),
+      include_package_data=True,
       install_requires=[
-            'requests',
             'cryptography',
             'PyJWT',
             'mock',

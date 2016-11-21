@@ -66,7 +66,7 @@ def test_user_create_success(mock_requests):
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/success', auth)
 
-    action = Action(user="user@example.com").do(
+    action = Action(user_key="user@example.com").do(
         addAdobeID={"email": "user@example.com"}
     )
 
@@ -79,7 +79,7 @@ def test_user_create_error(mock_requests):
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/error', auth)
 
-    action = Action(user="user@example.com").do(
+    action = Action(user_key="user@example.com").do(
         addAdobeID={"email": "user@example.com"}
     )
 
@@ -91,7 +91,7 @@ def test_user_create_success(mock_requests):
     """Test User Creation - FAILURE"""
     auth = mock.create_autospec(Auth)
 
-    action = Action(user="user@example.com").do(
+    action = Action(user_key="user@example.com").do(
         addAdobeID={"email": "user@example.com"}
     )
 
@@ -107,7 +107,7 @@ def test_product_add(mock_requests):
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/success', auth)
 
-    action = Action(user="user@example.com").do(
+    action = Action(user_key="user@example.com").do(
         add=["product1", "product2"]
     )
 
@@ -125,7 +125,7 @@ def test_action_format_error(mock_requests):
 
 def test_action_obj_create():
     """"Create a user creation action object and make sure that we can serialize it in the expected format"""
-    action = Action(user="user@example.com").do(
+    action = Action(user_key="user@example.com").do(
         addAdobeID={"email": "user@example.com"}
     )
     assert json.dumps(action.data) == '{"do": [{"addAdobeID": {"email": "user@example.com"}}], "user": "user@example.com"}'
@@ -133,7 +133,7 @@ def test_action_obj_create():
 
 def test_action_obj_remove():
     """"Create a user removal action object"""
-    action = Action(user="user@example.com").do(
+    action = Action(user_key="user@example.com").do(
         removeFromOrg={}
     )
     assert json.dumps(action.data) == '{"do": [{"removeFromOrg": {}}], "user": "user@example.com"}'
@@ -141,7 +141,7 @@ def test_action_obj_remove():
 
 def test_action_obj_update():
     """Create a user update action object"""
-    action = Action(user="user@example.com").do(
+    action = Action(user_key="user@example.com").do(
         update={"firstname": "example", "lastname": "user"}
     )
     assert json.dumps(action.data) == '{"do": [{"update": {"lastname": "user", "firstname": "example"}}], "user": "user@example.com"}'
@@ -149,7 +149,7 @@ def test_action_obj_update():
 
 def test_action_obj_multi():
     """Create a multi-action action object"""
-    action = Action(user="user@example.com").do(
+    action = Action(user_key="user@example.com").do(
         addAdobeID={"email": "user@example.com"},
         add=["product1", "product2"],
         remove=["product3"]
@@ -159,7 +159,7 @@ def test_action_obj_multi():
 
 def test_action_obj_requestid():
     """Include a request ID in action object"""
-    action = Action(user="user@example.com", requestID="abc123").do(
+    action = Action(user_key="user@example.com", requestID="abc123").do(
         add=["product1"]
     )
     assert json.dumps(action.data) == '{"do": [{"add": {"product": ["product1"]}}], "user": "user@example.com", "requestID": "abc123"}'

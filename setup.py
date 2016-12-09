@@ -1,0 +1,19 @@
+from setuptools import setup, find_packages
+
+
+setup(name='umapi',
+      version='1.1.0',
+      description='Adobe User Management API Interfaces',
+      url='git@git.corp.adobe.com:adorton/cce-umapi.git',
+      author='Andrew Dorton',
+      author_email='adorton@adobe.com',
+      license='Copyright Adobe Systems',
+      packages=find_packages(),
+      install_requires=[
+            'requests',
+            'cryptography',
+            'PyJWT',
+            'mock',
+            'nose>=1.0'
+      ],
+      zip_safe=False)

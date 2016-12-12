@@ -1,10 +1,10 @@
-import StringIO
+import logging
 import time
 from email.utils import formatdate
 
-import logging
 import mock
 import pytest
+from six import StringIO
 
 import adobe_umapi.helper
 from adobe_umapi import UMAPI
@@ -37,23 +37,33 @@ def mocked_users(org_id, page):
     else:
         raise UMAPIError(ErrorResponse(404, {}))
 
+
 # test the pagination on success
 @mock.patch('adobe_umapi.UMAPI.users', side_effect=mocked_users)
-def test_helper_success(_mock):
+def test_helper_success(_):
     api = UMAPI('', None)
     assert adobe_umapi.helper.paginate(api.users, 'success') == ["user0", "user1", "user2"]
 
+
+@pytest.fixture
+def reduce_attempts():
+    # reduce the number of retry attempts
+    adobe_umapi.helper.retry_max_attempts = 3
+
+
 # test the retry logic with seconds in the header
 @mock.patch('adobe_umapi.UMAPI.users', side_effect=mocked_users)
-def test_helper_failSecs(_mock):
+def test_helper_retry_seconds(_, reduce_attempts):
     api = UMAPI('', None)
     assert adobe_umapi.helper.paginate(api.users, 'retrySecs') == ["user1", "user2"]
 
+
 # test the retry logic with a time in the header
 @mock.patch('adobe_umapi.UMAPI.users', side_effect=mocked_users)
-def test_helper_failTime(_mock):
+def test_helper_fail_date(_, reduce_attempts):
     api = UMAPI('', None)
     assert adobe_umapi.helper.paginate(api.users, 'retryTime') == ["user1", "user2"]
+
 
 # the default retry waits are really long, so don't use them while testing
 @pytest.fixture
@@ -63,14 +73,48 @@ def reduce_delay():
     adobe_umapi.helper.retry_exponential_backoff_factor = 1
     adobe_umapi.helper.retry_random_delay_max = 3
 
+
 # test the retry logic with a zero delay in the header
 @mock.patch('adobe_umapi.UMAPI.users', side_effect=mocked_users)
-def test_helper_failNone(_mock, reduce_delay):
+def test_helper_retry_zero(_, reduce_delay, reduce_attempts):
     api = UMAPI('', None)
     assert adobe_umapi.helper.paginate(api.users, 'retryNone') == ["user1", "user2"]
 
+
 # test the retry logic with no header
 @mock.patch('adobe_umapi.UMAPI.users', side_effect=mocked_users)
-def test_helper_failNull(_mock, reduce_delay):
+def test_helper_retry_noheader(_, reduce_delay, reduce_attempts):
     api = UMAPI('', None)
     assert adobe_umapi.helper.paginate(api.users, 'retryNull') == ["user1", "user2"]
+
+
+# py.test doesn't divert string logging, so use it
+@pytest.fixture
+def log_stream():
+    stream = StringIO()
+    handler = logging.StreamHandler(stream)
+    logger = logging.getLogger('test_logger')
+    logger.setLevel(logging.WARNING)
+    logger.addHandler(handler)
+    prior_logger = adobe_umapi.helper.logger
+    adobe_umapi.helper.logger = logger
+    yield stream
+    adobe_umapi.helper.logger = prior_logger
+    handler.close()
+
+
+# test the retry logic with a custom logger
+@mock.patch('adobe_umapi.UMAPI.users', side_effect=mocked_users)
+def test_helper_retry_logging(_, log_stream, reduce_attempts):
+    api = UMAPI('', None)
+    assert adobe_umapi.helper.paginate(api.users, 'retrySecs') == ["user1", "user2"]
+    log_stream.flush()
+    log = log_stream.getvalue()  # save as a local so can do pytest -l to see exact log
+    assert log == '''UMAPI service temporarily unavailable (attempt 1) -- 429
+Next retry in 3 seconds...
+UMAPI service temporarily unavailable (attempt 2) -- 429
+Next retry in 3 seconds...
+UMAPI service temporarily unavailable (attempt 3) -- 429
+Next retry in 3 seconds...
+UMAPI timeout...giving up on results page 0 after 3 attempts.
+'''

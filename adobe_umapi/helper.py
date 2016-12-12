@@ -15,10 +15,10 @@ retry_random_delay_max = 5  # seconds
 logger = logging.getLogger(__name__)
 
 
-def paginate(callable, org_id, max_pages=maxsize, max_records=maxsize):
+def paginate(query, org_id, max_pages=maxsize, max_records=maxsize):
     """
     Paginate through all results of a UMAPI query
-    :param callable: a query method from a UMAPI instance (callable as a function)
+    :param query: a query method from a UMAPI instance (callable as a function)
     :param org_id: the organization being queried
     :param max_pages: the max number of pages to collect before returning (default all)
     :param max_records: the max number of records to collect before returning (default all)
@@ -28,12 +28,12 @@ def paginate(callable, org_id, max_pages=maxsize, max_records=maxsize):
     record_count = 0
     records = []
     while page_count < max_pages and record_count < max_records:
-        res = make_call(callable, org_id, page_count)
+        res = make_call(query, org_id, page_count)
         page_count += 1
         # the following incredibly ugly piece of code is very fragile.
         # the problem is that we are a "dumb helper" that doesn't understand
-        # the semantics of the UMAPI or know which callable we were given.
-        # TODO: make this better, probably by being smart about the callable
+        # the semantics of the UMAPI or know which query we were given.
+        # TODO: make this better, probably by being smart about the query
         if "groups" in res:
             records += res["groups"]
         elif "users" in res:
@@ -44,11 +44,11 @@ def paginate(callable, org_id, max_pages=maxsize, max_records=maxsize):
     return records
 
 
-def make_call(callable, org_id, page):
+def make_call(query, org_id, page):
     """
     Make a single UMAPI call with error handling and server-controlled throttling.
     (Adapted from sample code at https://www.adobe.io/products/usermanagement/docs/samples#retry)
-    :param callable: a query method from a UMAPI instance (callable as a function)
+    :param query: a query method from a UMAPI instance (callable as a function)
     :param org_id: the organization being queried
     :param page: the page number of the desired result set
     :return: the json (dictionary) received from the server (if any)
@@ -62,7 +62,7 @@ def make_call(callable, org_id, page):
             wait_time = 0
         try:
             num_attempts += 1
-            return callable(org_id, page)
+            return query(org_id, page)
         except UMAPIRetryError as e:
             logger.warning("UMAPI service temporarily unavailable (attempt %d) -- %s", num_attempts, e.res.status_code)
             if "Retry-After" in e.res.headers:

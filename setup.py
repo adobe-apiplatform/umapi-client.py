@@ -12,7 +12,7 @@ setup(name='adobe-umapi',
       install_requires=[
         'requests',
         'cryptography',
-        'PyJWT',
+        'PyJWT', 'jwt',
       ],
       setup_requires=[
         'pytest-runner',

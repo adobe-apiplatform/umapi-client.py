@@ -49,13 +49,13 @@ class UMAPI(object):
 
 
 class Action(object):
-    def __init__(self, user_key, *args, **kwargs):
+    def __init__(self, user_key, **kwargs):
         self.data = {"user": user_key, "do": []}    # empty actions upon creation
         for k, v in kwargs.items():
             self.data[k] = v
 
     # do adds to any existing actions, so can you Action(...).do(...).do(...)
-    def do(self, *args, **kwargs):
+    def do(self, **kwargs):
         # add "create" / "add" / "removeFrom" first
         for k, v in kwargs.items():
             if k.startswith("create") or k.startswith("addAdobe") or k.startswith("removeFrom"):

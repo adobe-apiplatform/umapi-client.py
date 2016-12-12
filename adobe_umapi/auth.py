@@ -64,6 +64,7 @@ class AccessRequest(object):
         self.expiry = dt.datetime.now() + dt.timedelta(seconds=expires_in)
 
 
+# noinspection PyUnresolvedReferences
 class Auth(requests.auth.AuthBase):
     def __init__(self, api_key, access_token):
         self.api_key = api_key

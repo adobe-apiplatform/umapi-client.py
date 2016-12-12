@@ -1,9 +1,19 @@
+import logging
 from email.utils import parsedate_tz, mktime_tz
 from math import pow
 from random import randint
 from sys import maxsize
 from time import time, sleep
 from error import UMAPIError, UMAPIRetryError, UMAPIRequestError
+
+# make the retry options module-global so they can be set by clients
+retry_max_attempts = 4
+retry_exponential_backoff_factor = 15  # seconds
+retry_random_delay_max = 5  # seconds
+
+# make the logger module-global so it can be set by clients
+logger = logging.getLogger(__name__)
+
 
 def paginate(callable, org_id, max_pages=maxsize, max_records=maxsize):
     """
@@ -45,11 +55,8 @@ def make_call(callable, org_id, page):
     """
     wait_time = 0
     num_attempts = 0
-    num_attempts_max = 4
-    backoff_exponential_factor = 15  # seconds
-    backoff_random_delay_max = 5  # seconds
 
-    while num_attempts < num_attempts_max:
+    while num_attempts < retry_max_attempts:
         if wait_time > 0:
             sleep(wait_time)
             wait_time = 0
@@ -57,7 +64,7 @@ def make_call(callable, org_id, page):
             num_attempts += 1
             return callable(org_id, page)
         except UMAPIRetryError as e:
-            print("UMAPI service temporarily unavailable (attempt %d) -- %s", num_attempts, e.res.status_code)
+            logger.warning("UMAPI service temporarily unavailable (attempt %d) -- %s", num_attempts, e.res.status_code)
             if "Retry-After" in e.res.headers:
                 advice = e.res.headers["Retry-After"]
                 advised_time = parsedate_tz(advice)
@@ -69,15 +76,15 @@ def make_call(callable, org_id, page):
                     wait_time = int(advice)
             if wait_time <= 0:
                 # use exponential back-off with random delay
-                delay = randint(0, backoff_random_delay_max)
-                wait_time = (int(pow(2, num_attempts)) * backoff_exponential_factor) + delay
-            print("Next retry in %d seconds...", wait_time)
+                delay = randint(0, retry_random_delay_max)
+                wait_time = (int(pow(2, num_attempts)) * retry_exponential_backoff_factor) + delay
+            logger.warning("Next retry in %d seconds...", wait_time)
             continue
         except UMAPIRequestError as e:
-            print("UMAPI error processing request -- %s", e.code)
+            logger.warning("UMAPI error processing request -- %s", e.code)
             return {}
         except UMAPIError as e:
-            print("HTTP error processing request -- %s: %s", e.res.status_code, e.res.text)
+            logger.warning("HTTP error processing request -- %s: %s", e.res.status_code, e.res.text)
             return {}
-    print("UMAPI timeout...giving up on results page %d after %d attempts.", page, num_attempts_max)
+    logger.error("UMAPI timeout...giving up on results page %d after %d attempts.", page, retry_max_attempts)
     return {}

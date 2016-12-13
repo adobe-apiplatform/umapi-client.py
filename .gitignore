@@ -1,0 +1,14 @@
+# platform artifacts
+.*
+
+# build and scratch areas
+local/
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# build artifacts
+*.pyc
+*.tar.gz
+*.zip

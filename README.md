@@ -1,10 +1,16 @@
 # adobe-umapi.py
 
-Python client for the [Adobe UMAPI](https://www.adobe.io/products/usermanagement/docs/gettingstarted.html)
+Python client for the Adobe User Management API, aka the
+[Adobe UMAPI](https://www.adobe.io/products/usermanagement/docs/gettingstarted.html)
 
 # Installation
 
 You can get this package from PyPI: `pip install adobe-umapi`.
+Or you can download the posted package from GitHub and use pip
+to install from the download.
+
+(Note: as of 13 Dec 2016, there was an issue with the PyPI posting.
+We are working to fix that problem.)
 
 # Building
 

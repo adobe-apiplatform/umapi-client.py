@@ -1,9 +1,9 @@
 import time
-# noinspection PyPackageRequirements
+# noinspection PyPackageRequirements,PyUnresolvedReferences
 import jwt      # package name is PyJWT in setup
 import requests
 import datetime as dt
-from urllib import urlencode
+from six.moves.urllib.parse import urlencode
 
 
 class JWT(object):

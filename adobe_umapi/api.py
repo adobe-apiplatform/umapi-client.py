@@ -1,6 +1,7 @@
 import requests
 import json
-from error import UMAPIError, UMAPIRetryError, UMAPIRequestError, ActionFormatError
+import six
+from .error import UMAPIError, UMAPIRetryError, UMAPIRequestError, ActionFormatError
 
 
 class UMAPI(object):
@@ -17,7 +18,7 @@ class UMAPI(object):
 
     def action(self, org_id, action):
         if not isinstance(action, Action):
-            if not isinstance(action, str) and hasattr(action, "__getitem__") or hasattr(action, "__iter__"):
+            if not isinstance(action, str) and (hasattr(action, "__getitem__") or hasattr(action, "__iter__")):
                 actions = [a.data for a in action]
             else:
                 raise ActionFormatError("action must be iterable, indexable or Action object")
@@ -51,19 +52,19 @@ class UMAPI(object):
 class Action(object):
     def __init__(self, user_key, **kwargs):
         self.data = {"user": user_key, "do": []}    # empty actions upon creation
-        for k, v in kwargs.items():
+        for k, v in six.iteritems(kwargs):
             self.data[k] = v
 
     # do adds to any existing actions, so can you Action(...).do(...).do(...)
     def do(self, **kwargs):
         # add "create" / "add" / "removeFrom" first
-        for k, v in kwargs.items():
+        for k, v in list(six.iteritems(kwargs)):
             if k.startswith("create") or k.startswith("addAdobe") or k.startswith("removeFrom"):
                 self.data["do"].append({k: v})
                 del kwargs[k]
 
-        # now do the other actions
-        for k, v in kwargs.items():
+        # now do the other actions, in a canonical order (to avoid implementation variations)
+        for k, v in sorted(six.iteritems(kwargs)):
             if k in ['add', 'remove']:
                 self.data["do"].append({k: {"product": v}})
             else:

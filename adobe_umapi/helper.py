@@ -4,7 +4,7 @@ from math import pow
 from random import randint
 from sys import maxsize
 from time import time, sleep
-from error import UMAPIError, UMAPIRetryError, UMAPIRequestError
+from .error import UMAPIError, UMAPIRetryError, UMAPIRequestError
 
 # make the retry options module-global so they can be set by clients
 retry_max_attempts = 4

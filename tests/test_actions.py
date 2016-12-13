@@ -8,7 +8,7 @@ from adobe_umapi.auth import Auth
 
 
 # This method will be used by the mock to replace requests.get / requests.post
-def mocked_requests_call(target):
+def mocked_requests_call(target, **kwargs):
     class MockResponse:
         def __init__(self, status_code, data):
             self.status_code = status_code
@@ -87,7 +87,7 @@ def test_user_create_error(_):
 
 
 @mock.patch('adobe_umapi.api.requests.post', side_effect=mocked_requests_call)
-def test_user_create_success(_):
+def test_user_create_failure(_):
     """Test User Creation - FAILURE"""
     auth = mock.create_autospec(Auth)
 
@@ -128,7 +128,8 @@ def test_action_obj_create():
     action = Action(user_key="user@example.com").do(
         addAdobeID={"email": "user@example.com"}
     )
-    assert json.dumps(action.data) == '{"do": [{"addAdobeID": {"email": "user@example.com"}}], "user": "user@example.com"}'
+    assert json.dumps(action.data, sort_keys=True) ==\
+           '{"do": [{"addAdobeID": {"email": "user@example.com"}}], "user": "user@example.com"}'
 
 
 def test_action_obj_remove():
@@ -136,7 +137,8 @@ def test_action_obj_remove():
     action = Action(user_key="user@example.com").do(
         removeFromOrg={}
     )
-    assert json.dumps(action.data) == '{"do": [{"removeFromOrg": {}}], "user": "user@example.com"}'
+    assert json.dumps(action.data, sort_keys=True) ==\
+           '{"do": [{"removeFromOrg": {}}], "user": "user@example.com"}'
 
 
 def test_action_obj_update():
@@ -144,7 +146,8 @@ def test_action_obj_update():
     action = Action(user_key="user@example.com").do(
         update={"firstname": "example", "lastname": "user"}
     )
-    assert json.dumps(action.data) == '{"do": [{"update": {"lastname": "user", "firstname": "example"}}], "user": "user@example.com"}'
+    assert json.dumps(action.data, sort_keys=True) ==\
+           '{"do": [{"update": {"firstname": "example", "lastname": "user"}}], "user": "user@example.com"}'
 
 
 def test_action_obj_multi():
@@ -154,7 +157,8 @@ def test_action_obj_multi():
         add=["product1", "product2"],
         remove=["product3"]
     )
-    assert json.dumps(action.data) == '{"do": [{"addAdobeID": {"email": "user@example.com"}}, {"add": {"product": ["product1", "product2"]}}, {"remove": {"product": ["product3"]}}], "user": "user@example.com"}'
+    assert json.dumps(action.data, sort_keys=True) ==\
+           '{"do": [{"addAdobeID": {"email": "user@example.com"}}, {"add": {"product": ["product1", "product2"]}}, {"remove": {"product": ["product3"]}}], "user": "user@example.com"}'
 
 
 def test_action_obj_requestid():
@@ -162,4 +166,5 @@ def test_action_obj_requestid():
     action = Action(user_key="user@example.com", requestID="abc123").do(
         add=["product1"]
     )
-    assert json.dumps(action.data) == '{"do": [{"add": {"product": ["product1"]}}], "user": "user@example.com", "requestID": "abc123"}'
+    assert json.dumps(action.data, sort_keys=True) ==\
+           '{"do": [{"add": {"product": ["product1"]}}], "requestID": "abc123", "user": "user@example.com"}'

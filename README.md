@@ -1,13 +1,26 @@
 # adobe-umapi.py
+
 Python client for the [Adobe UMAPI](https://www.adobe.io/products/usermanagement/docs/gettingstarted.html)
 
 # Installation
 
+You can get this package from PyPI: `pip install adobe-umapi`.
+
+# Building
+
 1. Clone this repository or download the latest stable release.
 2. From the command line, change to the `adobe-umapi.py` directory.
-3. To install, run the command `python setup.py install`.  [**NOTE**: You may need admin/root privileges (using `sudo`) to install new packages in your environment.  It is recommended that you use `virtualenv` to make a virtual python environment.  See the [virtualenvwrapper documentation](http://virtualenvwrapper.readthedocs.io/en/latest/index.html) for more information]
-4. If you encounter errors that report missing library files, you may need to install the packages `python-dev`, `libssl-dev` and `libffi-dev` (these are the Debian package names - your environment may vary).
-5. (**optional**) To run tests, use the command `python setup.py nosetests`.
+3. To install, run the command `python setup.py install`.
+[**NOTE**: You may need admin/root privileges to install new packages in your environment.
+It is recommended that you use `virtualenv` to make a virtual python environment.
+See the [virtualenvwrapper documentation](http://virtualenvwrapper.readthedocs.io/en/latest/index.html)
+for more information]
+4. Some of the packages required by this module use encryption, and so may
+require you to do local builds of modules that use SSL.  Typically, this
+will require you to have to `python-dev` module installed (on all platforms),
+and there may be other platform-specific requirements (e.g., on Mac OS X,
+you will need to make sure the latest SSH libraries are on your LIBPATH.)
+5. To run tests, use the command `python setup.py test`.
 
 # Getting Started
 
@@ -17,30 +30,33 @@ Before making calls to the User Management API, you must do the following prepar
 2. Set up a private/public certificate pair
 3. Create an integration on Adobe.io
 
-Step 1 is outside of the scope of this document.  Please contact an administrator of your stage or prod Dashbord environment to obtain access.
-
-Steps 2 and 3 are outlined in the documentaiton available at [adobe.io](http://www.adobe.io).
+Step 1 is outside of the scope of this document.
+Please contact your organization's administrator of your Dashbord environment to obtain access.
+Steps 2 and 3 are outlined in the 
+[UMAPI documentation](https://www.adobe.io/products/usermanagement/docs/gettingstarted.html).
 
 Once access is obtained, and an integration is set up, you will need the following configuration items:
 
 1. Organization ID
 2. Tech Account ID
 3. IMS Hostname
-4. IMT Auth Token Endpoint (JWT Endpoint)
+4. IMS Auth Token Endpoint (JWT Endpoint)
 5. API Key
 6. Client Secret
-6. Private Certificate
+7. Private Certificate
 
-Most of this information should be availble on the adobe.io page for your integration.
+Most of this information should be available on the adobe.io page for your integration.
 
-Once these initial steps are taken, and configuration items are identified, then you will be able to use this library to make API calls.
+Once these initial steps are taken, and configuration items are identified,
+then you will be able to use this library to make API calls.
 
 ## Step 1 - Create JSON Web Token
 
-The JSON Web Token (JWT) is used to get an authorization token for using the API.  The `JWT` object will build the JWT for use with the `AccessRequest` object.
+The JSON Web Token (JWT) is used to get an authorization token for using the API.
+The `JWT` object will build the JWT for use with the `AccessRequest` object.
 
 ```python
-from umapi.auth import JWT
+from adobe_umapi.auth import JWT
 
 jwt = JWT(
   org_id,     # Organization ID
@@ -51,12 +67,13 @@ jwt = JWT(
 )
 ```
 
-## Step 2 - Use AccessRequest to Obtain Auth Token
+## Step 2 - Use AccessRequest to Obtain Access Token
 
-The `AccessRequest` object uses the JWT to call an IMS endpoint to obtain an authorization token.
+The `AccessRequest` object uses the JWT to call an IMS endpoint to obtain an access token.  This
+token is then used in all later UMAPI calls to authenticate and authorize the request.
 
 ```python
-from umapi.auth import AccessRequest
+from adobe_umapi.auth import AccessRequest
 
 token = AccessRequest(
   "https://" + ims_host + ims_endpoint_jwt,   # Access Request Endpoint (IMS Host + JWT Endpoint)
@@ -66,93 +83,115 @@ token = AccessRequest(
 )
 ```
 
-**NOTE**: It is recommended that you only request a new authorization token when the existing token has expired, and not to request a new token with each call or batch of calls.  Once the token is generated, the `AccessRequest` object provides a `datetime` object representing the expiration timestamp of the current token.
+The returned `token` is a Python _callable_ whose return value is an encoded form of
+the token suitable for use to authenticate and authorize API calls.  The lifetime of
+the token is typically 24 hours; its `token.expiry` attribute contains its expiration
+date as a `datetime` object.
 
-```python
-token.expiry
-```
-
-This timestamp can be used to create a persistent token store, so that the token can be retrieved locally and reused if it has not expired (such a persistant store system is outside the scope of this library).
+**NOTE**: You should _not_ generate a new token for each call.  Instead, continue
+to use each generated token until it expires.
 
 ## Step 3 - The Auth Object
 
-The `Auth` object is used by a lower-level library to build the necessary authentication headers for making an API call.  It only requires the API key and auth token (generated by `AccessRequest`).
+Once you have an access `token`, you use it to create an Auth object.  This Auth object
+is used to build the necessary authentication headers for making an API call.
 
 ```python
-from umapi.auth import Auth
+from adobe_umapi.auth import Auth
 
-token = AccessRequest( ... )
-auth = Auth(api_key, token())  # note that the AccessRequest object is callable - the Auth object requires the token string, not the object itself
+auth = Auth(api_key, token())
 ```
 
-# Making Calls
+## Step 4 - The UMAPI object
 
-Once the Auth object is built, the UMAPI object can be used to make API calls.  
+Once the `auth` object is built, you use it to construct a UMAPI object.  This UMAPI
+object can then be used over and over to make your desired API calls.
+
+```python
+from adobe_umapi import UMAPI
+
+api_endpoint = 'https://usermanagement.adobe.io/v2/usermanagement'
+api = UMAPI(api_endpoint, auth)
+```
+
+# Querying for Users and Groups
+
+These snippets presume you have constructed a UMAPI object named `api` as detailed in the last section.
+The query APIs return data in paginated form, each page contaning up to 200 results.
+The `adobe_umapi.helper`
+module has a `paginate` utility which can will concatenate and return the results from all pages.
 
 ## Get a List of Users
 
 ```python
-from umapi import UMAPI
+users = api.users(org_id, page=0)           # optional arg page defaults to 0
 
-# api_endpoint - full endpoint URL (e.g. https://usermanagement-stage.adobe.io/v2/usermanagement)
-# auth - Auth object
-api = UMAPI(api_endpoint, auth)
-
-users = api.users(org_id, page=0) # Organization ID is required, page is optional and defaults to 0)
+from adobe_umapi.helper import paginate
+all_users = paginate(api.users, org_id)     # optional args for max_pages and max_records
 ```
 
 ## Get a List of Groups
 
+This list of groups will contain both user groups and product license configuration groups.
+
 ```python
-from umapi import UMAPI
-
-# api_endpoint - full endpoint URL (e.g. https://usermanagement-stage.adobe.io/v2/usermanagement)
-# auth - Auth object
-api = UMAPI(api_endpoint, auth)
-
-groups = api.groups(org_id, page=0) # Organization ID is required, page is optional and defaults to 0)
+groups = api.groups(org_id, page=0)
+all_groups = paginate(api.groups, org_id)
 ```
 
-## Perform an Action
+# Performing Actions on Users
 
-This example introduces the `Action` object, which represents an action or group of actions to perform on a user.  These actions include, but are not limited to, user creation, addition or removal of product entitlements, user update, and user deletion.
+To operate on a user we need an `Action` object, which encode both the user and
+an action or group of actions to be performed on that user.
+These actions include, but are not limited to, creation of users,
+addition or removal of a user's product entitlements,
+addition or removal of a user from a user group,
+updating user attributes, and user deletion.
+
+To create the action object, we name the user we wish to operate on.
+(As above, `api` here in a UMAPI object.)
 
 ```python
-from umapi import UMAPI, Action
+from adobe_umapi import Action
 
-api = UMAPI(api_endpoint, auth)
+action = Action(user="user@example.com")
+```
 
-action = Action(user="user@example.com").do(
-  createAdobeID={"email": "user@example.com"}
-)
+We then record the actions we want to perform by calling
+the `do` method of the created action.  For example,
+given the `action` created above, we could record that
+we want to create this user and add him to a user group
+named 'group1':
 
+```python
+action.do(createAdobeID={"email": "user@example.com"})
+action.do(add=['group1'])
+```
+
+And then we execute all the recorded actions with a single call:
+
+```python
 status = api.action(org_id, action)
 ```
 
-## Perform a Multi-Step Action
+**NOTE**: As you can see from the above, `do` is a side-effecting method, so it's
+not necessary to use its return value.  But in fact it returns the action, and
+it can take a sequence of keyword arguments, so both of the above operations
+could have been record in one call, in either of two ways:
 
 ```python
-from umapi import UMAPI, Action
-
-api = UMAPI(api_endpoint, auth)
-
-action = Action(user="user@example.com").do(
-  createAdobeID={"email": "user@example.com"},
-  add=["product1", "product2"]
-)
-
-status = api.action(org_id, action)
+action.do(createAdobeID={"email": "user@example.com"}).do(add=['group1'])
+# or
+action.do(createAdobeID={"email": "user@example.com"}, add=['group1'])
 ```
 
-## Perform Multiple Actions in One Call
+## Perform Actions on  Multiple Users
 
-A group of Actions can be wrapped in some type of collection or iterable (typically a list) and passed to `UMAPI.action`.
+Multiple Action objects (each of which can perform multiple actions on a single user)
+can be wrapped in some type of collection or iterable (typically a list)
+and performed with a single call to `UMAPI.action`:
 
 ```python
-from umapi import UMAPI, Action
-
-api = UMAPI(api_endpoint, auth)
-
 actions = [
     Action(user="user@example.com").do(
         remove=["product1"]
@@ -184,7 +223,9 @@ api = UMAPI(
 )
 ```
 
-Any call made this this object can raise the `UMAPIError` and `UMAPIRetryError`.  `UMAPI.action` can additionally raise `UMAPIRequestError` for responses containing an error result type, and `ActionFormatError` when an invalid action object is provided.
+Any call made this this object can raise the `UMAPIError` and `UMAPIRetryError`.
+`UMAPI.action` can additionally raise `UMAPIRequestError` for responses containing an error result type,
+and `ActionFormatError` when an invalid action object is provided.
 
 #### `UMAPI.users`
 
@@ -201,9 +242,12 @@ users = api.users(
 )['users']
 ```
 
-The oject returned is the full API response object.  The main aspect is the "users" key, which contains a list of all users for the organization.
+The oject returned is the full API response object, which is a Python response object whose
+`json` method is a Python serialization of the JSON response dictionary.
+You will use the "users" key, which contains a list of dictionaries, each of which
+holds the attributes of one user in the Adobe user directory.
 
-Example list of users:
+Example "users" llist containing one user:
 
 ```python
 [{
@@ -217,7 +261,13 @@ Example list of users:
 }]
 ```
 
-The list will contain up to 200 users.  The repsonse object also contains the "lastPage" property, which indicates if the end of the list has been reached.  If the organization contains more than 200 users, then the `lastPage` property can be used to paginate through all user data (by using the `page` parameter to `UMAPI.users`).
+The list returned by each page will contain up to 200 users.
+The response object also contains the `lastPage` property,
+which indicates if the end of the list has been reached.
+If the organization contains more than 200 users,
+then the `lastPage` property can be used to paginate through all user data
+(by using the `page` parameter to `UMAPI.users`).  This is
+what is done for you by `UMAPI.helper.paginate`.
 
 #### `UMAPI.groups`
 
@@ -234,7 +284,8 @@ groups = api.groups(
 )['groups']
 ```
 
-The oject returned is the full API response object.  The main aspect is the "groups" key, which contains a list of all groups for the organization.
+The oject returned is the full API response object.
+The main aspect is the "groups" key, which contains a list of all groups for the organization.
 
 Example list of groups:
 
@@ -248,11 +299,12 @@ Example list of groups:
 }]
 ```
 
-Also of interest is the `lastPage` attribute of the response object.  See the `UMAPI.users` section for more details.
+Like the `users` query, the response to a `groups` query is paginated.
 
 #### `UMAPI.action`
 
-Perform some kind of action - create users, add/remove groups, edit users, etc.  `UMAPI.action` depends on the Action object, which is detailed in the Action section of this documentation.
+Perform some kind of action - create users, add/remove groups, edit users, etc.
+`UMAPI.action` depends on the Action object, which is detailed in the Action section of this documentation.
 
 Requires both the org_id and action parameters.
 
@@ -268,13 +320,18 @@ result = api.action(
 )
 ```
 
-The result object returned is the complete result object returned by the User Management API.  If the response contains a result type of "error", then the action call will raise a `UMAPIRequestError`.  Success and partial result types do not raise any exceptions.
+The result object returned is the complete result object returned by the User Management API.
+If the response contains a result type of "error", then the action call will raise a `UMAPIRequestError`.
+Success and partial result types do not raise any exceptions.
 
-The exact format of the result object is detailed on the [adobe.io documentation page for Management calls](https://www.adobe.io/products/usermanagement/docs/api/manageref).
+The exact format of the result object is detailed in
+the [UMAPI documentation](https://www.adobe.io/products/usermanagement/docs/api/manageref).
 
 ### Action
 
-The `Action` object models input to the UMAPI Management interface.  More specifically, it models an element of the action array that serves as the top-level object to management calls.
+The `Action` object models input to the UMAPI Management interface.
+More specifically, it models an element of the action array that serves as the
+top-level object to management calls.
 
 Example:
 
@@ -299,7 +356,10 @@ This Action object models the object needed to create an Adobe ID.  It is conver
 }
 ```
 
-The Action object always requires the user ID, but supports additional top-level action properties such as `requestID` and `domain`.  It reads these attributes from `**kwargs` so there are no restrictions on which of these attributes can be provided.
+The Action object constructoe always requires the unique user ID,
+but supports additional top-level ID properties such as `requestID` and `domain`.
+It reads these attributes from `**kwargs` so there are no restrictions on which
+of these attributes can be provided.
 
 Example Python:
 
@@ -328,13 +388,19 @@ Equivalent JSON:
 
 #### `Action.do`
 
-The `Action` object has one method - `do`.  This is used to define a list of actions to perform on the user for the call.
+The `Action` object has one method - `do`.
+This is used to define a list of actions to perform on the user for the call.
 
-Like the object constructor, `do()` gets its parameters from `**kwargs`.  However, there are no required attributes.
+Like the object constructor, `do()` gets its parameters from `**kwargs`.
+However, there are no required attributes.
 
-The name of each `do()` argument should correspond to a key of the "do" container.  Those keys include "addAdobeID", "createEnterpriseID", "add", "remove", etc.  Refer to the [official documentation](https://www.adobe.io/products/usermanagement/docs/gettingstarted) for more details.
+The name of each `do()` argument should correspond to a key of the "do" container.
+Those keys include "addAdobeID", "createEnterpriseID", "add", "remove", etc.
+Refer to the [UMAPI reference](https://www.adobe.io/products/usermanagement/docs/api/overview)
+for more details.
 
-`do()` parameter values should be objects (strings, dicts, lists, etc) strucutred in the way expected by the API.
+`do()` parameter values should be objects (strings, dicts, lists, etc) 
+ structured in the way expected by the API.
 
 Example:
 
@@ -344,7 +410,7 @@ Action(user="user", domain="example.com").do(
 )
 ```
 
-In that example, the "createEnterpriseID" portion of the JSON would render like this:
+In the above example, the "createEnterpriseID" portion of the JSON would render like this:
 
 ```json
 "createEnterpriseID": {"email": "user@example.com", "firstname": "Example", "lastname": "User"}
@@ -352,7 +418,8 @@ In that example, the "createEnterpriseID" portion of the JSON would render like 
 
 The exact structure of the `createEnterpriseID` parameter object is preserved.
 
-There is one important exception - when using the "add" or "remove" actions, which add/remove groups to/from the user account, `do()` will add the "product" wrapper.  (since, at the time of this writing, "product" is the only valid container for "add"/"remove" actions)
+There is one important exception - when using the "add" or "remove" actions,
+which add/remove groups to/from the user account, `do()` will add the "product" wrapper.
 
 Example:
 
@@ -370,13 +437,15 @@ The "add" portion of the JSON looks like this:
 "add": {"product": ["product1"]}
 ```
 
-## umapi.auth
+## adobe_umapi.auth
 
-The submodule `umapi.auth` contains the components needed to build the authentication headers needed for API communication.
+The submodule `adobe_umapi.auth` contains the components needed to build
+the authentication headers needed for API communication.
 
 ### JWT
 
-The `JWT` object builds the JSON Web Token needed to obtain an authorization token, which is the security token needed for API call headers.
+The `JWT` object builds the JSON Web Token needed to obtain an access token,
+which is the security token needed for API call headers.
 
 | Parameter | Type      | Required? | Notes                                                                    |
 |-----------|-----------|-----------|--------------------------------------------------------------------------|
@@ -391,7 +460,7 @@ The `JWT` object is callable.  Calling it returns the encoded JWT.
 Example:
 
 ```python
-from umapi.auth import JWT
+from adobe_umapi.auth import JWT
 
 jwt = JWT(
   org_id,     # Organization ID
@@ -406,7 +475,7 @@ encoded_jwt = jwt()
 
 ### AccessRequest
 
-The `AccessRequest` object uses the JWT to make a request to IMS to retrieve an authorization token.
+The `AccessRequest` object uses the JWT to make a request to IMS to retrieve an access token.
 
 | Parameter     | Type      | Required? | Notes                                                                |
 |---------------|-----------|-----------|----------------------------------------------------------------------|
@@ -415,12 +484,12 @@ The `AccessRequest` object uses the JWT to make a request to IMS to retrieve an 
 | client secret | str       | Y         | Client Secret (found on adobe.io integration page)                   |
 | jwt_token     | str       | Y         | Encoded JWT String (generated from JWT object)                       |
 
-Like the `JWT` object, the `AccessRequest` object is callable.  Calling it returns the encoded authorization token string needed by the `Auth` object.
+Like the `JWT` object, the `AccessRequest` object is callable.  Calling it returns the encoded access token string needed by the `Auth` object.
 
 Basic Usage Example:
 
 ```python
-from umapi.auth import AccessRequest
+from adobe_umapi.auth import AccessRequest
 
 token = AccessRequest(
   "https://" + ims_host + ims_endpoint_jwt,   # Access Request Endpoint (IMS Host + JWT Endpoint)
@@ -432,13 +501,19 @@ token = AccessRequest(
 token_str = token()
 ```
 
-The `AccessRequest` object also has the propery `expiry`, which is a [datetime](https://docs.python.org/2/library/datetime.html#datetime-objects) object representing the date and time the authorization token expires.  It can be used with persistent token store systems to reduce the number of times a new token is required.
+The `AccessRequest` object also has the propery `expiry`,
+which is a [datetime](https://docs.python.org/2/library/datetime.html#datetime-objects) object
+representing the date and time the access token expires.
+It can be used with persistent token store systems to reduce the number of times a new token is required.
 
-**NOTE**: The `expiry` attribute is not populated until the token is generates (i.e. the token object is called).
+**NOTE**: The `expiry` attribute is not populated until the token is encoded
+(i.e. the token object is called).
 
 ### Auth
 
-The `Auth` object is used by the UMAPI object to build security headers for API calls.  It is a subclass of the [requests auth.AuthBase class](http://docs.python-requests.org/en/master/user/authentication/#new-forms-of-authentication).
+The `Auth` object is used by the UMAPI object to build security headers for API calls.
+It is a subclass of the
+[requests auth.AuthBase class](http://docs.python-requests.org/en/master/user/authentication/#new-forms-of-authentication).
 
 | Parameter    | Type | Required? | Notes                                                     |
 |--------------|------|-----------|-----------------------------------------------------------|
@@ -448,29 +523,32 @@ The `Auth` object is used by the UMAPI object to build security headers for API 
 Example:
 
 ```python
-from umapi.auth import Auth
+from adobe_umapi.auth import Auth
 
 token = AccessRequest( ... )
-auth = Auth(api_key, token())  # note that the AccessRequest object is callable - the Auth object requires the token string, not the object itself
+auth = Auth(api_key, token())
 ```
 
-## umapi.error
+## adobe_umapi.error
 
-The `umapi.error` submodule contains all custom Exceptions for the UMAPI library.
+The `adobe_umapi.error` submodule contains all custom Exceptions for the UMAPI library.
 
 ### UMAPIError
 
-Generic Error object that is raised when API returns non-retry or success HTTP status code (i.e. 200, 429, 502, 503, 504).
+Generic Error object that is raised when API returns non-retry or success
+HTTP status code (i.e. 200, 429, 502, 503, 504).
 
 ### UMAPIRetryError
 
 Error raised when a retry HTTP status code (429, 502, 503, 504).
 
-See the [official documentation](https://www.adobe.io/products/usermanagement/docs/throttling) for more information about handling this type of error.
+See the [official documentation](https://www.adobe.io/products/usermanagement/docs/throttling)
+for more information about handling this type of error.
 
 ### UMAPIRequestError
 
-Error raised when an error status is reported from the API.  The API will return a 200 status code, but the JSON "result" status will be "error".
+Error raised when an error status is reported from the API.
+The API will return a 200 status code, but the JSON "result" status will be "error".
 
 This currently only occurs when calling `UMAPI.action()`.
 

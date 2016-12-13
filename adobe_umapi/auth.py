@@ -1,5 +1,6 @@
 import time
-import jwt
+# noinspection PyPackageRequirements
+import jwt      # package name is PyJWT in setup
 import requests
 import datetime as dt
 from urllib import urlencode
@@ -26,6 +27,7 @@ class JWT(object):
         }
 
         # create JSON Web Token
+        # noinspection PyUnresolvedReferences
         jwt_token = jwt.encode(payload, self.key, algorithm='RS256')
         # decode bytes into string
         return jwt_token.decode("utf-8")

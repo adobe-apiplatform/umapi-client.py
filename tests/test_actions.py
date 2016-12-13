@@ -8,7 +8,7 @@ from adobe_umapi.auth import Auth
 
 
 # This method will be used by the mock to replace requests.get / requests.post
-def mocked_requests_call(*args, **kwargs):
+def mocked_requests_call(target):
     class MockResponse:
         def __init__(self, status_code, data):
             self.status_code = status_code
@@ -17,18 +17,18 @@ def mocked_requests_call(*args, **kwargs):
         def json(self):
             return self.data
 
-    if 'http://example.com/success' in args[0]:
+    if 'http://example.com/success' in target:
         return MockResponse(200, {"result": "success"})
-    elif 'http://example.com/error' in args[0]:
+    elif 'http://example.com/error' in target:
         return MockResponse(200, {"result": "error", "errors": [{"errorCode": "test.error"}]})
-    elif 'http://example.com/retry' in args[0]:
+    elif 'http://example.com/retry' in target:
         return MockResponse(429, {})
     else:
         return MockResponse(404, {})
 
 
 @mock.patch('adobe_umapi.api.requests.get', side_effect=mocked_requests_call)
-def test_list_users_success(mock_requests):
+def test_list_users_success(_):
     """Test Users List - SUCCESS"""
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/success', auth)
@@ -36,7 +36,7 @@ def test_list_users_success(mock_requests):
 
 
 @mock.patch('adobe_umapi.api.requests.get', side_effect=mocked_requests_call)
-def test_list_users_error(mock_requests):
+def test_list_users_error(_):
     """Test Users List - ERROR"""
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/error', auth)
@@ -44,7 +44,7 @@ def test_list_users_error(mock_requests):
 
 
 @mock.patch('adobe_umapi.api.requests.get', side_effect=mocked_requests_call)
-def test_list_users_failure(mock_requests):
+def test_list_users_failure(_):
     """Test Users List - FAILURE"""
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/failure', auth)
@@ -54,7 +54,7 @@ def test_list_users_failure(mock_requests):
 
 
 @mock.patch('adobe_umapi.api.requests.get', side_effect=mocked_requests_call)
-def test_list_groups_success(mock_requests):
+def test_list_groups_success(_):
     """Test Groups List - SUCCESS"""
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/success', auth)
@@ -62,7 +62,7 @@ def test_list_groups_success(mock_requests):
 
 
 @mock.patch('adobe_umapi.api.requests.post', side_effect=mocked_requests_call)
-def test_user_create_success(mock_requests):
+def test_user_create_success(_):
     """Test User Creation - SUCCESS"""
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/success', auth)
@@ -75,7 +75,7 @@ def test_user_create_success(mock_requests):
 
 
 @mock.patch('adobe_umapi.api.requests.post', side_effect=mocked_requests_call)
-def test_user_create_error(mock_requests):
+def test_user_create_error(_):
     """Test User Creation - ERROR"""
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/error', auth)
@@ -87,7 +87,7 @@ def test_user_create_error(mock_requests):
 
 
 @mock.patch('adobe_umapi.api.requests.post', side_effect=mocked_requests_call)
-def test_user_create_success(mock_requests):
+def test_user_create_success(_):
     """Test User Creation - FAILURE"""
     auth = mock.create_autospec(Auth)
 
@@ -102,7 +102,7 @@ def test_user_create_success(mock_requests):
 
 
 @mock.patch('adobe_umapi.api.requests.post', side_effect=mocked_requests_call)
-def test_product_add(mock_requests):
+def test_product_add(_):
     """Test Product Add - SUCCESS"""
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/success', auth)
@@ -115,7 +115,7 @@ def test_product_add(mock_requests):
 
 
 @mock.patch('adobe_umapi.api.requests.post', side_effect=mocked_requests_call)
-def test_action_format_error(mock_requests):
+def test_action_format_error(_):
     """Test Action Format Error"""
     auth = mock.create_autospec(Auth)
     api = UMAPI('http://example.com/success', auth)

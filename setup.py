@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 
 setup(name='adobe-umapi',
-      version='1.0.1',
+      version='1.0.0rc1',
       description='Adobe User Management API (UMAPI) client - see http://bit.ly/2hwkVrs',
       classifiers=[
           'Development Status :: 5 - Production/Stable',

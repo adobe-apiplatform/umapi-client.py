@@ -1,10 +1,30 @@
+# Copyright (c) 2016 Adobe Systems Incorporated.  All rights reserved.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 import mock
 import json
 import pytest
 
-from adobe_umapi import UMAPI, Action
-from adobe_umapi.error import UMAPIError, UMAPIRetryError, UMAPIRequestError, ActionFormatError
-from adobe_umapi.auth import Auth
+from adobe_umapi_client import UMAPI, Action
+from adobe_umapi_client.error import UMAPIError, UMAPIRetryError, UMAPIRequestError, ActionFormatError
+from adobe_umapi_client.auth import Auth
 
 
 # This method will be used by the mock to replace requests.get / requests.post
@@ -27,7 +47,7 @@ def mocked_requests_call(target, **kwargs):
         return MockResponse(404, {})
 
 
-@mock.patch('adobe_umapi.api.requests.get', side_effect=mocked_requests_call)
+@mock.patch('adobe_umapi_client.api.requests.get', side_effect=mocked_requests_call)
 def test_list_users_success(_):
     """Test Users List - SUCCESS"""
     auth = mock.create_autospec(Auth)
@@ -35,7 +55,7 @@ def test_list_users_success(_):
     assert api.users(None) == {"result": "success"}
 
 
-@mock.patch('adobe_umapi.api.requests.get', side_effect=mocked_requests_call)
+@mock.patch('adobe_umapi_client.api.requests.get', side_effect=mocked_requests_call)
 def test_list_users_error(_):
     """Test Users List - ERROR"""
     auth = mock.create_autospec(Auth)
@@ -43,7 +63,7 @@ def test_list_users_error(_):
     pytest.raises(UMAPIRequestError, api.users, None)
 
 
-@mock.patch('adobe_umapi.api.requests.get', side_effect=mocked_requests_call)
+@mock.patch('adobe_umapi_client.api.requests.get', side_effect=mocked_requests_call)
 def test_list_users_failure(_):
     """Test Users List - FAILURE"""
     auth = mock.create_autospec(Auth)
@@ -53,7 +73,7 @@ def test_list_users_failure(_):
     pytest.raises(UMAPIRetryError, api.users, None)
 
 
-@mock.patch('adobe_umapi.api.requests.get', side_effect=mocked_requests_call)
+@mock.patch('adobe_umapi_client.api.requests.get', side_effect=mocked_requests_call)
 def test_list_groups_success(_):
     """Test Groups List - SUCCESS"""
     auth = mock.create_autospec(Auth)
@@ -61,7 +81,7 @@ def test_list_groups_success(_):
     assert api.groups(None) == {"result": "success"}
 
 
-@mock.patch('adobe_umapi.api.requests.post', side_effect=mocked_requests_call)
+@mock.patch('adobe_umapi_client.api.requests.post', side_effect=mocked_requests_call)
 def test_user_create_success(_):
     """Test User Creation - SUCCESS"""
     auth = mock.create_autospec(Auth)
@@ -74,7 +94,7 @@ def test_user_create_success(_):
     assert api.action(None, action) == {"result": "success"}
 
 
-@mock.patch('adobe_umapi.api.requests.post', side_effect=mocked_requests_call)
+@mock.patch('adobe_umapi_client.api.requests.post', side_effect=mocked_requests_call)
 def test_user_create_error(_):
     """Test User Creation - ERROR"""
     auth = mock.create_autospec(Auth)
@@ -86,7 +106,7 @@ def test_user_create_error(_):
     pytest.raises(UMAPIRequestError, api.action, None, action)
 
 
-@mock.patch('adobe_umapi.api.requests.post', side_effect=mocked_requests_call)
+@mock.patch('adobe_umapi_client.api.requests.post', side_effect=mocked_requests_call)
 def test_user_create_failure(_):
     """Test User Creation - FAILURE"""
     auth = mock.create_autospec(Auth)
@@ -101,7 +121,7 @@ def test_user_create_failure(_):
     pytest.raises(UMAPIRetryError, api.action, None, action)
 
 
-@mock.patch('adobe_umapi.api.requests.post', side_effect=mocked_requests_call)
+@mock.patch('adobe_umapi_client.api.requests.post', side_effect=mocked_requests_call)
 def test_product_add(_):
     """Test Product Add - SUCCESS"""
     auth = mock.create_autospec(Auth)
@@ -114,7 +134,7 @@ def test_product_add(_):
     assert api.action(None, action) == {"result": "success"}
 
 
-@mock.patch('adobe_umapi.api.requests.post', side_effect=mocked_requests_call)
+@mock.patch('adobe_umapi_client.api.requests.post', side_effect=mocked_requests_call)
 def test_action_format_error(_):
     """Test Action Format Error"""
     auth = mock.create_autospec(Auth)

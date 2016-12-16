@@ -26,9 +26,9 @@ import mock
 import pytest
 from six import StringIO
 
-import adobe_umapi_client.helper
-from adobe_umapi_client import UMAPI
-from adobe_umapi_client.error import UMAPIError, UMAPIRetryError
+import umapi_client.helper
+from umapi_client import UMAPI
+from umapi_client.error import UMAPIError, UMAPIRetryError
 
 
 # This method will be used by the mock to replace UMAPI.users
@@ -59,53 +59,53 @@ def mocked_users(org_id, page):
 
 
 # test the pagination on success
-@mock.patch('adobe_umapi_client.UMAPI.users', side_effect=mocked_users)
+@mock.patch('umapi_client.UMAPI.users', side_effect=mocked_users)
 def test_helper_success(_):
     api = UMAPI('', None)
-    assert adobe_umapi_client.helper.paginate(api.users, 'success') == ["user0", "user1", "user2"]
+    assert umapi_client.helper.paginate(api.users, 'success') == ["user0", "user1", "user2"]
 
 
 @pytest.fixture
 def reduce_attempts():
     # reduce the number of retry attempts
-    adobe_umapi_client.helper.retry_max_attempts = 3
+    umapi_client.helper.retry_max_attempts = 3
 
 
 # test the retry logic with seconds in the header
-@mock.patch('adobe_umapi_client.UMAPI.users', side_effect=mocked_users)
+@mock.patch('umapi_client.UMAPI.users', side_effect=mocked_users)
 def test_helper_retry_seconds(_, reduce_attempts):
     api = UMAPI('', None)
-    assert adobe_umapi_client.helper.paginate(api.users, 'retrySecs') == ["user1", "user2"]
+    assert umapi_client.helper.paginate(api.users, 'retrySecs') == ["user1", "user2"]
 
 
 # test the retry logic with a time in the header
-@mock.patch('adobe_umapi_client.UMAPI.users', side_effect=mocked_users)
+@mock.patch('umapi_client.UMAPI.users', side_effect=mocked_users)
 def test_helper_fail_date(_, reduce_attempts):
     api = UMAPI('', None)
-    assert adobe_umapi_client.helper.paginate(api.users, 'retryTime') == ["user1", "user2"]
+    assert umapi_client.helper.paginate(api.users, 'retryTime') == ["user1", "user2"]
 
 
 # the default retry waits are really long, so don't use them while testing
 @pytest.fixture
 def reduce_delay():
     # reduce the wait on retry attempts
-    adobe_umapi_client.helper.retry_max_attempts = 3
-    adobe_umapi_client.helper.retry_exponential_backoff_factor = 1
-    adobe_umapi_client.helper.retry_random_delay_max = 3
+    umapi_client.helper.retry_max_attempts = 3
+    umapi_client.helper.retry_exponential_backoff_factor = 1
+    umapi_client.helper.retry_random_delay_max = 3
 
 
 # test the retry logic with a zero delay in the header
-@mock.patch('adobe_umapi_client.UMAPI.users', side_effect=mocked_users)
+@mock.patch('umapi_client.UMAPI.users', side_effect=mocked_users)
 def test_helper_retry_zero(_, reduce_delay, reduce_attempts):
     api = UMAPI('', None)
-    assert adobe_umapi_client.helper.paginate(api.users, 'retryNone') == ["user1", "user2"]
+    assert umapi_client.helper.paginate(api.users, 'retryNone') == ["user1", "user2"]
 
 
 # test the retry logic with no header
-@mock.patch('adobe_umapi_client.UMAPI.users', side_effect=mocked_users)
+@mock.patch('umapi_client.UMAPI.users', side_effect=mocked_users)
 def test_helper_retry_noheader(_, reduce_delay, reduce_attempts):
     api = UMAPI('', None)
-    assert adobe_umapi_client.helper.paginate(api.users, 'retryNull') == ["user1", "user2"]
+    assert umapi_client.helper.paginate(api.users, 'retryNull') == ["user1", "user2"]
 
 
 # py.test doesn't divert string logging, so use it
@@ -116,18 +116,18 @@ def log_stream():
     logger = logging.getLogger('test_logger')
     logger.setLevel(logging.WARNING)
     logger.addHandler(handler)
-    prior_logger = adobe_umapi_client.helper.logger
-    adobe_umapi_client.helper.logger = logger
+    prior_logger = umapi_client.helper.logger
+    umapi_client.helper.logger = logger
     yield stream
-    adobe_umapi_client.helper.logger = prior_logger
+    umapi_client.helper.logger = prior_logger
     handler.close()
 
 
 # test the retry logic with a custom logger
-@mock.patch('adobe_umapi_client.UMAPI.users', side_effect=mocked_users)
+@mock.patch('umapi_client.UMAPI.users', side_effect=mocked_users)
 def test_helper_retry_logging(_, log_stream, reduce_attempts):
     api = UMAPI('', None)
-    assert adobe_umapi_client.helper.paginate(api.users, 'retrySecs') == ["user1", "user2"]
+    assert umapi_client.helper.paginate(api.users, 'retrySecs') == ["user1", "user2"]
     log_stream.flush()
     log = log_stream.getvalue()  # save as a local so can do pytest -l to see exact log
     assert log == '''UMAPI service temporarily unavailable (attempt 1) -- 429

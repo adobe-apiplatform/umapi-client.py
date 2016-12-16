@@ -1,25 +1,25 @@
-# adobe-umapi-client.py
+# umapi-client.py
 
-This is a Python client for the Adobe User Management API, aka the
-[Adobe UMAPI](https://www.adobe.io/products/usermanagement/docs/gettingstarted.html).
+This is a Python client for the User Management API from Adobe, aka the
+[UMAPI](https://www.adobe.io/products/usermanagement/docs/gettingstarted.html).
 
-The Adobe User Management API is an Adobe-hosted network service 
+The User Management API is an Adobe-hosted network service 
 which provides Adobe Enterprise customers the ability to manage their users.  This
-client makes it easy to access the Adobe UMAPI from a local Python application.
+client makes it easy to access the UMAPI from a local Python application.
 
 This client is open source, maintained by Adobe, and distributed under the terms
 of the OSI-approved MIT license.  Copyright (c) 2016 Adobe Systems Incorporated.
 
 # Installation
 
-You can get this package from PyPI: `pip install adobe-umapi-client`.
+You can get this package from PyPI: `pip install umapi-client`.
 Or you can download the posted package from GitHub and use pip
 to install from the download.
 
 # Building
 
 1. Clone this repository or download the latest stable release.
-2. From the command line, change to the `adobe-umapi-client.py` directory.
+2. From the command line, change to the `umapi-client.py` directory.
 3. To install, run the command `python setup.py install`.
 [**NOTE**: You may need admin/root privileges to install new packages in your environment.
 It is recommended that you use `virtualenv` to make a virtual python environment.

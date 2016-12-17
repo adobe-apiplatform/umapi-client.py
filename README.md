@@ -66,11 +66,11 @@ The JSON Web Token (JWT) is used to get an authorization token for using the API
 The `JWT` object will build the JWT for use with the `AccessRequest` object.
 
 ```python
-from adobe_umapi_client.auth import JWT
+from umapi_client.auth import JWT
 
 jwt = JWT(
   org_id,     # Organization ID
-  tech_acct,  # Techincal Account ID
+  tech_acct,  # Technical Account ID
   ims_host,   # IMS Host
   api_key,    # API Key
   open(priv_key_filename, 'r')  # Private certificate is passed as a file-like object
@@ -83,7 +83,7 @@ The `AccessRequest` object uses the JWT to call an IMS endpoint to obtain an acc
 token is then used in all later UMAPI calls to authenticate and authorize the request.
 
 ```python
-from adobe_umapi_client.auth import AccessRequest
+from umapi_client.auth import AccessRequest
 
 token = AccessRequest(
   "https://" + ims_host + ims_endpoint_jwt,   # Access Request Endpoint (IMS Host + JWT Endpoint)
@@ -107,7 +107,7 @@ Once you have an access `token`, you use it to create an Auth object.  This Auth
 is used to build the necessary authentication headers for making an API call.
 
 ```python
-from adobe_umapi_client.auth import Auth
+from umapi_client.auth import Auth
 
 auth = Auth(api_key, token())
 ```
@@ -118,7 +118,7 @@ Once the `auth` object is built, you use it to construct a UMAPI object.  This U
 object can then be used over and over to make your desired API calls.
 
 ```python
-from adobe_umapi_client import UMAPI
+from umapi_client import UMAPI
 
 api_endpoint = 'https://usermanagement.adobe.io/v2/usermanagement'
 api = UMAPI(api_endpoint, auth)
@@ -127,8 +127,8 @@ api = UMAPI(api_endpoint, auth)
 # Querying for Users and Groups
 
 These snippets presume you have constructed a UMAPI object named `api` as detailed in the last section.
-The query APIs return data in paginated form, each page contaning up to 200 results.
-The `adobe_umapi_client.helper`
+The query APIs return data in paginated form, each page containing up to 200 results.
+The `umapi_client.helper`
 module has a `paginate` utility which can will concatenate and return the results from all pages.
 
 ## Get a List of Users
@@ -136,13 +136,14 @@ module has a `paginate` utility which can will concatenate and return the result
 ```python
 users = api.users(org_id, page=0)           # optional arg page defaults to 0
 
-from adobe_umapi_client.helper import paginate
+from umapi_client.helper import paginate
 all_users = paginate(api.users, org_id)     # optional args for max_pages and max_records
 ```
 
 ## Get a List of Groups
 
-This list of groups will contain both user groups and product license configuration groups.
+This list of groups will contain both user groups and product license
+configuration groups.
 
 ```python
 groups = api.groups(org_id, page=0)
@@ -162,7 +163,7 @@ To create the action object, we name the user we wish to operate on.
 (As above, `api` here in a UMAPI object.)
 
 ```python
-from adobe_umapi_client import Action
+from umapi_client import Action
 
 action = Action(user="user@example.com")
 ```
@@ -447,9 +448,9 @@ The "add" portion of the JSON looks like this:
 "add": {"product": ["product1"]}
 ```
 
-## adobe_umapi_client.auth
+## umapi_client.auth
 
-The submodule `adobe_umapi_client.auth` contains the components needed to build
+The submodule `umapi_client.auth` contains the components needed to build
 the authentication headers needed for API communication.
 
 ### JWT
@@ -470,11 +471,11 @@ The `JWT` object is callable.  Calling it returns the encoded JWT.
 Example:
 
 ```python
-from adobe_umapi_client.auth import JWT
+from umapi_client.auth import JWT
 
 jwt = JWT(
   org_id,     # Organization ID
-  tech_acct,  # Techincal Account ID
+  tech_acct,  # Technical Account ID
   ims_host,   # IMS Host
   api_key,    # API Key
   open(priv_key_filename, 'r')  # Private certificate is passed as a file-like object
@@ -499,7 +500,10 @@ Like the `JWT` object, the `AccessRequest` object is callable.  Calling it retur
 Basic Usage Example:
 
 ```python
-from adobe_umapi_client.auth import AccessRequest
+from umapi_client.auth import AccessRequest
+
+ims_host = 'ims-na1.adobelogin.com'     # US production host, usable from everywhere
+ims_endpoint_jwt = '/ims/exchange/jwt'  # path for all environments
 
 token = AccessRequest(
   "https://" + ims_host + ims_endpoint_jwt,   # Access Request Endpoint (IMS Host + JWT Endpoint)
@@ -533,15 +537,15 @@ It is a subclass of the
 Example:
 
 ```python
-from adobe_umapi_client.auth import Auth
+from umapi_client.auth import Auth
 
 token = AccessRequest( ... )
 auth = Auth(api_key, token())
 ```
 
-## adobe_umapi_client.error
+## umapi_client.error
 
-The `adobe_umapi_client.error` submodule contains all custom Exceptions for the UMAPI library.
+The `umapi_client.error` submodule contains all custom Exceptions for the UMAPI library.
 
 ### UMAPIError
 

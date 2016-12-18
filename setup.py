@@ -23,10 +23,10 @@ from setuptools import setup, find_packages
 
 setup(name='umapi-client',
       version='1.0.0',
-      description='Adobe User Management API (UMAPI) client - see https://adobe.ly/2h1pHgV',
-      long_description=('The Adobe User Management API (aka the Adobe UMAPI) is an Adobe-hosted network service '
+      description='Client for the User Management API (UMAPI) from Adobe - see https://adobe.ly/2h1pHgV',
+      long_description=('The User Management API (aka the UMAPI) is an Adobe-hosted network service '
                         'which provides Adobe Enterprise customers the ability to manage their users.  This '
-                        'client makes it easy to access the Adobe UMAPI from a local Python application.  '
+                        'client makes it easy to access the UMAPI from a local Python application.  '
                         'This client is open source, maintained by Adobe, and distributed under the terms '
                         'of the OSI-approved MIT license.  Copyright (c) 2016 Adobe Systems Incorporated.'),
       classifiers=[

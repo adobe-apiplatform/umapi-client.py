@@ -18,4 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .api import UMAPI, Action
+from .connection import Connection
+from .api import Action, UserAction, QueryMultiple
+from .error import ClientError, TimeoutError, RequestError, ServerError

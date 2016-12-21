@@ -18,12 +18,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import datetime as dt
 import time
-# noinspection PyPackageRequirements,PyUnresolvedReferences
+
 import jwt      # package name is PyJWT in setup
 import requests
-import datetime as dt
-from six.moves.urllib.parse import urlencode
+import six.moves.urllib.parse as urlparse
 
 
 class JWT(object):
@@ -66,20 +66,21 @@ class AccessRequest(object):
             "Content-Type": "application/x-www-form-urlencoded",
             "Cache-Control": "no-cache",
         }
-        body = urlencode({
+        body = urlparse.urlencode({
             "client_id": self.api_key,
             "client_secret": self.client_secret,
             "jwt_token": self.jwt_token
         })
 
-        res = requests.post(self.endpoint, headers=headers, data=body)
-        if res.status_code != 200:
-            raise Exception("Access Request Error (%s) [Text: %s, Headers: %s]" % (res.status_code,
-                                                                                   res.text, res.headers))
+        r = requests.post(self.endpoint, headers=headers, data=body)
+        if r.status_code != 200:
+            raise RuntimeError("Unable to authorize against {}:\n"
+                               "Response Code: {:d}, Response Text: {}\n"
+                               "Response Headers: {}]".format(self.endpoint, r.status_code, r.text, r.headers))
 
-        self.set_expiry(res.json()['expires_in'])
+        self.set_expiry(r.json()['expires_in'])
 
-        return res.json()['access_token']
+        return r.json()['access_token']
 
     def set_expiry(self, expires_in):
         expires_in = int(round(expires_in/1000))

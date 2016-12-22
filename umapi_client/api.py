@@ -24,6 +24,7 @@ import six
 
 from .connection import Connection
 
+
 class Action:
     """
     An sequence of commands for the API to perform on a single object.
@@ -38,7 +39,7 @@ class Action:
         :param kwargs: key/value pairs that identify the object being updated
         """
         self.frame = dict(kwargs)
-        self.commands = [None]
+        self.commands = []
         self.errors = []
 
     def wire_dict(self):
@@ -46,13 +47,13 @@ class Action:
         The dictionary that should be sent (in JSON form) to the server for this action.
         :return: dictionary
         """
-        commands = self.commands if self.commands[0] else self.commands[1:]
-        self.errors = [None] * len(self.commands)
-        return dict(self.frame, do=commands)
+        return dict(self.frame, do=self.commands)
 
     def do(self, **kwargs):
         """
-        Add commands to the sequence.  Be careful: because this runs in Python 2.x, the order
+        Add commands to the sequence.
+
+        Be careful: because this runs in Python 2.x, the order
         of the kwargs dict may not match the order in which the args were specified.  Thus,
         if you care about specific ordering, you must make multiple calls to do in that order.
         Luckily, do returns the Action so you can compose easily: Action(...).do(...).do(...).
@@ -66,82 +67,86 @@ class Action:
 
     def do_first(self, **kwargs):
         """
-        Set the first command in the sequence.  This is provided because certain commands
-        have to come first (such as user creation), but may not be added until later.
+        Insert commands at the front of the sequence.
+
+        This is provided because certain commands
+        have to come first (such as user creation), but may be added after other commands.
+        Later calls to do_first put their commands before those in the earlier calls.
+
+        Also, since the order of iterated kwargs is not guaranteed (in Python 2.x),
+        you should really only call do_first with one keyword at a time.  See the doc of do
+        for more details.
         :param kwargs: the key/value pair to do first
         :return: the action, so you can do Action(...).do_first(...).do(...)
         """
-        if len(kwargs) != 1:
-            raise ValueError("do_first: Only one command can go first.  You gave: {}", kwargs)
-        self.commands[0] = dict(kwargs)
+        for k, v in six.iteritems(kwargs):
+            self.commands.insert(0, {k: v})
         return self
 
     def report_command_error(self, error_dict):
         """
         Report a server error executing a command.
+
+        We keep track of the command's position in the command list,
+        and we add annotation of what the command was, to the error.
         :param error_dict: The server's error dict for the error encountered
         """
-        index = error_dict["step"] + (0 if self.commands[0] else 1)
-        copy = dict(error_dict)
-        del copy["index"]
-        del copy["step"]
-        self.errors[index] = copy
+        error = dict(error_dict)
+        error["command"] = self.commands[error_dict["step"]]
+        del error["index"]  # doesn't matter which action this was in the server-sent batch
+        self.errors.append(error)
 
     def execution_errors(self):
         """
         Return a list of commands that encountered execution errors, with the error.
 
         Each dictionary entry gives the command dictionary and the error dictionary
-        :return: list of commands that have errors
+        :return: list of commands that gave errors, with their error information
         """
-        errors = []
-        for i in range(len(self.errors)):
-            if self.errors[i]: errors.append({"command": self.commands[i], "error": self.errors[i]})
-        return errors
+        return [dict(e) for e in self.errors]
 
 
 class UserAction(Action):
     """
     An sequence of commands for the UMAPI to perform on a single user.
     """
-    def __init__(self, username, domain, **kwargs):
-        """
-        Create an Action for a user identified with username and domain.
-        :param username: string, username in the Adobe domain (might be email)
-        :param domain: string, required if the username is not an email address
-        :param kwargs: other key/value pairs desired to identify this user
-        """
-        if not username or not domain:
-            ValueError("User create: Both username and domain must be specified")
-        if not re.match(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+([.][a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+)*$", username):
-            ValueError("User create: Illegal characters in username")
-        if not re.match(r"^[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+$", domain):
-            ValueError("User create: Illegal domain format")
-        Action.__init__(user=username, domain=domain, **kwargs)
 
-    def __init__(self, email, **kwargs):
+    def __init__(self, email=None, username=None, domain=None, **kwargs):
         """
-        Create an Action for a user identified by email address.
+        Create an Action for a user identified either by email or by username and domain.
+        There is never a reason to specify both email and username.
         :param username: string, username in the Adobe domain (might be email)
         :param domain: string, required if the username is not an email address
         :param kwargs: other key/value pairs desired to identify this user
         """
-        if not re.match(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+([.][a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+)*"
-                        r"@"
-                        r"[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+$", email):
-            ValueError("Action create: Illegal email format")
-        Action.__init__(user=email, **kwargs)
+        if email:
+            if username or domain:
+                ValueError("User create: Email was specified; don't also specify username or domain")
+            if not re.match(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+([.][a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+)*"
+                            r"@"
+                            r"[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+$", email):
+                ValueError("Action create: Illegal email format")
+            Action.__init__(user=email, **kwargs)
+        else:
+            if not username or not domain:
+                ValueError("User create: Both username and domain must be specified")
+            if not re.match(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+([.][a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+)*$", username):
+                ValueError("User create: Illegal characters in username")
+            if not re.match(r"^[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+$", domain):
+                ValueError("User create: Illegal domain format")
+            Action.__init__(user=username, domain=domain, **kwargs)
 
 
 class QueryMultiple:
     """
     A QueryMultiple runs a query against a connection.  The results can be iterated or fetched in bulk.
     """
-    def __init__(self, connection, object_type, url_params=[], query_params={}):
+
+    def __init__(self, connection, object_type, url_params=None, query_params=None):
+        # type: (Connection, str, list, dict)
         """
         Provide the connection and query parameters when you create the query.
 
-        :type connection: Connection
         :param connection: The Connection to run the query against
         :param object_type: The type of object being queried (e.g., "user" or "group")
         :param url_params: Query qualifiers that go in the URL path (e.g., a group name when querying users)
@@ -149,11 +154,17 @@ class QueryMultiple:
         """
         self.conn = connection
         self.object_type = object_type
-        self.url_params = url_params
-        self.query_params = query_params
+        self.url_params = url_params if url_params else []
+        self.query_params = query_params if query_params else {}
         self.reload()
 
+    # noinspection PyAttributeOutsideInit,PyAttributeOutsideInit,PyAttributeOutsideInit,PyAttributeOutsideInit
     def reload(self):
+        """
+        Rerun the query (lazily).
+        The results will contain any values on the server side that have changed since the last run.
+        :return: None
+        """
         self._results = []
         self._next_item_index = 0
         self._next_page_index = 0
@@ -164,11 +175,11 @@ class QueryMultiple:
         Fetch the next page of the query.
         """
         if self._last_page_seen: return 0
-        new, self._last_page_seen = self.conn.query_multiple(self.org_id, self.object_type, self._next_page_index,
-                                                              self.url_params, self.query_params)
+        new, self._last_page_seen = self.conn.query_multiple(self.object_type, self._next_page_index,
+                                                             self.url_params, self.query_params)
         self._next_page_index += 1
         if len(new) == 0:
-            self._last_page_seen = True      # don't bother with next page if nothing was returned
+            self._last_page_seen = True  # don't bother with next page if nothing was returned
         else:
             self._results += new
 
@@ -185,6 +196,7 @@ class QueryMultiple:
         def __init__(self, query):
             self.query = query
 
+        # noinspection PyProtectedMember
         def next(self):
             return self.query._next_item()
 
@@ -192,15 +204,22 @@ class QueryMultiple:
         return self._QueryIterator(self)
 
     def all_results(self):
+        """
+        Eagerly fetch all the results.
+        This can be called after already doing some amount of iteration, and it will return
+        all the previously-iterated results as well as any results that weren't yet iterated.
+        :return: a list of all the results.
+        """
         while not self._last_page_seen:
             self._next_page()
-        return list(self.__iter__())
+        return list(self._results)
 
 
 class UsersQuery(QueryMultiple):
     """
     Query for users meeting (optional) criteria
     """
+
     def __init__(self, connection, in_group="", in_domain=""):
         """
         Create a query for all users, or for those in a group or domain or both
@@ -217,6 +236,7 @@ class GroupsQuery(QueryMultiple):
     """
     Query for all groups
     """
+
     def __init__(self, connection):
         """
         Create a query for all groups

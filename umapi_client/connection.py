@@ -70,7 +70,7 @@ class Connection:
         :param retry_first_delay: The time to delay first retry (grows exponentially from there)
         :param retry_random_delay: The max random delay to add on each exponential backoff retry
 
-        Additional keywords are allowed to make it easy to pass in a dictionary.
+        Additional keywords are allowed to make it easy to pass in test flags or a big dictionary
         :param kwargs:
         """
         self.org_id = org_id
@@ -80,12 +80,16 @@ class Connection:
         self.retry_max_attempts = retry_max_attempts
         self.retry_first_delay = retry_first_delay
         self.retry_random_delay = retry_random_delay
-        with open(private_key_file, 'r') as private_key_stream:
-            jwt = JWT(self.org_id, tech_acct_id, ims_host, api_key, private_key_stream)
-        token = AccessRequest("https://" + ims_host + ims_endpoint_jwt, api_key, client_secret, jwt())
-        self.auth = Auth(api_key, token())
+        if kwargs.get("mock_auth"):
+            self.auth = kwargs["mock_auth"]
+        else:
+            with open(private_key_file, 'r') as private_key_stream:
+                jwt = JWT(self.org_id, tech_acct_id, ims_host, api_key, private_key_stream)
+            token = AccessRequest("https://" + ims_host + ims_endpoint_jwt, api_key, client_secret, jwt())
+            self.auth = Auth(api_key, token())
 
-    def query_single(self, object_type, url_params, query_params={}):
+    def query_single(self, object_type, url_params, query_params=None):
+        # type: (str, list, dict) -> dict
         """
         Query for a single object.
         :param object_type: string query type (e.g., "users" or "groups")
@@ -97,26 +101,27 @@ class Connection:
         # but the object type is the key in the response dictionary for the returned object.
         query_type = object_type + "s"  # poor man's plural
         query_path = "/{}/{}".format(query_type, self.org_id)
-        for component in url_params:
+        for component in url_params if url_params else []:
             query_path += "/" + urlparse.quote(component)
         if query_params: query_path += "?" + urlparse.urlencode(query_params)
         try:
             body = self.make_call(query_path)
         except RequestError as re:
             if re.result.status_code == 404:
-                if self.logger: self.logger.debug("Ran {} query: {} {} (0 found)",
+                if self.logger: self.logger.debug("Ran %s query: %s %s (0 found)",
                                                   object_type, url_params, query_params)
                 return {}
             else:
                 raise re
         if body.get("result") == "success":
             value = body.get(object_type, {})
-            if self.logger: self.logger.debug("Ran {} query: {} {} (1 found)", object_type, url_params, query_params)
+            if self.logger: self.logger.debug("Ran %s query: %s %s (1 found)", object_type, url_params, query_params)
             return value
         else:
             raise ClientError(body)
 
-    def query_multiple(self, object_type, page=0, url_params=[], query_params={}):
+    def query_multiple(self, object_type, page=0, url_params=None, query_params=None):
+        # type: (str, int, list, dict) -> tuple
         """
         Query for a page of objects.  Defaults to the (0-based) first page.
         Sadly, the sort order is undetermined.
@@ -130,16 +135,16 @@ class Connection:
         # and is also the key in the response dictionary for the returned objects.
         query_type = object_type + "s"  # poor man's plural
         query_path = "/{}/{}/{:d}".format(query_type, self.org_id, page)
-        for component in url_params:
+        for component in url_params if url_params else []:
             query_path += "/" + urlparse.quote(component)
         if query_params: query_path += "?" + urlparse.urlencode(query_params)
         body = self.make_call(query_path)
         if body.get("result") == "success":
             values = body.get(query_type, [])
             last_page = body.get("lastPage", False)
-            if self.logger: self.logger.debug("Ran multi-{} query: {} {} (page {:d}, {:d} returned)",
+            if self.logger: self.logger.debug("Ran multi-%s query: %s %s (page %d: %d found)",
                                               object_type, url_params, query_params, page, len(values))
-            return (values, last_page)
+            return values, last_page
         else:
             raise ClientError(body)
 
@@ -152,6 +157,7 @@ class Connection:
         return self.execute_multiple([action]) == 1
 
     def execute_multiple(self, actions):
+        # type: (Sequence[Action]) -> int
         """
         Execute multiple Actions (each containing commands on a single object).
         For each action that has a problem, we annotate the action with the
@@ -160,7 +166,12 @@ class Connection:
         :param actions: the list of Action objects to be executed
         :return: count of successful actions
         """
-        wire_form = [a.wire_dict() for a in actions]
+        wire_form = []
+        for a in actions:
+            wire_dict = a.wire_dict()
+            if not wire_dict["do"]:
+                if self.logger: self.logger.warning("Sending action with no commands: %s", wire_dict)
+            wire_form.append(wire_dict)
         if self.test_mode:
             body = self.make_call("/actions/%s?testOnly=true" % self.org_id, wire_form).json()
         else:
@@ -169,7 +180,7 @@ class Connection:
             return len(actions)
         try:
             for error in body["errors"]:
-                actions[error["index"]].report_error(error)
+                actions[error["index"]].report_command_error(error)
         except:
             raise ClientError(body)
         return body.get("completed", 0)
@@ -197,7 +208,7 @@ class Connection:
             if result.status_code == 200:
                 return result.json()
             elif result.status_code in [429, 502, 503, 504]:
-                if self.logger: self.logger.warning("UMAPI timeout...service unavailable (code {:d} on try {:d})",
+                if self.logger: self.logger.warning("UMAPI timeout...service unavailable (code %d on try %d)",
                                                     result.status_code, num_attempts)
                 if "Retry-After" in result.headers:
                     advice = result.headers["Retry-After"]

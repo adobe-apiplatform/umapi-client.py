@@ -25,7 +25,8 @@ import mock
 import pytest
 
 from conftest import mock_connection_params, MockResponse
-from umapi_client import Connection, TimeoutError, ServerError, RequestError
+from umapi_client import Connection, UnavailableError, ServerError, RequestError
+
 
 def test_get_success():
     with mock.patch("umapi_client.connection.requests.get") as mock_get:
@@ -45,56 +46,56 @@ def test_get_retry_header_1():
     with mock.patch("umapi_client.connection.requests.get") as mock_get:
         mock_get.return_value = MockResponse(429, headers={"Retry-After": "1"})
         conn = Connection(**mock_connection_params)
-        pytest.raises(TimeoutError, conn.make_call, "")
+        pytest.raises(UnavailableError, conn.make_call, "")
 
 
 def test_post_retry_header_1():
     with mock.patch("umapi_client.connection.requests.post") as mock_post:
         mock_post.return_value = MockResponse(429, headers={"Retry-After": "1"})
         conn = Connection(**mock_connection_params)
-        pytest.raises(TimeoutError, conn.make_call, "", "[3, 5]")
+        pytest.raises(UnavailableError, conn.make_call, "", "[3, 5]")
 
 
 def test_get_retry_header_time_2():
     with mock.patch("umapi_client.connection.requests.get") as mock_get:
         mock_get.return_value = MockResponse(502, headers={"Retry-After": formatdate(time.time() + 2.5)})
         conn = Connection(**mock_connection_params)
-        pytest.raises(TimeoutError, conn.make_call, "")
+        pytest.raises(UnavailableError, conn.make_call, "")
 
 
 def test_post_retry_header_time_2():
     with mock.patch("umapi_client.connection.requests.post") as mock_post:
         mock_post.return_value = MockResponse(502, headers={"Retry-After": formatdate(time.time() + 2.5)})
         conn = Connection(**mock_connection_params)
-        pytest.raises(TimeoutError, conn.make_call, "", "[3, 5]")
+        pytest.raises(UnavailableError, conn.make_call, "", "[3, 5]")
 
 
 def test_get_retry_header_0():
     with mock.patch("umapi_client.connection.requests.get") as mock_get:
         mock_get.return_value = MockResponse(503, headers={"Retry-After": "0"})
         conn = Connection(**mock_connection_params)
-        pytest.raises(TimeoutError, conn.make_call, "")
+        pytest.raises(UnavailableError, conn.make_call, "")
 
 
 def test_post_retry_header_0():
     with mock.patch("umapi_client.connection.requests.post") as mock_post:
         mock_post.return_value = MockResponse(503, headers={"Retry-After": "0"})
         conn = Connection(**mock_connection_params)
-        pytest.raises(TimeoutError, conn.make_call, "", "[3, 5]")
+        pytest.raises(UnavailableError, conn.make_call, "", "[3, 5]")
 
 
 def test_get_retry_no_header():
     with mock.patch("umapi_client.connection.requests.get") as mock_get:
         mock_get.return_value = MockResponse(504)
         conn = Connection(**mock_connection_params)
-        pytest.raises(TimeoutError, conn.make_call, "")
+        pytest.raises(UnavailableError, conn.make_call, "")
 
 
 def test_post_retry_no_header():
     with mock.patch("umapi_client.connection.requests.post") as mock_post:
         mock_post.return_value = MockResponse(504)
         conn = Connection(**mock_connection_params)
-        pytest.raises(TimeoutError, conn.make_call, "", "[3, 5]")
+        pytest.raises(UnavailableError, conn.make_call, "", "[3, 5]")
 
 
 # log_stream fixture defined in conftest.py
@@ -105,7 +106,7 @@ def test_get_retry_logging(log_stream):
         params = dict(mock_connection_params)
         params["logger"] = logger
         conn = Connection(**params)
-        pytest.raises(TimeoutError, conn.make_call, "")
+        pytest.raises(UnavailableError, conn.make_call, "")
         stream.flush()
         log = stream.getvalue()  # save as a local so can do pytest -l to see exact log
         assert log == """UMAPI timeout...service unavailable (code 429 on try 1)
@@ -126,7 +127,7 @@ def test_post_retry_logging(log_stream):
         params = dict(mock_connection_params)
         params["logger"] = logger
         conn = Connection(**params)
-        pytest.raises(TimeoutError, conn.make_call, "", [3, 5])
+        pytest.raises(UnavailableError, conn.make_call, "", [3, 5])
         stream.flush()
         log = stream.getvalue()  # save as a local so can do pytest -l to see exact log
         assert log == """UMAPI timeout...service unavailable (code 429 on try 1)

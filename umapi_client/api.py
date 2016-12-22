@@ -143,7 +143,7 @@ class QueryMultiple:
     """
 
     def __init__(self, connection, object_type, url_params=None, query_params=None):
-        # type: (Connection, str, list, dict)
+        # type: (Connection, str, list, dict) -> None
         """
         Provide the connection and query parameters when you create the query.
 
@@ -156,9 +156,11 @@ class QueryMultiple:
         self.object_type = object_type
         self.url_params = url_params if url_params else []
         self.query_params = query_params if query_params else {}
-        self.reload()
+        self._results = []
+        self._next_item_index = 0
+        self._next_page_index = 0
+        self._last_page_seen = False
 
-    # noinspection PyAttributeOutsideInit,PyAttributeOutsideInit,PyAttributeOutsideInit,PyAttributeOutsideInit
     def reload(self):
         """
         Rerun the query (lazily).
@@ -174,7 +176,8 @@ class QueryMultiple:
         """
         Fetch the next page of the query.
         """
-        if self._last_page_seen: return 0
+        if self._last_page_seen:
+            raise StopIteration
         new, self._last_page_seen = self.conn.query_multiple(self.object_type, self._next_page_index,
                                                              self.url_params, self.query_params)
         self._next_page_index += 1
@@ -185,8 +188,6 @@ class QueryMultiple:
 
     def _next_item(self):
         while self._next_item_index >= len(self._results):
-            if self._last_page_seen:
-                raise StopIteration
             self._next_page()
         value = self._results[self._next_item_index]
         self._next_item_index += 1
@@ -196,11 +197,22 @@ class QueryMultiple:
         def __init__(self, query):
             self.query = query
 
+        def __iter__(self):
+            """In python3, the iterator object must have an __iter__ method which returns the iterator"""
+            return self
+
         # noinspection PyProtectedMember
         def next(self):
+            """In python2, this is the "get next" method required by the interactor protocol"""
             return self.query._next_item()
 
+        def __next__(self):
+            """In python3, this is the "get next" method required by the interactor protocol"""
+            return self.next()
+
     def __iter__(self):
+        """Asking for a new iterator causes the query to reload."""
+        self.reload()
         return self._QueryIterator(self)
 
     def all_results(self):
@@ -212,6 +224,7 @@ class QueryMultiple:
         """
         while not self._last_page_seen:
             self._next_page()
+        self._next_item_index = len(self._results)
         return list(self._results)
 
 

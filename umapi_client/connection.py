@@ -28,7 +28,7 @@ import requests
 import six.moves.urllib.parse as urlparse
 
 from .auth import JWT, Auth, AccessRequest
-from .error import TimeoutError, ClientError, RequestError, ServerError
+from .error import UnavailableError, ClientError, RequestError, ServerError
 
 
 class Connection:
@@ -157,7 +157,6 @@ class Connection:
         return self.execute_multiple([action]) == 1
 
     def execute_multiple(self, actions):
-        # type: (Sequence[Action]) -> int
         """
         Execute multiple Actions (each containing commands on a single object).
         For each action that has a problem, we annotate the action with the
@@ -229,4 +228,4 @@ class Connection:
             else:
                 raise ServerError(result)
         if self.logger: self.logger.error("UMAPI timeout...giving up after %d attempts.", self.retry_max_attempts)
-        raise TimeoutError(self.retry_max_attempts, total_time)
+        raise UnavailableError(self.retry_max_attempts, total_time)

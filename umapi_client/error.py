@@ -19,9 +19,9 @@
 # SOFTWARE.
 
 
-class TimeoutError(Exception):
+class UnavailableError(Exception):
     def __init__(self, attempts, seconds):
-        Exception.__init__(self, "Server timeout: Made {:d} attempts over {:d} seconds".format(attempts, seconds))
+        Exception.__init__(self, "Server unavailable: Made {:d} attempts over {:d} seconds".format(attempts, seconds))
         self.attempts = attempts
         self.seconds = seconds
 

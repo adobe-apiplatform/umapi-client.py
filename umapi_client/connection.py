@@ -172,9 +172,9 @@ class Connection:
                 if self.logger: self.logger.warning("Sending action with no commands: %s", wire_dict)
             wire_form.append(wire_dict)
         if self.test_mode:
-            body = self.make_call("/actions/%s?testOnly=true" % self.org_id, wire_form).json()
+            body = self.make_call("/action/%s?testOnly=true" % self.org_id, wire_form).json()
         else:
-            body = self.make_call("/actions/%s" % self.org_id, wire_form)
+            body = self.make_call("/action/%s" % self.org_id, wire_form)
         if body.get("result") == "success":
             return len(actions)
         try:

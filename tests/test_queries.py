@@ -23,7 +23,7 @@ import pytest
 import mock
 
 from conftest import mock_connection_params, MockResponse
-from umapi_client import Connection, QueryMultiple, ClientError
+from umapi_client import Connection, QueryMultiple, QuerySingle, ClientError
 
 
 def test_query_single_success():
@@ -68,6 +68,13 @@ def test_query_multiple_empty():
         assert conn.query_multiple("object") == ([], True)
 
 
+def test_query_multiple_not_found():
+    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+        mock_get.return_value = MockResponse(404, text="404 Object not found")
+        conn = Connection(**mock_connection_params)
+        assert conn.query_multiple("object") == ([], True)
+
+
 def test_query_multiple_paged():
     with mock.patch("umapi_client.connection.requests.get") as mock_get:
         mock_get.side_effect = [MockResponse(200, {"result": "success",
@@ -85,6 +92,38 @@ def test_query_multiple_paged():
         assert conn.query_multiple("object", 1) == ([{"name": "n3", "type": "object"},
                                                      {"name": "n4", "type": "object"}],
                                                     True)
+
+
+def test_qs_success():
+    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+        mock_get.return_value = MockResponse(200, {"result": "success",
+                                                   "object": {"user": "foo@bar.com", "type": "adobeID"}})
+        conn = Connection(**mock_connection_params)
+        qs = QuerySingle(conn, "object", ["foo@bar.com"])
+        assert qs.result() == {"user": "foo@bar.com", "type": "adobeID"}
+
+
+def test_qs_not_found():
+    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+        mock_get.return_value = MockResponse(404, text="404 Object not found")
+        conn = Connection(**mock_connection_params)
+        qs = QuerySingle(conn, "object", ["foo@bar.com"])
+        assert qs.result() == {}
+
+
+def test_qs_reload():
+    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+        mock_get.side_effect = [MockResponse(200, {"result": "success",
+                                                   "object": {"user": "foo1@bar.com", "type": "adobeID"}}),
+                                MockResponse(200, {"result": "success",
+                                                   "object": {"user": "foo2@bar.com", "type": "adobeID"}})]
+        conn = Connection(**mock_connection_params)
+        qs = QuerySingle(conn, "object", ["foo@bar.com"])
+        assert qs.result() == {"user": "foo1@bar.com", "type": "adobeID"}
+        # second verse, same as the first
+        assert qs.result() == {"user": "foo1@bar.com", "type": "adobeID"}
+        qs.reload()
+        assert qs.result() == {"user": "foo2@bar.com", "type": "adobeID"}
 
 
 def test_qm_iterate_complete():

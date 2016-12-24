@@ -23,9 +23,31 @@ from email.utils import formatdate
 
 import mock
 import pytest
+import requests
 
 from conftest import mock_connection_params, MockResponse
-from umapi_client import Connection, UnavailableError, ServerError, RequestError
+from umapi_client import Connection, UnavailableError, ServerError, RequestError, ClientError
+
+
+def test_status_success():
+    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+        mock_get.return_value = MockResponse(200, body={"build": "2559", "version": "2.1.54", "state":"LIVE"})
+        conn = Connection(**mock_connection_params)
+        assert conn.status() == {"build": "2559", "version": "2.1.54", "state":"LIVE"}
+
+
+def test_status_failure():
+    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+        mock_get.return_value = MockResponse(404, text="404 Not Found")
+        conn = Connection(**mock_connection_params)
+        pytest.raises (ClientError, conn.status)
+
+
+def test_status_timeout():
+    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+        mock_get.side_effect = requests.Timeout
+        conn = Connection(**mock_connection_params)
+        pytest.raises(UnavailableError, conn.status)
 
 
 def test_get_success():
@@ -40,6 +62,20 @@ def test_post_success():
         mock_post.return_value = MockResponse(200, body=["test", "body"])
         conn = Connection(**mock_connection_params)
         assert conn.make_call("", [3, 5]).json() == ["test", "body"]
+
+
+def test_get_timeout():
+    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+        mock_get.side_effect = requests.Timeout
+        conn = Connection(**mock_connection_params)
+        pytest.raises(UnavailableError, conn.make_call, "")
+
+
+def test_post_timeout():
+    with mock.patch("umapi_client.connection.requests.post") as mock_post:
+        mock_post.side_effect = requests.Timeout
+        conn = Connection(**mock_connection_params)
+        pytest.raises(UnavailableError, conn.make_call, "", [3, 5])
 
 
 def test_get_retry_header_1():

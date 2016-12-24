@@ -49,6 +49,7 @@ class Connection:
                  retry_max_attempts=4,
                  retry_first_delay=15,
                  retry_random_delay=5,
+                 timeout_seconds=60.0,
                  **kwargs):
         """
         Open a connection for the given parameters that has the given options.
@@ -87,6 +88,7 @@ class Connection:
         self.retry_max_attempts = retry_max_attempts
         self.retry_first_delay = retry_first_delay
         self.retry_random_delay = retry_random_delay
+        self.timeout = float(timeout_seconds) if float(timeout_seconds) > 0.0 else 60.0
         if auth:
             self.auth = auth
         elif auth_dict:
@@ -103,6 +105,22 @@ class Connection:
             jwt = JWT(self.org_id, tech_acct_id, ims_host, api_key, private_key_stream)
         token = AccessRequest("https://" + ims_host + ims_endpoint_jwt, api_key, client_secret, jwt())
         return Auth(api_key, token())
+
+    def status(self):
+        """
+        Check whether the UMAPI service is up, and return data about version and build.
+        :return: dictionary of status data, or raise UnavailableError.
+        """
+        components = urlparse.urlparse(self.endpoint)
+        try:
+            result = requests.get(components[0] + "://" + components[1] + "/status", timeout=self.timeout)
+        except Exception as e:
+            if self.logger: self.logger.error("Failed to connect to server: %s", e)
+            raise UnavailableError(1, int(self.timeout), None)
+        if result.status_code == 200:
+            return result.json()
+        else:
+            raise ClientError("Response status was {:d}".format(result.status_code), result)
 
     def query_single(self, object_type, url_params, query_params=None):
         # type: (str, list, dict) -> dict
@@ -225,10 +243,10 @@ class Connection:
         if body:
             request_body = json.dumps(body)
             def call():
-                return requests.post(self.endpoint + path, auth=self.auth, data=request_body)
+                return requests.post(self.endpoint + path, auth=self.auth, data=request_body, timeout=self.timeout)
         else:
             def call():
-                return requests.get(self.endpoint + path, auth=self.auth)
+                return requests.get(self.endpoint + path, auth=self.auth, timeout=self.timeout)
 
         total_time = wait_time = 0
         for num_attempts in range(1, self.retry_max_attempts + 1):
@@ -236,7 +254,11 @@ class Connection:
                 sleep(wait_time)
                 total_time += wait_time
                 wait_time = 0
-            result = call()
+            try:
+                result = call()
+            except requests.Timeout:
+                total_time += int(self.timeout)
+                raise UnavailableError(num_attempts, total_time, None)
             if result.status_code == 200:
                 return result
             elif result.status_code in [429, 502, 503, 504]:

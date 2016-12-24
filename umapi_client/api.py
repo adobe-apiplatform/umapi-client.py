@@ -142,7 +142,6 @@ class QueryMultiple:
     """
     A QueryMultiple runs a query against a connection.  The results can be iterated or fetched in bulk.
     """
-
     def __init__(self, connection, object_type, url_params=None, query_params=None):
         # type: (Connection, str, list, dict) -> None
         """
@@ -234,7 +233,7 @@ class UsersQuery(QueryMultiple):
     Query for users meeting (optional) criteria
     """
 
-    def __init__(self, connection, in_group="", in_domain=""):
+    def __init__(self, connection, in_group="", in_domain="", identity_type=""):
         """
         Create a query for all users, or for those in a group or domain or both
         :param connection: Connection to run the query against
@@ -242,8 +241,10 @@ class UsersQuery(QueryMultiple):
         :param in_domain: (optional) name of the domain to restrict the query to
         """
         groups = [in_group] if in_group else []
-        domains = {"domain": in_domain} if in_domain else {}
-        QueryMultiple.__init__(self, connection=connection, object_type="user", url_params=groups, query_params=domains)
+        params = {}
+        if in_domain: params["domain"] = str(in_domain)
+        if identity_type: params["type"] = str(identity_type)
+        QueryMultiple.__init__(self, connection=connection, object_type="user", url_params=groups, query_params=params)
 
 
 class GroupsQuery(QueryMultiple):
@@ -257,3 +258,59 @@ class GroupsQuery(QueryMultiple):
         :param connection: Connection to run the query against
         """
         QueryMultiple.__init__(self, connection=connection, object_type="group")
+
+class QuerySingle:
+    """
+    Look for a single object
+    """
+    def __init__(self, connection, object_type, url_params=None, query_params=None):
+        # type: (Connection, str, list, dict) -> None
+        """
+        Provide the connection and query parameters when you create the query.
+
+        :param connection: The Connection to run the query against
+        :param object_type: The type of object being queried (e.g., "user" or "group")
+        :param url_params: Query qualifiers that go in the URL path (e.g., a group name when querying users)
+        :param query_params: Query qualifiers that go in the query string (e.g., a domain name)
+        """
+        self.conn = connection
+        self.object_type = object_type
+        self.url_params = url_params if url_params else []
+        self.query_params = query_params if query_params else {}
+        self._result = None
+
+    def reload(self):
+        """
+        Rerun the query (lazily).
+        The result will contain a value on the server side that have changed since the last run.
+        :return: None
+        """
+        self._result = None
+
+    def _fetch_result(self):
+        """
+        Fetch the queried object.
+        """
+        self._result = self.conn.query_single(self.object_type, self.url_params, self.query_params)
+
+    def result(self):
+        """
+        Fetch the result, if we haven't already or if reload has been called.
+        :return: the result object of the query.
+        """
+        if self._result is None:
+            self._fetch_result()
+        return self._result
+
+class UserQuery(QuerySingle):
+    """
+    Query for a single user
+    """
+
+    def __init__(self, connection, email):
+        """
+        Create a query for the user with the given email
+        :param connection: Connection to run the query against
+        :param email: email of user to query for
+        """
+        QuerySingle.__init__(self, connection=connection, object_type="user", url_params=[str(email)])

@@ -19,5 +19,5 @@
 # SOFTWARE.
 
 from .connection import Connection
-from .api import Action, UserAction, QueryMultiple
+from .api import Action, UserAction, QueryMultiple, UsersQuery, GroupsQuery, QuerySingle, UserQuery
 from .error import ClientError, RequestError, ServerError, UnavailableError

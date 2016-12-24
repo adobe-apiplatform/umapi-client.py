@@ -116,7 +116,7 @@ class Connection:
         # Server API convention (v2) is that the pluralized object type goes into the endpoint
         # but the object type is the key in the response dictionary for the returned object.
         query_type = object_type + "s"  # poor man's plural
-        query_path = "/{}/{}".format(query_type, self.org_id)
+        query_path = "/organizations/{}/{}".format(self.org_id, query_type)
         for component in url_params if url_params else []:
             query_path += "/" + urlparse.quote(component)
         if query_params: query_path += "?" + urlparse.urlencode(query_params)
@@ -155,8 +155,16 @@ class Connection:
         for component in url_params if url_params else []:
             query_path += "/" + urlparse.quote(component)
         if query_params: query_path += "?" + urlparse.urlencode(query_params)
-        result = self.make_call(query_path)
-        body = result.json()
+        try:
+            result = self.make_call(query_path)
+            body = result.json()
+        except RequestError as re:
+            if re.result.status_code == 404:
+                if self.logger: self.logger.debug("Ran %s query: %s %s (0 found)",
+                                                  object_type, url_params, query_params)
+                return [], True
+            else:
+                raise re
         if body.get("result") == "success":
             values = body.get(query_type, [])
             last_page = body.get("lastPage", False)

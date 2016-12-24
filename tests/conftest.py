@@ -27,14 +27,9 @@ import pytest
 from six import StringIO
 
 mock_connection_params = {
-    "mock_auth": "N/A",
     "org_id": "N/A",
-    "tech_acct_id": "N/A",
-    "api_key": "N/A",
-    "client_secret": "N/A",
-    "private_key_file": "N/A",
-    "user_management_endpoint": 'https://test/umapi',
-    "test_mode": False,
+    "auth": "N/A",
+    "user_management_endpoint": 'https://test/',
     "logger": None,
     "retry_max_attempts": 3,
     "retry_first_delay": 1,

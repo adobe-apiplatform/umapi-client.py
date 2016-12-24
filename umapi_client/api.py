@@ -49,15 +49,15 @@ class Action:
         """
         return dict(self.frame, do=self.commands)
 
-    def do(self, **kwargs):
+    def append(self, **kwargs):
         """
-        Add commands to the sequence.
+        Add commands at the end of the sequence.
 
-        Be careful: because this runs in Python 2.x, the order
-        of the kwargs dict may not match the order in which the args were specified.  Thus,
-        if you care about specific ordering, you must make multiple calls to do in that order.
-        Luckily, do returns the Action so you can compose easily: Action(...).do(...).do(...).
-        See also do_first, below.
+        Be careful: because this runs in Python 2.x, the order of the kwargs dict may not match
+        the order in which the args were specified.  Thus, if you care about specific ordering,
+        you must make multiple calls to append in that order.  Luckily, append returns
+        the Action so you can compose easily: Action(...).append(...).append(...).
+        See also insert, below.
         :param kwargs: the key/value pairs to add
         :return: the action
         """
@@ -65,19 +65,20 @@ class Action:
             self.commands.append({k: v})
         return self
 
-    def do_first(self, **kwargs):
+    def insert(self, **kwargs):
         """
-        Insert commands at the front of the sequence.
+        Insert commands at the beginning of the sequence.
 
         This is provided because certain commands
-        have to come first (such as user creation), but may be added after other commands.
-        Later calls to do_first put their commands before those in the earlier calls.
+        have to come first (such as user creation), but may be need to beadded
+        after other commands have already been specified.
+        Later calls to insert put their commands before those in the earlier calls.
 
         Also, since the order of iterated kwargs is not guaranteed (in Python 2.x),
-        you should really only call do_first with one keyword at a time.  See the doc of do
+        you should really only call insert with one keyword at a time.  See the doc of append
         for more details.
-        :param kwargs: the key/value pair to do first
-        :return: the action, so you can do Action(...).do_first(...).do(...)
+        :param kwargs: the key/value pair to append first
+        :return: the action, so you can append Action(...).insert(...).append(...)
         """
         for k, v in six.iteritems(kwargs):
             self.commands.insert(0, {k: v})

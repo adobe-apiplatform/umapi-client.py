@@ -36,8 +36,11 @@ class Connection:
     An org-specific, authorized connection to the UMAPI service.  Each method
     makes a single call on the endpoint and returns the result (or raises an error).
     """
+
     def __init__(self,
-                 org_id, tech_acct_id, api_key, client_secret, private_key_file,
+                 org_id,
+                 auth_dict=None,
+                 auth=None,
                  ims_host='ims-na1.adobelogin.com',
                  ims_endpoint_jwt='/ims/exchange/jwt/',
                  user_management_endpoint='https://usermanagement.adobe.io/v2/usermanagement',
@@ -51,8 +54,12 @@ class Connection:
         Open a connection for the given parameters that has the given options.
         The connection is authorized and the auth token reused on all calls.
 
-        Required organizational parameters:
+        Required parameters.  You must specify org_id and one of auth *or* auth_dict
         :param org_id: string OrganizationID from Adobe.IO integration data
+        :param auth_dict: a dictionary with auth information (see below)
+        :param auth: a umapi_client.auth.Auth object containing authorization
+
+        Auth data: if you supply an auth_dict, it must have values for these keys:
         :param tech_acct_id: string technical account ID from Adobe.IO integration data
         :param api_key: string api_key from Adobe.IO integration data
         :param client_secret: string client secret from Adobe.IO integration data
@@ -70,23 +77,32 @@ class Connection:
         :param retry_first_delay: The time to delay first retry (grows exponentially from there)
         :param retry_random_delay: The max random delay to add on each exponential backoff retry
 
-        Additional keywords are allowed to make it easy to pass in test flags or a big dictionary
+        Additional keywords are allowed to make it easy to pass a big dictionary with other values
         :param kwargs:
         """
-        self.org_id = org_id
+        self.org_id = str(org_id)
         self.endpoint = user_management_endpoint
         self.test_mode = test_mode
         self.logger = logger
         self.retry_max_attempts = retry_max_attempts
         self.retry_first_delay = retry_first_delay
         self.retry_random_delay = retry_random_delay
-        if kwargs.get("mock_auth"):
-            self.auth = kwargs["mock_auth"]
+        if auth:
+            self.auth = auth
+        elif auth_dict:
+            self.auth = self._get_auth(ims_host=ims_host, ims_endpoint_jwt=ims_endpoint_jwt, **auth_dict)
         else:
-            with open(private_key_file, 'r') as private_key_stream:
-                jwt = JWT(self.org_id, tech_acct_id, ims_host, api_key, private_key_stream)
-            token = AccessRequest("https://" + ims_host + ims_endpoint_jwt, api_key, client_secret, jwt())
-            self.auth = Auth(api_key, token())
+            raise ValueError("Connector create: either auth (an Auth object) or auth_dict (a dictionary) is required")
+
+    def _get_auth(self, ims_host, ims_endpoint_jwt,
+                  tech_acct_id=None, api_key=None, client_secret=None, private_key_file=None,
+                  **kwargs):
+        if not (tech_acct_id and api_key and client_secret and private_key_file):
+            raise ValueError("Connector create: not all required auth parameters were supplied; please see docs")
+        with open(private_key_file, 'r') as private_key_stream:
+            jwt = JWT(self.org_id, tech_acct_id, ims_host, api_key, private_key_stream)
+        token = AccessRequest("https://" + ims_host + ims_endpoint_jwt, api_key, client_secret, jwt())
+        return Auth(api_key, token())
 
     def query_single(self, object_type, url_params, query_params=None):
         # type: (str, list, dict) -> dict
@@ -105,7 +121,8 @@ class Connection:
             query_path += "/" + urlparse.quote(component)
         if query_params: query_path += "?" + urlparse.urlencode(query_params)
         try:
-            body = self.make_call(query_path)
+            result = self.make_call(query_path)
+            body = result.json()
         except RequestError as re:
             if re.result.status_code == 404:
                 if self.logger: self.logger.debug("Ran %s query: %s %s (0 found)",
@@ -118,7 +135,7 @@ class Connection:
             if self.logger: self.logger.debug("Ran %s query: %s %s (1 found)", object_type, url_params, query_params)
             return value
         else:
-            raise ClientError(body)
+            raise ClientError("OK status but no 'success' result", result)
 
     def query_multiple(self, object_type, page=0, url_params=None, query_params=None):
         # type: (str, int, list, dict) -> tuple
@@ -138,7 +155,8 @@ class Connection:
         for component in url_params if url_params else []:
             query_path += "/" + urlparse.quote(component)
         if query_params: query_path += "?" + urlparse.urlencode(query_params)
-        body = self.make_call(query_path)
+        result = self.make_call(query_path)
+        body = result.json()
         if body.get("result") == "success":
             values = body.get(query_type, [])
             last_page = body.get("lastPage", False)
@@ -146,7 +164,7 @@ class Connection:
                                               object_type, url_params, query_params, page, len(values))
             return values, last_page
         else:
-            raise ClientError(body)
+            raise ClientError("OK status but no 'success' result", result)
 
     def execute_single(self, action):
         """
@@ -172,16 +190,21 @@ class Connection:
                 if self.logger: self.logger.warning("Sending action with no commands: %s", wire_dict)
             wire_form.append(wire_dict)
         if self.test_mode:
-            body = self.make_call("/action/%s?testOnly=true" % self.org_id, wire_form).json()
+            result = self.make_call("/action/%s?testOnly=true" % self.org_id, wire_form).json()
         else:
-            body = self.make_call("/action/%s" % self.org_id, wire_form)
-        if body.get("result") == "success":
+            result = self.make_call("/action/%s" % self.org_id, wire_form)
+        body = result.json()
+        if body.get("errors", None) is None:
+            if body.get("result") != "success":
+                if self.logger: self.logger.warning("Server action result: no errors, but no success:\n%s", body)
             return len(actions)
         try:
+            if body.get("result") != "success":
+                if self.logger: self.logger.warning("Server action result: errors, but success:\n%s", body)
             for error in body["errors"]:
                 actions[error["index"]].report_command_error(error)
         except:
-            raise ClientError(body)
+            raise ClientError(body, result)
         return body.get("completed", 0)
 
     def make_call(self, path, body=None):
@@ -189,13 +212,15 @@ class Connection:
         Make a single UMAPI call with error handling and retry on temporary failure.
         :param path: the string endpoint path for the call
         :param body: (optional) list of dictionaries to be serialized into the request body
-        :return: result body from the call
+        :return: the requests.result object (on 200 response), raise error otherwise
         """
         if body:
             request_body = json.dumps(body)
-            def call(): return requests.post(self.endpoint + path, auth=self.auth, data=request_body)
+            def call():
+                return requests.post(self.endpoint + path, auth=self.auth, data=request_body)
         else:
-            def call(): return requests.get(self.endpoint + path, auth=self.auth)
+            def call():
+                return requests.get(self.endpoint + path, auth=self.auth)
 
         total_time = wait_time = 0
         for num_attempts in range(1, self.retry_max_attempts + 1):
@@ -205,7 +230,7 @@ class Connection:
                 wait_time = 0
             result = call()
             if result.status_code == 200:
-                return result.json()
+                return result
             elif result.status_code in [429, 502, 503, 504]:
                 if self.logger: self.logger.warning("UMAPI timeout...service unavailable (code %d on try %d)",
                                                     result.status_code, num_attempts)
@@ -223,9 +248,11 @@ class Connection:
                     delay = randint(0, self.retry_random_delay)
                     wait_time = (int(pow(2, num_attempts)) * self.retry_first_delay) + delay
                 if self.logger: self.logger.warning("Next retry in %d seconds...", wait_time)
+            elif 201 <= result.status_code < 400:
+                raise ClientError("Unexpected HTTP Status {:d}: {}".format(result.status_code, result.text), result)
             elif 400 <= result.status_code < 500:
                 raise RequestError(result)
             else:
                 raise ServerError(result)
         if self.logger: self.logger.error("UMAPI timeout...giving up after %d attempts.", self.retry_max_attempts)
-        raise UnavailableError(self.retry_max_attempts, total_time)
+        raise UnavailableError(self.retry_max_attempts, total_time, result)

@@ -20,4 +20,4 @@
 
 from .connection import Connection
 from .api import Action, UserAction, QueryMultiple
-from .error import ClientError, UnavailableError, RequestError, ServerError
+from .error import ClientError, RequestError, ServerError, UnavailableError

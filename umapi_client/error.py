@@ -20,10 +20,11 @@
 
 
 class UnavailableError(Exception):
-    def __init__(self, attempts, seconds):
+    def __init__(self, attempts, seconds, result):
         Exception.__init__(self, "Server unavailable: Made {:d} attempts over {:d} seconds".format(attempts, seconds))
         self.attempts = attempts
         self.seconds = seconds
+        self.result = result
 
 
 class ServerError(Exception):
@@ -39,6 +40,6 @@ class RequestError(Exception):
 
 
 class ClientError(Exception):
-    def __init__(self, body):
-        Exception.__init__(self, "Server responded, but the response value was not understood:\n" + str(body))
-        self.body = body
+    def __init__(self, message, result):
+        Exception.__init__(self, "Server response not understood: " + message)
+        self.result = result

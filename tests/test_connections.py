@@ -32,14 +32,14 @@ def test_get_success():
     with mock.patch("umapi_client.connection.requests.get") as mock_get:
         mock_get.return_value = MockResponse(200, body=["test", "body"])
         conn = Connection(**mock_connection_params)
-        assert conn.make_call("") == ["test", "body"]
+        assert conn.make_call("").json() == ["test", "body"]
 
 
 def test_post_success():
     with mock.patch("umapi_client.connection.requests.post") as mock_post:
         mock_post.return_value = MockResponse(200, body=["test", "body"])
         conn = Connection(**mock_connection_params)
-        assert conn.make_call("", [3, 5]) == ["test", "body"]
+        assert conn.make_call("", [3, 5]).json() == ["test", "body"]
 
 
 def test_get_retry_header_1():

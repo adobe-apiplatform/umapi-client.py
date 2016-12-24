@@ -33,25 +33,25 @@ def test_action_create():
 
 
 def test_action_create_one():
-    action = Action(z1="z1 text").do(com1={"com1k": "com1v"})
+    action = Action(z1="z1 text").append(com1={"com1k": "com1v"})
     assert json.dumps(action.wire_dict(), sort_keys=True) == \
            '{"do": [{"com1": {"com1k": "com1v"}}], "z1": "z1 text"}'
 
 
 def test_action_create_one_dofirst():
-    action = Action(z1="z1 text").do_first(com1={"com1k": "com1v"})
+    action = Action(z1="z1 text").insert(com1={"com1k": "com1v"})
     assert json.dumps(action.wire_dict(), sort_keys=True) == \
            '{"do": [{"com1": {"com1k": "com1v"}}], "z1": "z1 text"}'
 
 
 def test_action_create_two():
-    action = Action(a1="a1 text", z1="z1 text").do(com1={"com1k": "com1v"}).do(com2={"com2k": "com2v"})
+    action = Action(a1="a1 text", z1="z1 text").append(com1={"com1k": "com1v"}).append(com2={"com2k": "com2v"})
     assert json.dumps(action.wire_dict(), sort_keys=True) == \
            '{"a1": "a1 text", "do": [{"com1": {"com1k": "com1v"}}, {"com2": {"com2k": "com2v"}}], "z1": "z1 text"}'
 
 
 def test_action_create_two_dofirst():
-    action = Action(a1="a1 text", z1="z1 text").do(com1={"com1k": "com1v"}).do_first(com2={"com2k": "com2v"})
+    action = Action(a1="a1 text", z1="z1 text").append(com1={"com1k": "com1v"}).insert(com2={"com2k": "com2v"})
     assert json.dumps(action.wire_dict(), sort_keys=True) == \
            '{"a1": "a1 text", "do": [{"com2": {"com2k": "com2v"}}, {"com1": {"com1k": "com1v"}}], "z1": "z1 text"}'
 
@@ -60,7 +60,7 @@ def test_execute_single_success():
     with mock.patch("umapi_client.connection.requests.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "success"})
         conn = Connection(**mock_connection_params)
-        action = Action(top="top").do(a="a")
+        action = Action(top="top").append(a="a")
         assert conn.execute_single(action) is True
 
 
@@ -68,7 +68,7 @@ def test_execute_single_dofirst_success():
     with mock.patch("umapi_client.connection.requests.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "success"})
         conn = Connection(**mock_connection_params)
-        action = Action(top="top").do_first(a="a")
+        action = Action(top="top").insert(a="a")
         assert conn.execute_single(action) is True
 
 
@@ -76,8 +76,8 @@ def test_execute_multiple_success():
     with mock.patch("umapi_client.connection.requests.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "success"})
         conn = Connection(**mock_connection_params)
-        action0 = Action(top="top0").do(a="a0").do(b="b")
-        action1 = Action(top="top1").do(a="a1")
+        action0 = Action(top="top0").append(a="a0").append(b="b")
+        action1 = Action(top="top1").append(a="a1")
         assert conn.execute_multiple([action0, action1]) == 2
 
 
@@ -85,8 +85,8 @@ def test_execute_multiple_dofirst_success():
     with mock.patch("umapi_client.connection.requests.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "success"})
         conn = Connection(**mock_connection_params)
-        action0 = Action(top="top0").do(a="a0").do_first(b="b")
-        action1 = Action(top="top1").do(a="a1")
+        action0 = Action(top="top0").append(a="a0").insert(b="b")
+        action1 = Action(top="top1").append(a="a1")
         assert conn.execute_multiple([action0, action1]) == 2
 
 
@@ -97,7 +97,7 @@ def test_execute_single_error():
                                                                 "errorCode": "test.error",
                                                                 "message": "Test error message"}]})
         conn = Connection(**mock_connection_params)
-        action = Action(top="top").do(a="a")
+        action = Action(top="top").append(a="a")
         assert conn.execute_single(action) is False
         assert action.execution_errors() == [{"command": {"a": "a"},
                                               "step": 0,
@@ -115,7 +115,7 @@ def test_execute_single_multi_error():
                                                                 "errorCode": "error2",
                                                                 "message": "message2"}]})
         conn = Connection(**mock_connection_params)
-        action = Action(top="top").do(a="a")
+        action = Action(top="top").append(a="a")
         assert conn.execute_single(action) is False
         assert action.execution_errors() == [{"command": {"a": "a"},
                                               "step": 0,
@@ -134,7 +134,7 @@ def test_execute_single_dofirst_error():
                                                                 "errorCode": "test.error",
                                                                 "message": "Test error message"}]})
         conn = Connection(**mock_connection_params)
-        action = Action(top="top").do_first(a="a")
+        action = Action(top="top").insert(a="a")
         assert conn.execute_single(action) is False
         assert action.execution_errors() == [{"command": {"a": "a"},
                                               "step": 0,
@@ -151,8 +151,8 @@ def test_execute_multiple_error():
                                                                 "errorCode": "test.error",
                                                                 "message": "Test error message"}]})
         conn = Connection(**mock_connection_params)
-        action0 = Action(top="top0").do(a="a0")
-        action1 = Action(top="top1").do(a="a1").do(b="b")
+        action0 = Action(top="top0").append(a="a0")
+        action1 = Action(top="top1").append(a="a1").append(b="b")
         assert conn.execute_multiple([action0, action1]) == 1
         assert action0.execution_errors() == []
         assert action1.execution_errors() == [{"command": {"b": "b"},
@@ -173,8 +173,8 @@ def test_execute_multiple_multi_error():
                                                                 "errorCode": "error2",
                                                                 "message": "message2"}]})
         conn = Connection(**mock_connection_params)
-        action0 = Action(top="top0").do(a="a0")
-        action1 = Action(top="top1").do(a="a1").do(b="b")
+        action0 = Action(top="top0").append(a="a0")
+        action1 = Action(top="top1").append(a="a1").append(b="b")
         assert conn.execute_multiple([action0, action1]) == 1
         assert action0.execution_errors() == []
         assert action1.execution_errors() == [{"command": {"b": "b"},
@@ -196,8 +196,8 @@ def test_execute_multiple_dofirst_error():
                                                                 "errorCode": "test.error",
                                                                 "message": "Test error message"}]})
         conn = Connection(**mock_connection_params)
-        action0 = Action(top="top0").do(a="a0")
-        action1 = Action(top="top1").do(a="a1").do_first(b="b")
+        action0 = Action(top="top0").append(a="a0")
+        action1 = Action(top="top1").append(a="a1").insert(b="b")
         assert conn.execute_multiple([action0, action1]) == 1
         assert action0.execution_errors() == []
         assert action1.execution_errors() == [{"command": {"a": "a1"},

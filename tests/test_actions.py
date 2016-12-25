@@ -21,9 +21,10 @@
 import json
 
 import mock
+import pytest
 
 from conftest import mock_connection_params, MockResponse
-from umapi_client import Connection, Action
+from umapi_client import Connection, Action, ServerError
 
 
 def test_action_create():
@@ -56,41 +57,61 @@ def test_action_create_two_dofirst():
            '{"a1": "a1 text", "do": [{"com2": {"com2k": "com2v"}}, {"com1": {"com1k": "com1v"}}], "z1": "z1 text"}'
 
 
-def test_execute_single_success():
+def test_execute_single_success_immediate():
     with mock.patch("umapi_client.connection.requests.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "success"})
         conn = Connection(**mock_connection_params)
         action = Action(top="top").append(a="a")
-        assert conn.execute_single(action) == (1, 1)
+        assert conn.execute_single(action, immediate=True) == (0, 1, 1)
 
 
-def test_execute_single_dofirst_success():
+def test_execute_single_success_queued():
+    with mock.patch("umapi_client.connection.requests.post") as mock_post:
+        mock_post.return_value = MockResponse(200, {"result": "success"})
+        conn = Connection(throttle_actions=2, **mock_connection_params)
+        action = Action(top="top").append(a="a")
+        assert conn.execute_single(action) == (1, 0, 0)
+        assert conn.execute_single(action) == (0, 2, 2)
+
+
+def test_execute_single_error_queued_throttled():
+    with mock.patch("umapi_client.connection.requests.post") as mock_post:
+        mock_post.side_effect = [MockResponse(200, {"result": "success"}),
+                                 MockResponse(200, {"result": "partial",
+                                                    "completed": 1,
+                                                    "notCompleted": 1,
+                                                    "errors": [{"index": 1, "step": 0,
+                                                                "errorCode": "test.error",
+                                                                "message": "Test error message"}]})]
+        conn = Connection(throttle_actions=2, throttle_commands=1, **mock_connection_params)
+        action = Action(top="top").append(a="a").append(b="b").append(c="c").append(d="d")
+        assert conn.execute_single(action) == (0, 4, 3)
+        assert action.execution_errors() == [{"command": {"d": "d"},
+                                              "errorCode": "test.error",
+                                              "message": "Test error message"}]
+
+
+def test_execute_single_error_immediate_throttled():
+    with mock.patch("umapi_client.connection.requests.post") as mock_post:
+        mock_post.return_value = MockResponse(200, {"result": "partial",
+                                                    "completed": 1,
+                                                    "notCompleted": 1,
+                                                    "errors": [{"index": 1, "step": 0, "errorCode": "test"}]})
+        conn = Connection(throttle_commands=2, **mock_connection_params)
+        action = Action(top="top0").append(a="a0").append(a="a1").append(a="a2")
+        assert conn.execute_single(action, immediate=True) == (0, 2, 1)
+        assert action.execution_errors() == [{"command": {"a": "a2"}, "errorCode": "test"}]
+
+
+def test_execute_single_dofirst_success_immediate():
     with mock.patch("umapi_client.connection.requests.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "success"})
         conn = Connection(**mock_connection_params)
         action = Action(top="top").insert(a="a")
-        assert conn.execute_single(action) == (1, 1)
+        assert conn.execute_single(action, immediate=True) == (0, 1, 1)
 
 
-def test_execute_multiple_success():
-    with mock.patch("umapi_client.connection.requests.post") as mock_post:
-        mock_post.return_value = MockResponse(200, {"result": "success"})
-        conn = Connection(**mock_connection_params)
-        action0 = Action(top="top0").append(a="a0").append(b="b")
-        action1 = Action(top="top1").append(a="a1")
-        assert conn.execute_multiple([action0, action1]) == (2, 2)
-
-
-def test_execute_multiple_dofirst_success():
-    with mock.patch("umapi_client.connection.requests.post") as mock_post:
-        mock_post.return_value = MockResponse(200, {"result": "success"})
-        conn = Connection(**mock_connection_params)
-        action0 = Action(top="top0").append(a="a0").insert(b="b")
-        action1 = Action(top="top1").append(a="a1")
-        assert conn.execute_multiple([action0, action1]) == (2, 2)
-
-
-def test_execute_single_error():
+def test_execute_single_error_immediate():
     with mock.patch("umapi_client.connection.requests.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "error",
                                                     "errors": [{"index": 0, "step": 0,
@@ -98,13 +119,13 @@ def test_execute_single_error():
                                                                 "message": "Test error message"}]})
         conn = Connection(**mock_connection_params)
         action = Action(top="top").append(a="a")
-        assert conn.execute_single(action) == (1, 0)
+        assert conn.execute_single(action, immediate=True) == (0, 1, 0)
         assert action.execution_errors() == [{"command": {"a": "a"},
                                               "errorCode": "test.error",
                                               "message": "Test error message"}]
 
 
-def test_execute_single_multi_error():
+def test_execute_single_multi_error_immediate():
     with mock.patch("umapi_client.connection.requests.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "error",
                                                     "errors": [{"index": 0, "step": 0,
@@ -115,7 +136,7 @@ def test_execute_single_multi_error():
                                                                 "message": "message2"}]})
         conn = Connection(**mock_connection_params)
         action = Action(top="top").append(a="a")
-        assert conn.execute_single(action) == (1, 0)
+        assert conn.execute_single(action, immediate=True) == (0, 1, 0)
         assert action.execution_errors() == [{"command": {"a": "a"},
                                               "errorCode": "error1",
                                               "message": "message1"},
@@ -124,7 +145,7 @@ def test_execute_single_multi_error():
                                               "message": "message2"}]
 
 
-def test_execute_single_dofirst_error():
+def test_execute_single_dofirst_error_immediate():
     with mock.patch("umapi_client.connection.requests.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "error",
                                                     "errors": [{"index": 0, "step": 0,
@@ -132,10 +153,38 @@ def test_execute_single_dofirst_error():
                                                                 "message": "Test error message"}]})
         conn = Connection(**mock_connection_params)
         action = Action(top="top").insert(a="a")
-        assert conn.execute_single(action) == (1, 0)
+        assert conn.execute_single(action, immediate=True) == (0, 1, 0)
         assert action.execution_errors() == [{"command": {"a": "a"},
                                               "errorCode": "test.error",
                                               "message": "Test error message"}]
+
+
+def test_execute_multiple_success():
+    with mock.patch("umapi_client.connection.requests.post") as mock_post:
+        mock_post.return_value = MockResponse(200, {"result": "success"})
+        conn = Connection(**mock_connection_params)
+        action0 = Action(top="top0").append(a="a0").append(b="b")
+        action1 = Action(top="top1").append(a="a1")
+        assert conn.execute_multiple([action0, action1]) == (0, 2, 2)
+
+
+def test_execute_multiple_success_queued():
+    with mock.patch("umapi_client.connection.requests.post") as mock_post:
+        mock_post.return_value = MockResponse(200, {"result": "success"})
+        conn = Connection(**mock_connection_params)
+        action0 = Action(top="top0").append(a="a0").append(b="b")
+        action1 = Action(top="top1").append(a="a1")
+        assert conn.execute_multiple([action0, action1], immediate=False) == (2, 0, 0)
+        assert conn.execute_queued() == (0, 2, 2)
+
+
+def test_execute_multiple_dofirst_success():
+    with mock.patch("umapi_client.connection.requests.post") as mock_post:
+        mock_post.return_value = MockResponse(200, {"result": "success"})
+        conn = Connection(**mock_connection_params)
+        action0 = Action(top="top0").append(a="a0").insert(b="b")
+        action1 = Action(top="top1").append(a="a1")
+        assert conn.execute_multiple([action0, action1]) == (0, 2, 2)
 
 
 def test_execute_multiple_error():
@@ -149,7 +198,7 @@ def test_execute_multiple_error():
         conn = Connection(**mock_connection_params)
         action0 = Action(top="top0").append(a="a0")
         action1 = Action(top="top1").append(a="a1").append(b="b")
-        assert conn.execute_multiple([action0, action1]) == (2, 1)
+        assert conn.execute_multiple([action0, action1]) == (0, 2, 1)
         assert action0.execution_errors() == []
         assert action1.execution_errors() == [{"command": {"b": "b"},
                                                "errorCode": "test.error",
@@ -170,7 +219,7 @@ def test_execute_multiple_multi_error():
         conn = Connection(**mock_connection_params)
         action0 = Action(top="top0").append(a="a0")
         action1 = Action(top="top1").append(a="a1").append(b="b")
-        assert conn.execute_multiple([action0, action1]) == (2, 1)
+        assert conn.execute_multiple([action0, action1]) == (0, 2, 1)
         assert action0.execution_errors() == []
         assert action1.execution_errors() == [{"command": {"b": "b"},
                                                "errorCode": "error1",
@@ -191,37 +240,70 @@ def test_execute_multiple_dofirst_error():
         conn = Connection(**mock_connection_params)
         action0 = Action(top="top0").append(a="a0")
         action1 = Action(top="top1").append(a="a1").insert(b="b")
-        assert conn.execute_multiple([action0, action1]) == (2, 1)
+        assert conn.execute_multiple([action0, action1]) == (0, 2, 1)
         assert action0.execution_errors() == []
         assert action1.execution_errors() == [{"command": {"a": "a1"},
                                                "errorCode": "test.error",
                                                "message": "Test error message"}]
 
 
-def test_execute_single_throttle_commands():
-    with mock.patch("umapi_client.connection.requests.post") as mock_post:
-        mock_post.return_value = MockResponse(200, {"result": "partial",
-                                                    "completed": 1,
-                                                    "notCompleted": 1,
-                                                    "errors": [{"index": 1, "step": 0, "errorCode": "test"}]})
-        conn = Connection(throttle_commands=2, **mock_connection_params)
-        action = Action(top="top0").append(a="a0").append(a="a1").append(a="a2")
-        assert conn.execute_single(action) == (2, 1)
-        assert action.execution_errors() == [{"command": {"a": "a2"}, "errorCode": "test"}]
-
-
-def test_execute_multiple_throttle_actions():
+def test_execute_multiple_single_queued_throttle_actions():
     with mock.patch("umapi_client.connection.requests.post") as mock_post:
         mock_post.side_effect = [MockResponse(200, {"result": "success"}),
                                  MockResponse(200, {"result": "partial",
-                                                    "completed": 0,
+                                                    "completed": 1,
                                                     "notCompleted": 1,
                                                     "errors": [{"index": 0, "step": 0, "errorCode": "test"}]})]
         conn = Connection(throttle_actions=2, **mock_connection_params)
         action0 = Action(top="top0").append(a="a0")
         action1 = Action(top="top1").append(a="a1")
         action2 = Action(top="top2").append(a="a2")
-        assert conn.execute_multiple([action0, action1, action2]) == (3, 2)
+        action3 = Action(top="top3").append(a="a3")
+        assert conn.execute_multiple([action0, action1, action2], immediate=False) == (1, 2, 2)
+        local_status, server_status = conn.status(remote=False)
+        assert server_status == {"status": "Never contacted",
+                                 "endpoint": conn.endpoint}
+        assert local_status == {"multiple-query-count": 0,
+                                "single-query-count": 0,
+                                "actions-sent": 2,
+                                "actions-completed": 2,
+                                "actions-queued": 1}
+        assert conn.execute_single(action3) == (0, 2, 1)
+        local_status, _ = conn.status(remote=False)
+        assert local_status == {"multiple-query-count": 0,
+                                "single-query-count": 0,
+                                "actions-sent": 4,
+                                "actions-completed": 3,
+                                "actions-queued": 0}
         assert action0.execution_errors() == []
         assert action1.execution_errors() == []
         assert action2.execution_errors() == [{"command": {"a": "a2"}, "errorCode": "test"}]
+        assert action3.execution_errors() == []
+
+
+def test_execute_multiple_queued_throttle_actions_error():
+    with mock.patch("umapi_client.connection.requests.post") as mock_post:
+        mock_post.return_value = MockResponse(500)
+        conn = Connection(throttle_actions=2, **mock_connection_params)
+        action0 = Action(top="top0").append(a="a0")
+        action1 = Action(top="top1").append(a="a1")
+        action2 = Action(top="top2").append(a="a2")
+        action3 = Action(top="top3").append(a="a3")
+        action4 = Action(top="top4").append(a="a4")
+        action5 = Action(top="top5").append(a="a5")
+        pytest.raises(ServerError, conn.execute_multiple,
+                      [action0, action1, action2, action3, action4, action5], immediate=False)
+        local_status, _ = conn.status(remote=False)
+        assert local_status == {"multiple-query-count": 0,
+                                "single-query-count": 0,
+                                "actions-sent": 2,
+                                "actions-completed": 0,
+                                "actions-queued": 4}
+        mock_post.return_value = MockResponse(200, {"result": "success"})
+        assert conn.execute_queued() == (0, 4, 4)
+        local_status, _ = conn.status(remote=False)
+        assert local_status == {"multiple-query-count": 0,
+                                "single-query-count": 0,
+                                "actions-sent": 6,
+                                "actions-completed": 4,
+                                "actions-queued": 0}

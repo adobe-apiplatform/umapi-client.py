@@ -49,7 +49,7 @@ def config():
 
 def test_status(config):
     conn, _ = config
-    status = conn.status()
+    _, status = conn.status(remote=True)
     assert status["state"] == "LIVE"
 
 

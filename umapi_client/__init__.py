@@ -20,6 +20,6 @@
 
 from .connection import Connection
 from .api import Action, QuerySingle, QueryMultiple
-from .users import UserAction, UserQuery, UsersQuery, IdentityTypes, GroupTypes, RoleTypes
+from .users import UserAction, UserQuery, UsersQuery, IdentityTypes, GroupTypes, RoleTypes, IfAlreadyExistsOptions
 from .groups import GroupsQuery
 from .error import ClientError, RequestError, ServerError, UnavailableError

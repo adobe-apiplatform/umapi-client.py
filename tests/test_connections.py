@@ -29,25 +29,28 @@ from conftest import mock_connection_params, MockResponse
 from umapi_client import Connection, UnavailableError, ServerError, RequestError, ClientError
 
 
-def test_status_success():
+def test_remote_status_success():
     with mock.patch("umapi_client.connection.requests.get") as mock_get:
         mock_get.return_value = MockResponse(200, body={"build": "2559", "version": "2.1.54", "state":"LIVE"})
         conn = Connection(**mock_connection_params)
-        assert conn.status() == {"build": "2559", "version": "2.1.54", "state":"LIVE"}
+        _, remote_status = conn.status(remote=True)
+        assert remote_status == {"endpoint": "https://test/", "build": "2559", "version": "2.1.54", "state":"LIVE"}
 
 
-def test_status_failure():
+def test_remote_status_failure():
     with mock.patch("umapi_client.connection.requests.get") as mock_get:
         mock_get.return_value = MockResponse(404, text="404 Not Found")
         conn = Connection(**mock_connection_params)
-        pytest.raises (ClientError, conn.status)
+        _, remote_status = conn.status(remote=True)
+        assert remote_status["status"].startswith("Unexpected")
 
 
-def test_status_timeout():
+def test_remote_status_timeout():
     with mock.patch("umapi_client.connection.requests.get") as mock_get:
         mock_get.side_effect = requests.Timeout
         conn = Connection(**mock_connection_params)
-        pytest.raises(UnavailableError, conn.status)
+        _, remote_status = conn.status(remote=True)
+        assert remote_status["status"].startswith("Unreachable")
 
 
 def test_get_success():

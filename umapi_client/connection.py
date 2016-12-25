@@ -22,7 +22,7 @@ import json
 import logging
 from email.utils import parsedate_tz, mktime_tz
 from random import randint
-from time import time, sleep
+from time import time, sleep, gmtime, strftime
 
 import requests
 import six.moves.urllib.parse as urlparse
@@ -91,8 +91,16 @@ class Connection:
         self.retry_first_delay = retry_first_delay
         self.retry_random_delay = retry_random_delay
         self.timeout = float(timeout_seconds) if float(timeout_seconds) > 0.0 else 60.0
-        self.throttle_actions = int(throttle_actions)
-        self.throttle_commands = int(throttle_commands)
+        self.throttle_actions = max(int(throttle_actions), 1)
+        self.throttle_commands = max(int(throttle_commands), 1)
+        self.action_queue = []
+        self.local_status = {"multiple-query-count": 0,
+                             "single-query-count": 0,
+                             "actions-sent": 0,
+                             "actions-completed": 0,
+                             "actions-queued": 0}
+        self.server_status = {"status": "Never contacted",
+                              "endpoint": self.endpoint}
         if auth:
             self.auth = auth
         elif auth_dict:
@@ -110,21 +118,45 @@ class Connection:
         token = AccessRequest("https://" + ims_host + ims_endpoint_jwt, api_key, client_secret, jwt())
         return Auth(api_key, token())
 
-    def status(self):
+    def status(self, remote=False):
         """
-        Check whether the UMAPI service is up, and return data about version and build.
-        :return: dictionary of status data, or raise UnavailableError.
+        Return the connection status, both locally and remotely.
+
+        The local connection status is a dictionary that gives:
+        * the count of multiple queries sent to the server.
+        * the count of single queries sent to the server.
+        * the count of actions sent to the server.
+        * the count of actions executed successfully by the server.
+        * the count of actions queued to go to the server.
+
+        The remote connection status includes whether the server is live,
+        as well as data about version and build.  The server data is
+        cached, unless the remote flag is specified.
+
+        :param local: whether to include the local status in the return
+        :param remote: whether to query the server for its latest status
+        :return: tuple of status dicts: (local, server).
         """
-        components = urlparse.urlparse(self.endpoint)
-        try:
-            result = requests.get(components[0] + "://" + components[1] + "/status", timeout=self.timeout)
-        except Exception as e:
-            if self.logger: self.logger.error("Failed to connect to server: %s", e)
-            raise UnavailableError(1, int(self.timeout), None)
-        if result.status_code == 200:
-            return result.json()
-        else:
-            raise ClientError("Response status was {:d}".format(result.status_code), result)
+        if remote:
+            components = urlparse.urlparse(self.endpoint)
+            try:
+                result = requests.get(components[0] + "://" + components[1] + "/status", timeout=self.timeout)
+            except Exception as e:
+                if self.logger: self.logger.debug("Failed to connect to server for status: %s", e)
+                result = None
+            if result and result.status_code == 200:
+                self.server_status = result.json()
+                self.server_status["endpoint"] = self.endpoint
+            elif result:
+                if self.logger: self.logger.debug("Server status response not understandable: Status: %d, Body: %s",
+                                                  result.status_code, result.text)
+                self.server_status = {"endpoint": self.endpoint,
+                                      "status": ("Unexpected HTTP status " + str(result.status_code) + " at: " +
+                                                 strftime("%d %b %Y %H:%M:%S +0000", gmtime()))}
+            else:
+                self.server_status = {"endpoint": self.endpoint,
+                                      "status": "Unreachable at: " + strftime("%d %b %Y %H:%M:%S +0000", gmtime())}
+        return self.local_status, self.server_status
 
     def query_single(self, object_type, url_params, query_params=None):
         # type: (str, list, dict) -> dict
@@ -137,6 +169,7 @@ class Connection:
         """
         # Server API convention (v2) is that the pluralized object type goes into the endpoint
         # but the object type is the key in the response dictionary for the returned object.
+        self.local_status["single-query-count"] += 1
         query_type = object_type + "s"  # poor man's plural
         query_path = "/organizations/{}/{}".format(self.org_id, query_type)
         for component in url_params if url_params else []:
@@ -172,6 +205,7 @@ class Connection:
         """
         # Server API convention (v2) is that the pluralized object type goes into the endpoint
         # and is also the key in the response dictionary for the returned objects.
+        self.local_status["multiple-query-count"] += 1
         query_type = object_type + "s"  # poor man's plural
         query_path = "/{}/{}/{:d}".format(query_type, self.org_id, page)
         for component in url_params if url_params else []:
@@ -196,53 +230,89 @@ class Connection:
         else:
             raise ClientError("OK status but no 'success' result", result)
 
-    def execute_single(self, action):
+    def execute_single(self, action, immediate=False):
         """
         Execute a single action (containing commands on a single object).
-        Note that, if it contains a lot of commands, that action may
-        be split_actions into multiple actions.  So the return value is the
-        same as execute_multiple: the number of actions sent and
-        the number that completed successfully.
-        :param action: the Action to be executed
-        :return: the number of actions sent and the number that completed sucessfully.
-        """
-        return self.execute_multiple([action])
+        Normally, since actions are batched so as to be most efficient about execution,
+        but if you want this command sent immediately (and all prior queued commands
+        sent earlier in this command's batch), specify a True value for the immediate flag.
 
-    def execute_multiple(self, actions):
+        Since any command can fill the current batch, your command may be submitted
+        even if you don't specify the immediate flag.  So don't think of this always
+        being a queue call if immedidate=False.
+
+        Returns the number of actions in the queue, that got sent, and that executed successfully.
+
+        :param action: the Action to be executed
+        :param immediate: whether the Action should be executed immediately
+        :return: the number of actions in the queue, that got sent, and that executed successfully.
+        """
+        return self.execute_multiple([action], immediate=immediate)
+
+    def execute_queued(self):
+        """
+        Force execute any queued commands.
+        :return: the number of actions left in the queue, that got sent, and that executed successfully.
+        """
+        return self.execute_multiple([], immediate=True)
+
+    def execute_multiple(self, actions, immediate=True):
         """
         Execute multiple Actions (each containing commands on a single object).
-        This is where we throttle both actions and commands.  So the number
-        of actions we were given may not be the same as the number we
-        send to the server.  Thus we return both the number of actions that
-        we actually sent *and* the number that were excuted successfully
+        Normally, the actions are sent for execution immediately (possibly preceded
+        by earlier queued commands), but if you are going for maximum efficiency
+        you can set immeediate=False which will cause the connection to wait
+        and batch as many actions as allowed in each server call.
+
+        Since any command can fill the current batch, one or more of your commands may be submitted
+        even if you don't specify the immediate flag.  So don't think of this call as always
+        being a queue call when immedidate=False.
+
+        Returns the number of actions left in the queue, that got sent, and that executed successfully.
+
+        NOTE: This is where we throttle the number of commands per action.  So the number
+        of actions we were given may not be the same as the number we queue or send to the server.
+
         :param actions: the list of Action objects to be executed
-        :return: tuple: (count of actions sent, count of successful actions)
+        :param immediate: whether to immediately send them to the server
+        :return: tuple: the number of actions in the queue, that got sent, and that executed successfully.
         """
         # throttling part 1: split up each action into smaller actions, as needed
-        if self.throttle_commands > 0:
-            split_actions = []
-            for a in actions:
-                if len(a.commands) == 0:
-                    if self.logger: self.logger.warning("Sending action with no commands: %s", a.frame)
-                if len(a.commands) <= self.throttle_commands:
-                    split_actions.append(a)
-                else:
-                    if self.logger: self.logger.debug("Throttling action %s to have a maximum of %d commands.",
-                                                      a.frame, self.throttle_commands)
-                    split_actions += a.split(self.throttle_commands)
-            actions = split_actions
-        # throttling part 2: split the action list into batches, as needed
-        if self.throttle_actions > 0 and len(actions) > self.throttle_actions:
-            if self.logger: self.logger.debug("Throttling a list of %d actions into %d-action batches.",
-                                              len(actions), self.throttle_actions)
-            sent, success = 0, 0
-            for i in range(0, len(actions), self.throttle_actions):
-                batch = actions[i:min(len(actions), i + self.throttle_actions)]
+        split_actions = []
+        for a in actions:
+            if len(a.commands) == 0:
+                if self.logger: self.logger.warning("Sending action with no commands: %s", a.frame)
+            if len(a.commands) > self.throttle_commands:
+                if self.logger: self.logger.debug("Throttling action %s to have a maximum of %d commands.",
+                                                  a.frame, self.throttle_commands)
+                split_actions += a.split(self.throttle_commands)
+            else:
+                split_actions.append(a)
+        actions = self.action_queue + split_actions
+        # throttling part 2: execute the action list in batches, as needed
+        sent = completed = last_batch_sent = last_batch_completed = 0
+        try:
+            while len(actions) >= self.throttle_actions:
+                batch, actions = actions[0:self.throttle_actions], actions[self.throttle_actions:]
+                if self.logger: self.logger.debug("Executing %d actions (%d remaining).", len(batch), len(actions))
                 sent += len(batch)
-                success += self._execute_batch(batch)
-            return sent, success
-        else:
-            return len(actions), self._execute_batch(actions)
+                completed += self._execute_batch(batch)
+        finally:
+            self.action_queue = actions
+            self.local_status["actions-queued"] = len(actions)
+            self.local_status["actions-sent"] += sent
+            self.local_status["actions-completed"] += completed
+        # there may be actions left over
+        if actions and immediate:
+            try:
+                last_batch_sent = len(actions)
+                last_batch_completed += self._execute_batch(actions)
+            finally:
+                self.action_queue = []
+                self.local_status["actions-queued"] = 0
+                self.local_status["actions-sent"] += last_batch_sent
+                self.local_status["actions-completed"] += last_batch_completed
+        return len(self.action_queue), sent + last_batch_sent, completed + last_batch_completed
 
     def _execute_batch(self, actions):
         """

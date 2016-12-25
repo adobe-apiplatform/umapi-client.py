@@ -46,6 +46,7 @@ setup(name='umapi-client',
           'cryptography',
           'PyJWT',
           'six',
+          'enum34'
       ],
       setup_requires=[
           'pytest-runner',

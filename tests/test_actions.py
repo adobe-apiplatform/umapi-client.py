@@ -61,7 +61,7 @@ def test_execute_single_success():
         mock_post.return_value = MockResponse(200, {"result": "success"})
         conn = Connection(**mock_connection_params)
         action = Action(top="top").append(a="a")
-        assert conn.execute_single(action) is True
+        assert conn.execute_single(action) == (1, 1)
 
 
 def test_execute_single_dofirst_success():
@@ -69,7 +69,7 @@ def test_execute_single_dofirst_success():
         mock_post.return_value = MockResponse(200, {"result": "success"})
         conn = Connection(**mock_connection_params)
         action = Action(top="top").insert(a="a")
-        assert conn.execute_single(action) is True
+        assert conn.execute_single(action) == (1, 1)
 
 
 def test_execute_multiple_success():
@@ -78,7 +78,7 @@ def test_execute_multiple_success():
         conn = Connection(**mock_connection_params)
         action0 = Action(top="top0").append(a="a0").append(b="b")
         action1 = Action(top="top1").append(a="a1")
-        assert conn.execute_multiple([action0, action1]) == 2
+        assert conn.execute_multiple([action0, action1]) == (2, 2)
 
 
 def test_execute_multiple_dofirst_success():
@@ -87,7 +87,7 @@ def test_execute_multiple_dofirst_success():
         conn = Connection(**mock_connection_params)
         action0 = Action(top="top0").append(a="a0").insert(b="b")
         action1 = Action(top="top1").append(a="a1")
-        assert conn.execute_multiple([action0, action1]) == 2
+        assert conn.execute_multiple([action0, action1]) == (2, 2)
 
 
 def test_execute_single_error():
@@ -98,9 +98,8 @@ def test_execute_single_error():
                                                                 "message": "Test error message"}]})
         conn = Connection(**mock_connection_params)
         action = Action(top="top").append(a="a")
-        assert conn.execute_single(action) is False
+        assert conn.execute_single(action) == (1, 0)
         assert action.execution_errors() == [{"command": {"a": "a"},
-                                              "step": 0,
                                               "errorCode": "test.error",
                                               "message": "Test error message"}]
 
@@ -116,13 +115,11 @@ def test_execute_single_multi_error():
                                                                 "message": "message2"}]})
         conn = Connection(**mock_connection_params)
         action = Action(top="top").append(a="a")
-        assert conn.execute_single(action) is False
+        assert conn.execute_single(action) == (1, 0)
         assert action.execution_errors() == [{"command": {"a": "a"},
-                                              "step": 0,
                                               "errorCode": "error1",
                                               "message": "message1"},
                                              {"command": {"a": "a"},
-                                              "step": 0,
                                               "errorCode": "error2",
                                               "message": "message2"}]
 
@@ -135,9 +132,8 @@ def test_execute_single_dofirst_error():
                                                                 "message": "Test error message"}]})
         conn = Connection(**mock_connection_params)
         action = Action(top="top").insert(a="a")
-        assert conn.execute_single(action) is False
+        assert conn.execute_single(action) == (1, 0)
         assert action.execution_errors() == [{"command": {"a": "a"},
-                                              "step": 0,
                                               "errorCode": "test.error",
                                               "message": "Test error message"}]
 
@@ -153,10 +149,9 @@ def test_execute_multiple_error():
         conn = Connection(**mock_connection_params)
         action0 = Action(top="top0").append(a="a0")
         action1 = Action(top="top1").append(a="a1").append(b="b")
-        assert conn.execute_multiple([action0, action1]) == 1
+        assert conn.execute_multiple([action0, action1]) == (2, 1)
         assert action0.execution_errors() == []
         assert action1.execution_errors() == [{"command": {"b": "b"},
-                                               "step": 1,
                                                "errorCode": "test.error",
                                                "message": "Test error message"}]
 
@@ -175,14 +170,12 @@ def test_execute_multiple_multi_error():
         conn = Connection(**mock_connection_params)
         action0 = Action(top="top0").append(a="a0")
         action1 = Action(top="top1").append(a="a1").append(b="b")
-        assert conn.execute_multiple([action0, action1]) == 1
+        assert conn.execute_multiple([action0, action1]) == (2, 1)
         assert action0.execution_errors() == []
         assert action1.execution_errors() == [{"command": {"b": "b"},
-                                               "step": 1,
                                                "errorCode": "error1",
                                                "message": "message1"},
                                               {"command": {"b": "b"},
-                                               "step": 1,
                                                "errorCode": "error2",
                                                "message": "message2"}]
 
@@ -198,9 +191,37 @@ def test_execute_multiple_dofirst_error():
         conn = Connection(**mock_connection_params)
         action0 = Action(top="top0").append(a="a0")
         action1 = Action(top="top1").append(a="a1").insert(b="b")
-        assert conn.execute_multiple([action0, action1]) == 1
+        assert conn.execute_multiple([action0, action1]) == (2, 1)
         assert action0.execution_errors() == []
         assert action1.execution_errors() == [{"command": {"a": "a1"},
-                                               "step": 1,
                                                "errorCode": "test.error",
                                                "message": "Test error message"}]
+
+
+def test_execute_single_throttle_commands():
+    with mock.patch("umapi_client.connection.requests.post") as mock_post:
+        mock_post.return_value = MockResponse(200, {"result": "partial",
+                                                    "completed": 1,
+                                                    "notCompleted": 1,
+                                                    "errors": [{"index": 1, "step": 0, "errorCode": "test"}]})
+        conn = Connection(throttle_commands=2, **mock_connection_params)
+        action = Action(top="top0").append(a="a0").append(a="a1").append(a="a2")
+        assert conn.execute_single(action) == (2, 1)
+        assert action.execution_errors() == [{"command": {"a": "a2"}, "errorCode": "test"}]
+
+
+def test_execute_multiple_throttle_actions():
+    with mock.patch("umapi_client.connection.requests.post") as mock_post:
+        mock_post.side_effect = [MockResponse(200, {"result": "success"}),
+                                 MockResponse(200, {"result": "partial",
+                                                    "completed": 0,
+                                                    "notCompleted": 1,
+                                                    "errors": [{"index": 0, "step": 0, "errorCode": "test"}]})]
+        conn = Connection(throttle_actions=2, **mock_connection_params)
+        action0 = Action(top="top0").append(a="a0")
+        action1 = Action(top="top1").append(a="a1")
+        action2 = Action(top="top2").append(a="a2")
+        assert conn.execute_multiple([action0, action1, action2]) == (3, 2)
+        assert action0.execution_errors() == []
+        assert action1.execution_errors() == []
+        assert action2.execution_errors() == [{"command": {"a": "a2"}, "errorCode": "test"}]

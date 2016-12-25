@@ -18,8 +18,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .connection import Connection
-from .api import Action, QuerySingle, QueryMultiple
-from .users import UserAction, UserQuery, UsersQuery, IdentityTypes, GroupTypes, RoleTypes
-from .groups import GroupsQuery
-from .error import ClientError, RequestError, ServerError, UnavailableError
+import re
+
+from .api import QueryMultiple
+
+class GroupsQuery(QueryMultiple):
+    """
+    Query for all groups
+    """
+    def __init__(self, connection):
+        """
+        Create a query for all groups
+        :param connection: Connection to run the query against
+        """
+        QueryMultiple.__init__(self, connection=connection, object_type="group")

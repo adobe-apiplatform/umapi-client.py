@@ -50,6 +50,8 @@ class Connection:
                  retry_first_delay=15,
                  retry_random_delay=5,
                  timeout_seconds=60.0,
+                 throttle_actions=10,
+                 throttle_commands=10,
                  **kwargs):
         """
         Open a connection for the given parameters that has the given options.
@@ -89,6 +91,8 @@ class Connection:
         self.retry_first_delay = retry_first_delay
         self.retry_random_delay = retry_random_delay
         self.timeout = float(timeout_seconds) if float(timeout_seconds) > 0.0 else 60.0
+        self.throttle_actions = int(throttle_actions)
+        self.throttle_commands = int(throttle_commands)
         if auth:
             self.auth = auth
         elif auth_dict:
@@ -195,26 +199,61 @@ class Connection:
     def execute_single(self, action):
         """
         Execute a single action (containing commands on a single object).
+        Note that, if it contains a lot of commands, that action may
+        be split_actions into multiple actions.  So the return value is the
+        same as execute_multiple: the number of actions sent and
+        the number that completed successfully.
         :param action: the Action to be executed
-        :return: (bool) whether the execution was successful
+        :return: the number of actions sent and the number that completed sucessfully.
         """
-        return self.execute_multiple([action]) == 1
+        return self.execute_multiple([action])
 
     def execute_multiple(self, actions):
         """
         Execute multiple Actions (each containing commands on a single object).
+        This is where we throttle both actions and commands.  So the number
+        of actions we were given may not be the same as the number we
+        send to the server.  Thus we return both the number of actions that
+        we actually sent *and* the number that were excuted successfully
+        :param actions: the list of Action objects to be executed
+        :return: tuple: (count of actions sent, count of successful actions)
+        """
+        # throttling part 1: split up each action into smaller actions, as needed
+        if self.throttle_commands > 0:
+            split_actions = []
+            for a in actions:
+                if len(a.commands) == 0:
+                    if self.logger: self.logger.warning("Sending action with no commands: %s", a.frame)
+                if len(a.commands) <= self.throttle_commands:
+                    split_actions.append(a)
+                else:
+                    if self.logger: self.logger.debug("Throttling action %s to have a maximum of %d commands.",
+                                                      a.frame, self.throttle_commands)
+                    split_actions += a.split(self.throttle_commands)
+            actions = split_actions
+        # throttling part 2: split the action list into batches, as needed
+        if self.throttle_actions > 0 and len(actions) > self.throttle_actions:
+            if self.logger: self.logger.debug("Throttling a list of %d actions into %d-action batches.",
+                                              len(actions), self.throttle_actions)
+            sent, success = 0, 0
+            for i in range(0, len(actions), self.throttle_actions):
+                batch = actions[i:min(len(actions), i + self.throttle_actions)]
+                sent += len(batch)
+                success += self._execute_batch(batch)
+            return sent, success
+        else:
+            return len(actions), self._execute_batch(actions)
+
+    def _execute_batch(self, actions):
+        """
+        Execute a single batch of Actions.
         For each action that has a problem, we annotate the action with the
         error information for that action, and we return the number of
-        successful actions.
+        successful actions in the batch.
         :param actions: the list of Action objects to be executed
         :return: count of successful actions
         """
-        wire_form = []
-        for a in actions:
-            wire_dict = a.wire_dict()
-            if not wire_dict["do"]:
-                if self.logger: self.logger.warning("Sending action with no commands: %s", wire_dict)
-            wire_form.append(wire_dict)
+        wire_form = [a.wire_dict() for a in actions]
         if self.test_mode:
             result = self.make_call("/action/%s?testOnly=true" % self.org_id, wire_form).json()
         else:
@@ -225,12 +264,12 @@ class Connection:
                 if self.logger: self.logger.warning("Server action result: no errors, but no success:\n%s", body)
             return len(actions)
         try:
-            if body.get("result") != "success":
-                if self.logger: self.logger.warning("Server action result: errors, but success:\n%s", body)
+            if body.get("result") == "success":
+                if self.logger: self.logger.warning("Server action result: errors, but success report:\n%s", body)
             for error in body["errors"]:
                 actions[error["index"]].report_command_error(error)
         except:
-            raise ClientError(body, result)
+            raise ClientError(str(body), result)
         return body.get("completed", 0)
 
     def make_call(self, path, body=None):
@@ -242,6 +281,7 @@ class Connection:
         """
         if body:
             request_body = json.dumps(body)
+
             def call():
                 return requests.post(self.endpoint + path, auth=self.auth, data=request_body, timeout=self.timeout)
         else:

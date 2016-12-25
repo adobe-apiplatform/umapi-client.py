@@ -41,6 +41,23 @@ class Action:
         self.frame = dict(kwargs)
         self.commands = []
         self.errors = []
+        self.split_actions = None
+
+    def split(self, max_commands):
+        """
+        Split this action into an equivalent list of actions, each of which have at most max_commands commands.
+        :param max_commands: max number of commands allowed in any action
+        :return: the list of commands created from this one
+        """
+        prior = Action(**self.frame)
+        prior.commands = list(self.commands)
+        self.split_actions = [prior]
+        while len(prior.commands) > max_commands:
+            next = Action(**self.frame)
+            prior.commands, next.commands = prior.commands[0:max_commands], prior.commands[max_commands:]
+            self.split_actions.append(next)
+            prior = next
+        return self.split_actions
 
     def wire_dict(self):
         """
@@ -94,7 +111,8 @@ class Action:
         """
         error = dict(error_dict)
         error["command"] = self.commands[error_dict["step"]]
-        del error["index"]  # doesn't matter which action this was in the server-sent batch
+        del error["index"]  # throttling can change which action this was in the batch
+        del error["step"]   # throttling can change which step this was in the action
         self.errors.append(error)
 
     def execution_errors(self):
@@ -104,38 +122,11 @@ class Action:
         Each dictionary entry gives the command dictionary and the error dictionary
         :return: list of commands that gave errors, with their error information
         """
-        return [dict(e) for e in self.errors]
-
-
-class UserAction(Action):
-    """
-    An sequence of commands for the UMAPI to perform on a single user.
-    """
-
-    def __init__(self, email=None, username=None, domain=None, **kwargs):
-        """
-        Create an Action for a user identified either by email or by username and domain.
-        There is never a reason to specify both email and username.
-        :param username: string, username in the Adobe domain (might be email)
-        :param domain: string, required if the username is not an email address
-        :param kwargs: other key/value pairs desired to identify this user
-        """
-        if email:
-            if username or domain:
-                ValueError("User create: Email was specified; don't also specify username or domain")
-            if not re.match(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+([.][a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+)*"
-                            r"@"
-                            r"[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+$", email):
-                ValueError("Action create: Illegal email format")
-            Action.__init__(user=email, **kwargs)
+        if self.split_actions:
+            # throttling split this action, get errors from the split
+            return [dict(e) for s in self.split_actions for e in s.errors]
         else:
-            if not username or not domain:
-                ValueError("User create: Both username and domain must be specified")
-            if not re.match(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+([.][a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+)*$", username):
-                ValueError("User create: Illegal characters in username")
-            if not re.match(r"^[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+$", domain):
-                ValueError("User create: Illegal domain format")
-            Action.__init__(user=username, domain=domain, **kwargs)
+            return [dict(e) for e in self.errors]
 
 
 class QueryMultiple:
@@ -228,37 +219,6 @@ class QueryMultiple:
         return list(self._results)
 
 
-class UsersQuery(QueryMultiple):
-    """
-    Query for users meeting (optional) criteria
-    """
-
-    def __init__(self, connection, in_group="", in_domain="", identity_type=""):
-        """
-        Create a query for all users, or for those in a group or domain or both
-        :param connection: Connection to run the query against
-        :param in_group: (optional) name of the group to restrict the query to
-        :param in_domain: (optional) name of the domain to restrict the query to
-        """
-        groups = [in_group] if in_group else []
-        params = {}
-        if in_domain: params["domain"] = str(in_domain)
-        if identity_type: params["type"] = str(identity_type)
-        QueryMultiple.__init__(self, connection=connection, object_type="user", url_params=groups, query_params=params)
-
-
-class GroupsQuery(QueryMultiple):
-    """
-    Query for all groups
-    """
-
-    def __init__(self, connection):
-        """
-        Create a query for all groups
-        :param connection: Connection to run the query against
-        """
-        QueryMultiple.__init__(self, connection=connection, object_type="group")
-
 class QuerySingle:
     """
     Look for a single object
@@ -301,16 +261,3 @@ class QuerySingle:
         if self._result is None:
             self._fetch_result()
         return self._result
-
-class UserQuery(QuerySingle):
-    """
-    Query for a single user
-    """
-
-    def __init__(self, connection, email):
-        """
-        Create a query for the user with the given email
-        :param connection: Connection to run the query against
-        :param email: email of user to query for
-        """
-        QuerySingle.__init__(self, connection=connection, object_type="user", url_params=[str(email)])

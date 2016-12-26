@@ -51,7 +51,7 @@ class UserAction(Action):
     A sequence of commands to perform on a single user.
     """
 
-    def __init__(self, id_type=None, email=None, username=None, domain=None, **kwargs):
+    def __init__(self, id_type=IdentityTypes.adobeID, email=None, username=None, domain=None, **kwargs):
         """
         Create an Action for a user identified either by email or by username and domain.
         There is never a reason to specify both email and username.
@@ -60,36 +60,36 @@ class UserAction(Action):
         :param kwargs: other key/value pairs for the action, such as requestID
         """
         if id_type not in IdentityTypes:
-            ValueError("Identity type ({}}) must be one of {}}".format(id_type, [i.name for i in IdentityTypes]))
+            raise ValueError("Identity type ({}}) must be one of {}}".format(id_type, [i.name for i in IdentityTypes]))
         if email:
             if not re.match(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+([.][a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+)*"
                             r"@"
                             r"[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+$", email):
-                ValueError("Illegal email format (must not be quoted or contain comments)")
+                raise ValueError("Illegal email format (must not be quoted or contain comments)")
             if username and id_type is not IdentityTypes.federatedID:
-                ValueError("Only in Federated ID can username be specified")
+                raise ValueError("Only in Federated ID can username be specified")
             self.id_type = id_type
             self.email = str(email)
             atpos = email.index('@')
             self.username = str(username) if username else email[0:atpos]
             self.domain = email[atpos + 1:]
             if domain and (str(domain).lower() != str(self.domain).lower()):
-                ValueError("Specified domain ({}) does not match email domain ({})".format(domain, self.domain))
-            Action.__init__(user=email, **kwargs)
+                raise ValueError("Specified domain ({}) does not match email domain ({})".format(domain, self.domain))
+            Action.__init__(self, user=email, **kwargs)
         else:
             if not username or not domain:
-                ValueError("Either email or both username and domain must be specified")
+                raise ValueError("Either email or both username and domain must be specified")
             if id_type is not IdentityTypes.federatedID:
-                ValueError("Only in Federated ID can username be specified")
+                raise ValueError("Only in Federated ID can username be specified")
             if not re.match(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+([.][a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+)*$", username):
-                ValueError("Illegal username format: must be the unquoted local part of an email")
+                raise ValueError("Illegal username format: must be the unquoted local part of an email")
             if not re.match(r"^[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+$", domain):
-                ValueError("Illegal domain format")
+                raise ValueError("Illegal domain format")
             self.id_type = id_type
             self.email = None
             self.username = str(username)
             self.domain = str(domain)
-            Action.__init__(user=username, domain=domain, **kwargs)
+            Action.__init__(self, user=username, domain=domain, **kwargs)
 
     def create(self, first_name=None, last_name=None, country=None, email=None,
                on_conflict=IfAlreadyExistsOptions.errorIfAlreadyExists):
@@ -106,33 +106,43 @@ class UserAction(Action):
         create_params = {}
         if email is None:
             email = self.email
+        elif self.email is None:
+            email = str(email)
+            if not re.match(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+([.][a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+)*"
+                            r"@"
+                            r"[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+$", email):
+                raise ValueError("Illegal email format (must not be quoted or contain comments)")
+            self.email = email
+            atpos = email.index('@')
+            if self.domain.lower() != email[atpos + 1:].lower():
+                raise ValueError("User's email ({}) doesn't match domain ({})", email, self.domain)
         elif self.email.lower() != str(email).lower():
-            ValueError("Specified email ({}) doesn't match user's email({})", email, self.email)
+            raise ValueError("Specified email ({}) doesn't match user's email({})", email, self.email)
         if on_conflict not in IfAlreadyExistsOptions:
-            ValueError("on_conflict must be one of {}".format([o.name for o in IfAlreadyExistsOptions]))
-        if on_conflict == IfAlreadyExistsOptions.errorIfAlreadyExists:
+            raise ValueError("on_conflict must be one of {}".format([o.name for o in IfAlreadyExistsOptions]))
+        if on_conflict != IfAlreadyExistsOptions.errorIfAlreadyExists:
             create_params["option"] = on_conflict.name
 
         # each type handles the create differently
         if self.id_type == IdentityTypes.adobeID:
             # Adobe ID doesn't allow anything but email
             if first_name or last_name or country:
-                ValueError("You cannot specify first or last name or country for an Adobe ID.")
+                raise ValueError("You cannot specify first or last name or country for an Adobe ID.")
             return self.insert(addAdobeID=dict(email=str(email), **create_params))
         else:
             # Federated and Enterprise allow specifying the name
             if first_name: create_params["firstName"] = str(first_name)
             if last_name: create_params["lastName"] = str(last_name)
-            if self.id_type == IdentityTypes.federatedID:
-                # Federated ID can default country, already has email on create
+            if self.id_type == IdentityTypes.enterpriseID:
+                # Enterprise ID can default country, already has email on create
                 create_params["country"] = str(country) if country else "UD"
                 return self.insert(createEnterpriseID=dict(email=str(email), **create_params))
             else:
-                # Enterprise ID must specify email if that wasn't done already
+                # Federated ID must specify email if that wasn't done already
                 if not email:
-                    ValueError("You must specify email when creating a Federated ID")
+                    raise ValueError("You must specify email when creating a Federated ID")
                 if not country:
-                    ValueError("You must specify country when creating a Federated ID")
+                    raise ValueError("You must specify country when creating a Federated ID")
                 return self.insert(createFederatedID=dict(email=str(email), country=str(country), **create_params))
 
     def update(self, email=None, username=None, first_name=None, last_name=None, country=None):
@@ -146,9 +156,9 @@ class UserAction(Action):
         :return: the User, so you can do User(...).update(...).add_group(...)
         """
         if self.id_type is IdentityTypes.adobeID:
-            ValueError("You cannot update any attributes of an Adobe ID.")
+            raise ValueError("You cannot update any attributes of an Adobe ID.")
         if username and self.id_type is not IdentityTypes.federatedID:
-            ValueError("You can only update the username attribute of a Federated ID")
+            raise ValueError("You can only update the username attribute of a Federated ID")
         updates = {}
         for k, v in six.iteritems(dict(email=email, username=username,
                                        firstName=first_name, lastName=last_name,
@@ -165,7 +175,7 @@ class UserAction(Action):
         :return: the User, so you can do User(...).add_group(...).add_role(...)
         """
         if group_type not in GroupTypes:
-            ValueError("You must specify a GroupType value for argument group_type")
+            raise ValueError("You must specify a GroupType value for argument group_type")
         glist = [str(group) for group in (groups if groups else [])]
         return self.append(add={group_type.name: glist})
 
@@ -178,16 +188,16 @@ class UserAction(Action):
         :return: the User, so you can do User(...).remove_group(...).add_role(...)
         """
         if group_type not in GroupTypes:
-            ValueError("You must specify a GroupType value for argument group_type")
+            raise ValueError("You must specify a GroupType value for argument group_type")
         if all_groups and groups:
-            ValueError("When removing from all groups, do not specify specific groups")
+            raise ValueError("When removing from all groups, do not specify specific groups")
         if all_groups:
             glist = "all"
         else:
             glist = [str(group) for group in (groups if groups else [])]
             if not glist:
-                ValueError("You must specify groups from which to remove the user")
-            glist = {str(group_type): glist}
+                raise ValueError("You must specify groups from which to remove the user")
+            glist = {group_type.name: glist}
         return self.append(remove=glist)
 
     def add_role(self, groups=None, role_type=RoleTypes.admin):
@@ -198,10 +208,10 @@ class UserAction(Action):
         :return: the User, so you can do User(...).add_role(...).add_group(...)
         """
         if role_type not in RoleTypes:
-            ValueError("You must specify a RoleType value for argument role_type")
+            raise ValueError("You must specify a RoleType value for argument role_type")
         glist = [str(group) for group in (groups if groups else [])]
         if not glist:
-            ValueError("You must specify groups for which the user should have a role_type")
+            raise ValueError("You must specify groups for which the user should have a role_type")
         return self.append(addRoles={role_type.name: glist})
 
     def remove_role(self, groups=None, role_type=RoleTypes.admin):
@@ -212,10 +222,10 @@ class UserAction(Action):
         :return: the User, so you can do User(...).remove_role(...).remove_group(...)
         """
         if role_type not in RoleTypes:
-            ValueError("You must specify a RoleType value for argument role_type")
+            raise ValueError("You must specify a RoleType value for argument role_type")
         glist = [str(group) for group in (groups if groups else [])]
         if not glist:
-            ValueError("You must specify groups for which the user should not have a role")
+            raise ValueError("You must specify groups for which the user should not have a role")
         return self.append(removeRoles={role_type.name: glist})
 
     def remove_from_organization(self, delete_account=False):
@@ -228,7 +238,7 @@ class UserAction(Action):
         """
         if delete_account:
             if self.id_type == IdentityTypes.adobeID:
-                ValueError("You cannot delete an Adobe ID account.")
+                raise ValueError("You cannot delete an Adobe ID account.")
             arg = {"removedDomain": self.domain}
         else:
             arg = {}
@@ -243,7 +253,7 @@ class UserAction(Action):
         :return: None, because you cannot follow this command with another.
         """
         if self.id_type == IdentityTypes.adobeID:
-            ValueError("You cannot delete an Adobe ID account.")
+            raise ValueError("You cannot delete an Adobe ID account.")
         self.append(removeFromDomain={"domain": self.domain})
         return None
 
@@ -279,3 +289,16 @@ class UserQuery(QuerySingle):
         :param email: email of user to query for
         """
         QuerySingle.__init__(self, connection=connection, object_type="user", url_params=[str(email)])
+
+
+class GroupsQuery(QueryMultiple):
+    """
+    Query for all groups
+    """
+
+    def __init__(self, connection):
+        """
+        Create a query for all groups
+        :param connection: Connection to run the query against
+        """
+        QueryMultiple.__init__(self, connection=connection, object_type="group")

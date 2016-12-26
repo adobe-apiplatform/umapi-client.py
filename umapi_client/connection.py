@@ -81,7 +81,7 @@ class Connection:
         :param retry_random_delay: The max random delay to add on each exponential backoff retry
 
         Additional keywords are allowed to make it easy to pass a big dictionary with other values
-        :param kwargs:
+        :param kwargs: any keywords passed that we ignore.
         """
         self.org_id = str(org_id)
         self.endpoint = user_management_endpoint
@@ -133,7 +133,6 @@ class Connection:
         as well as data about version and build.  The server data is
         cached, unless the remote flag is specified.
 
-        :param local: whether to include the local status in the return
         :param remote: whether to query the server for its latest status
         :return: tuple of status dicts: (local, server).
         """
@@ -359,6 +358,7 @@ class Connection:
                 return requests.get(self.endpoint + path, auth=self.auth, timeout=self.timeout)
 
         total_time = wait_time = 0
+        result = None
         for num_attempts in range(1, self.retry_max_attempts + 1):
             if wait_time > 0:
                 sleep(wait_time)
@@ -368,7 +368,7 @@ class Connection:
                 result = call()
             except requests.Timeout:
                 total_time += int(self.timeout)
-                raise UnavailableError(num_attempts, total_time, None)
+                raise UnavailableError(num_attempts, total_time, result)
             if result.status_code == 200:
                 return result
             elif result.status_code in [429, 502, 503, 504]:

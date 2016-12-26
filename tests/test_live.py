@@ -50,6 +50,7 @@ def config():
 def test_status(config):
     conn, _ = config
     _, status = conn.status(remote=True)
+    logging.info("Server status is %s", status)
     assert status["state"] == "LIVE"
 
 
@@ -60,11 +61,23 @@ def test_list_users(config):
         email = user.get("email", "")
         if re.match(r".*@adobe.com$", str(email).lower()):
             assert str(user["type"]) == "adobeID"
+    logging.info("Found %d users.", len(users.all_results()))
+
+def test_list_groups(config):
+    conn, params = config
+    groups = umapi_client.GroupsQuery(connection=conn)
+    for group in groups:
+        name = group.get("groupName")
+        logging.debug("Group: %s", group)
+        if group.get("memberCount", 0) > params["big_group_size"]:
+            assert name in params["big_groups"]
+    logging.info("Found %d groups.", len(groups.all_results()))
 
 
 def test_get_user(config):
     conn, params = config
     user_query = umapi_client.UserQuery(conn, params["test_user"]["email"])
     user = user_query.result()
+    logging.info("User: %s", user)
     for k, v in six.iteritems(params["test_user"]):
         assert user[k].lower() == v.lower()

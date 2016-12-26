@@ -18,23 +18,28 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-class UMAPIError(Exception):
-    def __init__(self, res):
-        Exception.__init__(self, "UMAPI Error: "+str(res.status_code))
-        self.res = res
+
+class UnavailableError(Exception):
+    def __init__(self, attempts, seconds, result):
+        Exception.__init__(self, "Server unavailable: Made {:d} attempts over {:d} seconds".format(attempts, seconds))
+        self.attempts = attempts
+        self.seconds = seconds
+        self.result = result
 
 
-class UMAPIRetryError(Exception):
-    def __init__(self, res):
-        Exception.__init__(self, "UMAPI Error: "+str(res.status_code))
-        self.res = res
+class ServerError(Exception):
+    def __init__(self, result):
+        Exception.__init__(self, "Server error: " + result.text)
+        self.result = result
 
 
-class UMAPIRequestError(Exception):
-    def __init__(self, code):
-        Exception.__init__(self, "Request Error -- %s" % code)
-        self.code = code
+class RequestError(Exception):
+    def __init__(self, result):
+        Exception.__init__(self, "Request Error: " + result.text)
+        self.result = result
 
 
-class ActionFormatError(Exception):
-    pass
+class ClientError(Exception):
+    def __init__(self, message, result):
+        Exception.__init__(self, "Server response not understood: " + message)
+        self.result = result

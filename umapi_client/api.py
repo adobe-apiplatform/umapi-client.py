@@ -18,75 +18,246 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import requests
-import json
+import re
+
 import six
-from .error import UMAPIError, UMAPIRetryError, UMAPIRequestError, ActionFormatError
+
+from .connection import Connection
 
 
-class UMAPI(object):
-    def __init__(self, endpoint, auth, test_mode=False):
-        self.endpoint = str(endpoint)
-        self.auth = auth
-        self.test_mode = test_mode
+class Action:
+    """
+    An sequence of commands for the API to perform on a single object.
+    """
 
-    def users(self, org_id, page=0):
-        return self._call('/users/%s/%d' % (org_id, page), requests.get)
+    def __init__(self, **kwargs):
+        """
+        Create an Action.  You must specify the object that the action applies to.
 
-    def groups(self, org_id, page=0):
-        return self._call('/groups/%s/%d' % (org_id, page), requests.get)
+        The Action keeps track of its commands and also any errors that arise
+        in execution of those commands.
+        :param kwargs: key/value pairs that identify the object being updated
+        """
+        self.frame = dict(kwargs)
+        self.commands = []
+        self.errors = []
+        self.split_actions = None
 
-    def action(self, org_id, action):
-        if not isinstance(action, Action):
-            if not isinstance(action, str) and (hasattr(action, "__getitem__") or hasattr(action, "__iter__")):
-                actions = [a.data for a in action]
-            else:
-                raise ActionFormatError("action must be iterable, indexable or Action object")
-        else:
-            actions = [action.data]
-        if self.test_mode:
-            return self._call('/action/%s?testOnly=true' % org_id, requests.post, actions)
-        else:
-            return self._call('/action/%s' % org_id, requests.post, actions)
+    def split(self, max_commands):
+        """
+        Split this action into an equivalent list of actions, each of which have at most max_commands commands.
+        :param max_commands: max number of commands allowed in any action
+        :return: the list of commands created from this one
+        """
+        prior = Action(**self.frame)
+        prior.commands = list(self.commands)
+        self.split_actions = [prior]
+        while len(prior.commands) > max_commands:
+            next = Action(**self.frame)
+            prior.commands, next.commands = prior.commands[0:max_commands], prior.commands[max_commands:]
+            self.split_actions.append(next)
+            prior = next
+        return self.split_actions
 
-    def _call(self, method, call, params=None):
-        data = ''
-        if params:
-            data = json.dumps(params)
-        res = call(self.endpoint+method, data=data, auth=self.auth)
-        if res.status_code == 200:
-            result = res.json()
-            if "result" in result:
-                if result["result"] == "error":
-                    raise UMAPIRequestError(result["errors"][0]["errorCode"])
-                else:
-                    return result
-            else:
-                raise UMAPIRequestError("Request Error -- Unknown Result Status")
-        if res.status_code in [429, 502, 503, 504]:
-            raise UMAPIRetryError(res)
-        else:
-            raise UMAPIError(res)
+    def wire_dict(self):
+        """
+        The dictionary that should be sent (in JSON form) to the server for this action.
+        :return: dictionary
+        """
+        return dict(self.frame, do=self.commands)
 
+    def append(self, **kwargs):
+        """
+        Add commands at the end of the sequence.
 
-class Action(object):
-    def __init__(self, user_key, **kwargs):
-        self.data = {"user": user_key, "do": []}    # empty actions upon creation
+        Be careful: because this runs in Python 2.x, the order of the kwargs dict may not match
+        the order in which the args were specified.  Thus, if you care about specific ordering,
+        you must make multiple calls to append in that order.  Luckily, append returns
+        the Action so you can compose easily: Action(...).append(...).append(...).
+        See also insert, below.
+        :param kwargs: the key/value pairs to add
+        :return: the action
+        """
         for k, v in six.iteritems(kwargs):
-            self.data[k] = v
-
-    # do adds to any existing actions, so can you Action(...).do(...).do(...)
-    def do(self, **kwargs):
-        # add "create" / "add" / "removeFrom" first
-        for k, v in list(six.iteritems(kwargs)):
-            if k.startswith("create") or k.startswith("addAdobe") or k.startswith("removeFrom"):
-                self.data["do"].append({k: v})
-                del kwargs[k]
-
-        # now do the other actions, in a canonical order (to avoid implementation variations)
-        for k, v in sorted(six.iteritems(kwargs)):
-            if k in ['add', 'remove']:
-                self.data["do"].append({k: {"product": v}})
-            else:
-                self.data["do"].append({k: v})
+            self.commands.append({k: v})
         return self
+
+    def insert(self, **kwargs):
+        """
+        Insert commands at the beginning of the sequence.
+
+        This is provided because certain commands
+        have to come first (such as user creation), but may be need to beadded
+        after other commands have already been specified.
+        Later calls to insert put their commands before those in the earlier calls.
+
+        Also, since the order of iterated kwargs is not guaranteed (in Python 2.x),
+        you should really only call insert with one keyword at a time.  See the doc of append
+        for more details.
+        :param kwargs: the key/value pair to append first
+        :return: the action, so you can append Action(...).insert(...).append(...)
+        """
+        for k, v in six.iteritems(kwargs):
+            self.commands.insert(0, {k: v})
+        return self
+
+    def report_command_error(self, error_dict):
+        """
+        Report a server error executing a command.
+
+        We keep track of the command's position in the command list,
+        and we add annotation of what the command was, to the error.
+        :param error_dict: The server's error dict for the error encountered
+        """
+        error = dict(error_dict)
+        error["command"] = self.commands[error_dict["step"]]
+        del error["index"]  # throttling can change which action this was in the batch
+        del error["step"]   # throttling can change which step this was in the action
+        self.errors.append(error)
+
+    def execution_errors(self):
+        """
+        Return a list of commands that encountered execution errors, with the error.
+
+        Each dictionary entry gives the command dictionary and the error dictionary
+        :return: list of commands that gave errors, with their error information
+        """
+        if self.split_actions:
+            # throttling split this action, get errors from the split
+            return [dict(e) for s in self.split_actions for e in s.errors]
+        else:
+            return [dict(e) for e in self.errors]
+
+
+class QueryMultiple:
+    """
+    A QueryMultiple runs a query against a connection.  The results can be iterated or fetched in bulk.
+    """
+    def __init__(self, connection, object_type, url_params=None, query_params=None):
+        # type: (Connection, str, list, dict) -> None
+        """
+        Provide the connection and query parameters when you create the query.
+
+        :param connection: The Connection to run the query against
+        :param object_type: The type of object being queried (e.g., "user" or "group")
+        :param url_params: Query qualifiers that go in the URL path (e.g., a group name when querying users)
+        :param query_params: Query qualifiers that go in the query string (e.g., a domain name)
+        """
+        self.conn = connection
+        self.object_type = object_type
+        self.url_params = url_params if url_params else []
+        self.query_params = query_params if query_params else {}
+        self._results = []
+        self._next_item_index = 0
+        self._next_page_index = 0
+        self._last_page_seen = False
+
+    def reload(self):
+        """
+        Rerun the query (lazily).
+        The results will contain any values on the server side that have changed since the last run.
+        :return: None
+        """
+        self._results = []
+        self._next_item_index = 0
+        self._next_page_index = 0
+        self._last_page_seen = False
+
+    def _next_page(self):
+        """
+        Fetch the next page of the query.
+        """
+        if self._last_page_seen:
+            raise StopIteration
+        new, self._last_page_seen = self.conn.query_multiple(self.object_type, self._next_page_index,
+                                                             self.url_params, self.query_params)
+        self._next_page_index += 1
+        if len(new) == 0:
+            self._last_page_seen = True  # don't bother with next page if nothing was returned
+        else:
+            self._results += new
+
+    def _next_item(self):
+        while self._next_item_index >= len(self._results):
+            self._next_page()
+        value = self._results[self._next_item_index]
+        self._next_item_index += 1
+        return value
+
+    class _QueryIterator:
+        def __init__(self, query):
+            self.query = query
+
+        def __iter__(self):
+            """In python3, the iterator object must have an __iter__ method which returns the iterator"""
+            return self
+
+        # noinspection PyProtectedMember
+        def next(self):
+            """In python2, this is the "get next" method required by the interactor protocol"""
+            return self.query._next_item()
+
+        def __next__(self):
+            """In python3, this is the "get next" method required by the interactor protocol"""
+            return self.next()
+
+    def __iter__(self):
+        """Asking for a new iterator causes the query to reload."""
+        self.reload()
+        return self._QueryIterator(self)
+
+    def all_results(self):
+        """
+        Eagerly fetch all the results.
+        This can be called after already doing some amount of iteration, and it will return
+        all the previously-iterated results as well as any results that weren't yet iterated.
+        :return: a list of all the results.
+        """
+        while not self._last_page_seen:
+            self._next_page()
+        self._next_item_index = len(self._results)
+        return list(self._results)
+
+
+class QuerySingle:
+    """
+    Look for a single object
+    """
+    def __init__(self, connection, object_type, url_params=None, query_params=None):
+        # type: (Connection, str, list, dict) -> None
+        """
+        Provide the connection and query parameters when you create the query.
+
+        :param connection: The Connection to run the query against
+        :param object_type: The type of object being queried (e.g., "user" or "group")
+        :param url_params: Query qualifiers that go in the URL path (e.g., a group name when querying users)
+        :param query_params: Query qualifiers that go in the query string (e.g., a domain name)
+        """
+        self.conn = connection
+        self.object_type = object_type
+        self.url_params = url_params if url_params else []
+        self.query_params = query_params if query_params else {}
+        self._result = None
+
+    def reload(self):
+        """
+        Rerun the query (lazily).
+        The result will contain a value on the server side that have changed since the last run.
+        :return: None
+        """
+        self._result = None
+
+    def _fetch_result(self):
+        """
+        Fetch the queried object.
+        """
+        self._result = self.conn.query_single(self.object_type, self.url_params, self.query_params)
+
+    def result(self):
+        """
+        Fetch the result, if we haven't already or if reload has been called.
+        :return: the result object of the query.
+        """
+        if self._result is None:
+            self._fetch_result()
+        return self._result

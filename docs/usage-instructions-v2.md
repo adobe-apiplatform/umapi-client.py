@@ -63,7 +63,7 @@ import yaml # PyYAML from PyPI provides this module
 with open(config_file_name, "r") as f:
     config = yaml.load(f)
 conn = umapi_client.Connection(org_id=config["org_id"],
-                               auth_dict=creds)
+                               auth_dict=config)
 ```
 
 The constructor of the Connection object will do all the

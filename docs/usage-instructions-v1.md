@@ -1,12 +1,13 @@
-# Usage Instructions
+# V1 Usage Instructions (updated for the v2 release)
 
-The information below was written for version 1 of the client
+The information below was originally written for version 1 of the client
 library.  Since all of the version 1 functionality is now
 available (in a faster, easier-to-use form) from the v2 client
 library, it is recommend that new users start with v2.  However,
 v1 users who have not yet upgraded their applications to the use
-the v2 client can still access this functionality in the
-umapi_client.legacy package, as detailed below.
+the v2 classes can still access v1 classes in the v2 release
+by using the `umapi_client.legacy` package.  The details
+are in the material below.
 
 These instructions presume you have already created your
 [Adobe.IO](https://www.adobe.io/) integration, as described

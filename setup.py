@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Adobe Systems Incorporated.  All rights reserved.
+# Copyright (c) 2016-2017 Adobe Systems Incorporated.  All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@ setup(name='umapi-client',
                         'which provides Adobe Enterprise customers the ability to manage their users.  This '
                         'client makes it easy to access the UMAPI from a local Python application.  '
                         'This client is open source, maintained by Adobe, and distributed under the terms '
-                        'of the OSI-approved MIT license.  Copyright (c) 2016 Adobe Systems Incorporated.'),
+                        'of the OSI-approved MIT license.  Copyright (c) 2016-2017 Adobe Systems Incorporated.'),
       classifiers=[
           'Development Status :: 5 - Production/Stable',
           'Programming Language :: Python :: 2.7',

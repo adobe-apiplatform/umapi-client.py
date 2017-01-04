@@ -87,6 +87,7 @@ def test_execute_single_error_queued_throttled():
         action = Action(top="top").append(a="a").append(b="b").append(c="c").append(d="d")
         assert conn.execute_single(action) == (0, 4, 3)
         assert action.execution_errors() == [{"command": {"d": "d"},
+                                              "target": {"top": "top"},
                                               "errorCode": "test.error",
                                               "message": "Test error message"}]
 
@@ -100,7 +101,7 @@ def test_execute_single_error_immediate_throttled():
         conn = Connection(throttle_commands=2, **mock_connection_params)
         action = Action(top="top0").append(a="a0").append(a="a1").append(a="a2")
         assert conn.execute_single(action, immediate=True) == (0, 2, 1)
-        assert action.execution_errors() == [{"command": {"a": "a2"}, "errorCode": "test"}]
+        assert action.execution_errors() == [{"command": {"a": "a2"}, "target": {"top": "top0"}, "errorCode": "test"}]
 
 
 def test_execute_single_dofirst_success_immediate():
@@ -121,6 +122,7 @@ def test_execute_single_error_immediate():
         action = Action(top="top").append(a="a")
         assert conn.execute_single(action, immediate=True) == (0, 1, 0)
         assert action.execution_errors() == [{"command": {"a": "a"},
+                                              "target": {"top": "top"},
                                               "errorCode": "test.error",
                                               "message": "Test error message"}]
 
@@ -138,9 +140,11 @@ def test_execute_single_multi_error_immediate():
         action = Action(top="top").append(a="a")
         assert conn.execute_single(action, immediate=True) == (0, 1, 0)
         assert action.execution_errors() == [{"command": {"a": "a"},
+                                              "target": {"top": "top"},
                                               "errorCode": "error1",
                                               "message": "message1"},
                                              {"command": {"a": "a"},
+                                              "target": {"top": "top"},
                                               "errorCode": "error2",
                                               "message": "message2"}]
 
@@ -155,6 +159,7 @@ def test_execute_single_dofirst_error_immediate():
         action = Action(top="top").insert(a="a")
         assert conn.execute_single(action, immediate=True) == (0, 1, 0)
         assert action.execution_errors() == [{"command": {"a": "a"},
+                                              "target": {"top": "top"},
                                               "errorCode": "test.error",
                                               "message": "Test error message"}]
 
@@ -201,6 +206,7 @@ def test_execute_multiple_error():
         assert conn.execute_multiple([action0, action1]) == (0, 2, 1)
         assert action0.execution_errors() == []
         assert action1.execution_errors() == [{"command": {"b": "b"},
+                                               "target": {"top": "top1"},
                                                "errorCode": "test.error",
                                                "message": "Test error message"}]
 
@@ -222,9 +228,11 @@ def test_execute_multiple_multi_error():
         assert conn.execute_multiple([action0, action1]) == (0, 2, 1)
         assert action0.execution_errors() == []
         assert action1.execution_errors() == [{"command": {"b": "b"},
+                                               "target": {"top": "top1"},
                                                "errorCode": "error1",
                                                "message": "message1"},
                                               {"command": {"b": "b"},
+                                               "target": {"top": "top1"},
                                                "errorCode": "error2",
                                                "message": "message2"}]
 
@@ -243,6 +251,7 @@ def test_execute_multiple_dofirst_error():
         assert conn.execute_multiple([action0, action1]) == (0, 2, 1)
         assert action0.execution_errors() == []
         assert action1.execution_errors() == [{"command": {"a": "a1"},
+                                               "target": {"top": "top1"},
                                                "errorCode": "test.error",
                                                "message": "Test error message"}]
 
@@ -277,7 +286,7 @@ def test_execute_multiple_single_queued_throttle_actions():
                                 "actions-queued": 0}
         assert action0.execution_errors() == []
         assert action1.execution_errors() == []
-        assert action2.execution_errors() == [{"command": {"a": "a2"}, "errorCode": "test"}]
+        assert action2.execution_errors() == [{"command": {"a": "a2"}, "target": {"top": "top2"}, "errorCode": "test"}]
         assert action3.execution_errors() == []
 
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Adobe Systems Incorporated.  All rights reserved.
+# Copyright (c) 2016-2017 Adobe Systems Incorporated.  All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -111,6 +111,7 @@ class Action:
         """
         error = dict(error_dict)
         error["command"] = self.commands[error_dict["step"]]
+        error["target"] = self.frame
         del error["index"]  # throttling can change which action this was in the batch
         del error["step"]   # throttling can change which step this was in the action
         self.errors.append(error)

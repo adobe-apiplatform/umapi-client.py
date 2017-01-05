@@ -1,0 +1,12 @@
+# running
+requests>=2.4.2
+cryptography
+PyJWT
+six
+enum34
+# testing
+pytest>=3.0.5
+mock
+PyYAML
+# setup.py testing
+pytest-runner

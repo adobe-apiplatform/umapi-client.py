@@ -8,3 +8,5 @@ enum34
 pytest
 mock
 PyYAML
+# setup.py testing
+pytest-runner

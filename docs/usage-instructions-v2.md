@@ -282,6 +282,7 @@ actions = (user1, user2, user3, user4)
 errors = [info for action in actions for info in action.execution_errors()]
 ```
 
-Each entry in errors would then be a dictionary giving
+Each entry in `errors` would then be a dictionary giving
 the command that failed, the target user it failed on,
 and server information about the reason for the failure.
+

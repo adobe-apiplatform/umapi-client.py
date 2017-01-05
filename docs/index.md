@@ -44,7 +44,7 @@ the following prepartory steps:
 
 1. Obtain admin access to an Adobe Enterprise Dashboard.
 2. Set up a private/public key pair
-3. Create an integration on [Adobe.IO](https://www.adobe.io/)
+3. Create an integration on [Adobe I/O](https://www.adobe.io/)
 
 Step 1 is outside of the scope of this document.
 Please contact an administrator of your organization's
@@ -64,7 +64,7 @@ you will need the following configuration values:
 7. Private Key File (unencrypted form)
 
 All but the last of these will be available on the
-[adobe.io page for your integration](https://www.adobe.io/console/integrations).
+[Adobe I/O page for your integration](https://www.adobe.io/console/integrations).
 The last one you should have on your local disk, and keep secret.
 
 Once these initial steps are taken, and configuration items are identified,

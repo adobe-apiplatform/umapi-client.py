@@ -5,7 +5,7 @@ PyJWT
 six
 enum34
 # testing
-pytest
+pytest>=3.0.5
 mock
 PyYAML
 # setup.py testing

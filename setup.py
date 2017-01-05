@@ -21,7 +21,7 @@
 from setuptools import setup, find_packages
 
 setup(name='umapi-client',
-      version='2.0b4',
+      version='2.0rc1',
       description='Client for the User Management API (UMAPI) from Adobe - see https://adobe.ly/2h1pHgV',
       long_description=('The User Management API (aka the UMAPI) is an Adobe-hosted network service '
                         'which provides Adobe Enterprise customers the ability to manage their users.  This '
@@ -31,6 +31,7 @@ setup(name='umapi-client',
       classifiers=[
           'Development Status :: 5 - Production/Stable',
           'Programming Language :: Python :: 2.7',
+          'Programming Language :: Python :: 3.4',
           'Programming Language :: Python :: 3.5',
           'License :: OSI Approved :: MIT License',
           'Intended Audience :: Developers',
@@ -52,7 +53,7 @@ setup(name='umapi-client',
           'pytest-runner',
       ],
       tests_require=[
-          'pytest',
+          'pytest>=3.0.5',
           'mock',
           'PyYAML',
       ],

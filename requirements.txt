@@ -1,0 +1,10 @@
+# running
+requests>=2.4.2
+cryptography
+PyJWT
+six
+enum34
+# testing
+pytest
+mock
+PyYAML

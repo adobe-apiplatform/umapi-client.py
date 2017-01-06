@@ -51,45 +51,60 @@ class UserAction(Action):
     A sequence of commands to perform on a single user.
     """
 
+    def _validate(self, email=None, username=None, domain=None):
+        local_regex = r"[a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+([.][a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+)*"
+        dns_regex = r"[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+"
+        email_regex = r"^" + local_regex + r"@" + dns_regex + r"$"
+        username_regex = r"^" + local_regex + r"$"
+        domain_regex = r"^" + dns_regex + r"$"
+        if email and not re.match(email_regex, email):
+            raise ValueError("Illegal email format (must not be quoted or contain comments)")
+        if domain and not re.match(domain_regex, domain):
+            raise ValueError("Illegal domain format")
+        if username and not re.match(username_regex, username):
+            raise ValueError("Illegal username format: must be the unquoted local part of an email")
+
     def __init__(self, id_type=IdentityTypes.adobeID, email=None, username=None, domain=None, **kwargs):
         """
         Create an Action for a user identified either by email or by username and domain.
         There is never a reason to specify both email and username.
+        :param id_type: IdentityTypes enum value (or the name of one), defaults to adobeID
         :param username: string, username in the Adobe domain (might be email)
         :param domain: string, required if the username is not an email address
         :param kwargs: other key/value pairs for the action, such as requestID
         """
+        if str(id_type) in IdentityTypes.__members__:
+            id_type = IdentityTypes[id_type]
         if id_type not in IdentityTypes:
             raise ValueError("Identity type ({}}) must be one of {}}".format(id_type, [i.name for i in IdentityTypes]))
+        self.id_type = id_type
+        self.email = None
+        self.domain = None
+        if username:
+            if email and username.lower() == email.lower():
+                # ignore the username if it's the same as the email (policy default)
+                username = None
+            elif id_type is not IdentityTypes.federatedID:
+                raise ValueError("Username must match email except for Federated ID")
+            else:
+                self._validate(username=username)
+                if domain:
+                    self._validate(domain=domain)
+                    self.domain = domain
         if email:
-            if not re.match(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+([.][a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+)*"
-                            r"@"
-                            r"[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+$", email):
-                raise ValueError("Illegal email format (must not be quoted or contain comments)")
-            if username and id_type is not IdentityTypes.federatedID:
-                raise ValueError("Only in Federated ID can username be specified")
-            self.id_type = id_type
-            self.email = str(email)
-            atpos = email.index('@')
-            self.username = str(username) if username else email[0:atpos]
-            self.domain = email[atpos + 1:]
-            if domain and (str(domain).lower() != str(self.domain).lower()):
-                raise ValueError("Specified domain ({}) does not match email domain ({})".format(domain, self.domain))
-            Action.__init__(self, user=email, **kwargs)
+            self._validate(email=email)
+            self.email = email
+            if not self.domain:
+                atpos = email.index('@')
+                self.domain = email[atpos + 1:]
+        elif not username:
+            raise ValueError("No user identity specified.")
+        elif not domain:
+            raise ValueError("Both username and domain must be specified")
+        if username:
+            Action.__init__(self, user=username, domain=self.domain, **kwargs)
         else:
-            if not username or not domain:
-                raise ValueError("Either email or both username and domain must be specified")
-            if id_type is not IdentityTypes.federatedID:
-                raise ValueError("Only in Federated ID can username be specified")
-            if not re.match(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+([.][a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+)*$", username):
-                raise ValueError("Illegal username format: must be the unquoted local part of an email")
-            if not re.match(r"^[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+$", domain):
-                raise ValueError("Illegal domain format")
-            self.id_type = id_type
-            self.email = None
-            self.username = str(username)
-            self.domain = str(domain)
-            Action.__init__(self, user=username, domain=domain, **kwargs)
+            Action.__init__(self, user=email, **kwargs)
 
     def create(self, first_name=None, last_name=None, country=None, email=None,
                on_conflict=IfAlreadyExistsOptions.errorIfAlreadyExists):
@@ -99,7 +114,7 @@ class UserAction(Action):
         :param last_name: (optional) user last name
         :param country: (optional except for Federated ID) user 2-letter ISO country code
         :param email: user email, if not already specified at create time
-        :param on_conflict: how to handle users who already exist on the back end
+        :param on_conflict: IfAlreadyExistsOption (or string name thereof) controlling creation of existing users
         :return: the User, so you can do User(...).create(...).add_group(...)
         """
         # all types handle email and on_conflict similarly
@@ -107,17 +122,12 @@ class UserAction(Action):
         if email is None:
             email = self.email
         elif self.email is None:
-            email = str(email)
-            if not re.match(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+([.][a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+)*"
-                            r"@"
-                            r"[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+$", email):
-                raise ValueError("Illegal email format (must not be quoted or contain comments)")
+            self._validate(email=email)
             self.email = email
-            atpos = email.index('@')
-            if self.domain.lower() != email[atpos + 1:].lower():
-                raise ValueError("User's email ({}) doesn't match domain ({})", email, self.domain)
-        elif self.email.lower() != str(email).lower():
+        elif self.email.lower() != email.lower():
             raise ValueError("Specified email ({}) doesn't match user's email({})", email, self.email)
+        if str(on_conflict) in IfAlreadyExistsOptions.__members__:
+            on_conflict = IfAlreadyExistsOptions[on_conflict]
         if on_conflict not in IfAlreadyExistsOptions:
             raise ValueError("on_conflict must be one of {}".format([o.name for o in IfAlreadyExistsOptions]))
         if on_conflict != IfAlreadyExistsOptions.errorIfAlreadyExists:
@@ -157,8 +167,9 @@ class UserAction(Action):
         """
         if self.id_type is IdentityTypes.adobeID:
             raise ValueError("You cannot update any attributes of an Adobe ID.")
-        if username and self.id_type is not IdentityTypes.federatedID:
-            raise ValueError("You can only update the username attribute of a Federated ID")
+        if email: self._validate(email=email)
+        if username and self.id_type is IdentityTypes.enterpriseID:
+            self._validate(email=username)
         updates = {}
         for k, v in six.iteritems(dict(email=email, username=username,
                                        firstName=first_name, lastName=last_name,

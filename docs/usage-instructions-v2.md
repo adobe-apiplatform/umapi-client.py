@@ -160,24 +160,27 @@ as in these examples:
 
 ```python
 from umapi_client import IdentityTypes
+user0 = UserAction(id_type=IdentityTypes.federatedID, email="someone@somecompany.com")
 user1 = UserAction(id_type=IdentityTypes.adobeID, email="user@isp.net")
 user2 = UserAction(id_type=IdentityTypes.enterpriseID, email="user@company.com")
 ```
 
-But when Federated ID is being used, and a non-email username is being
+When Federated ID is being used, and a non-email username is being
 used to identify users across the SAML connection, both the username
-and the domain must be specified separately, as in these examples:
+and the domain must be specified, as in these examples:
 
 ```python
-user3 = UserAction(id_type=IdentityTypes.federatedID,
+user3 = UserAction(id_type="federatedID",
                    username="user347", domain="division.conglomerate.com")
-user4 = UserAction(id_type=IdentityTypes.federatedID,
+user4 = UserAction(id_type="federatedID",
                    username="user348", domain="division.conglomerate.com",
                    email="john.r.user@conglomerate.com")
 ```
 
+As these examples show, you can supply the `id_type` as a string, if desired.
+
 Note that, as in the last example, it's OK to specify the email when
-creating a user object even if the email is not the unique ID or
+creating a Federated ID user object even if the email is not the unique ID or
 doesn't use the same domain.  If
 you later perform an operations on a user which requires the email
 (such as user creation on the Adobe side), the email will be remembered

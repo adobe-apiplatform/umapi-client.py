@@ -26,7 +26,7 @@ import pytest
 import requests
 
 from conftest import mock_connection_params, MockResponse
-from umapi_client import Connection, UnavailableError, ServerError, RequestError, ClientError
+from umapi_client import Connection, UnavailableError, ServerError, RequestError
 
 
 def test_remote_status_success():

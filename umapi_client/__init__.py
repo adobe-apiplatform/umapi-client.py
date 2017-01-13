@@ -23,4 +23,4 @@ from .api import Action, QuerySingle, QueryMultiple
 from .error import ClientError, RequestError, ServerError, UnavailableError
 from .functional import IdentityTypes, GroupTypes, RoleTypes, IfAlreadyExistsOptions
 from .functional import UserAction, UserQuery, UsersQuery
-from .functional import GroupsQuery
+from .functional import UserGroupAction, GroupsQuery

@@ -20,7 +20,7 @@
 
 import pytest
 
-from umapi_client import IdentityTypes
+from umapi_client import IdentityTypes, GroupTypes, RoleTypes
 from umapi_client import UserAction
 
 
@@ -31,7 +31,9 @@ def test_user_emptyid():
 
 def test_user_adobeid():
     user = UserAction(email="dbrotsky@adobe.com")
-    assert user.wire_dict() == {"do": [], "user": "dbrotsky@adobe.com"}
+    assert user.wire_dict() == {"do": [],
+                                "user": "dbrotsky@adobe.com",
+                                "useAdobeID": True}
 
 
 def test_user_enterpriseid():
@@ -58,7 +60,8 @@ def test_create_user_adobeid():
     user = UserAction(email="dbrotsky@adobe.com")
     user.create()
     assert user.wire_dict() == {"do": [{"addAdobeID": {"email": "dbrotsky@adobe.com"}}],
-                                "user": "dbrotsky@adobe.com"}
+                                "user": "dbrotsky@adobe.com",
+                                "useAdobeID": True}
 
 
 def test_create_user_adobeid_country():
@@ -138,31 +141,44 @@ def test_add_product_federatedid():
                                 "user": "dbrotsky@k.on-the-side.net"}
 
 
+def test_add_usergroup_federatedid():
+    user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
+    user.add_group(groups=["Photoshop", "Illustrator"], group_type=GroupTypes.usergroup)
+    assert user.wire_dict() == {"do": [{"add": {"usergroup": ["Photoshop", "Illustrator"]}}],
+                                "user": "dbrotsky@k.on-the-side.net"}
+
+
 def test_remove_product_federatedid():
     user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
-    user.remove_group(groups=["Photoshop", "Illustrator"])
+    user.remove_group(groups=["Photoshop", "Illustrator"], group_type="product")
     assert user.wire_dict() == {"do": [{"remove": {"product": ["Photoshop", "Illustrator"]}}],
                                 "user": "dbrotsky@k.on-the-side.net"}
 
 
-def test_remove_product_federatedid_all():
+def test_remove_groups_federatedid_all():
     user = UserAction(id_type='federatedID', email="dbrotsky@k.on-the-side.net")
     user.remove_group(all_groups=True)
     assert user.wire_dict() == {"do": [{"remove": "all"}],
                                 "user": "dbrotsky@k.on-the-side.net"}
 
 
+def test_remove_groups_federatedid_all_error():
+    user = UserAction(id_type='federatedID', email="dbrotsky@k.on-the-side.net")
+    with pytest.raises(ValueError):
+        user.remove_group(all_groups=True, group_type="usergroup")
+
+
 def test_add_role_enterpriseid():
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="dbrotsky@o.on-the-side.net")
-    user.add_role(groups=["Photoshop", "Illustrator"])
+    user.add_role(groups=["Photoshop", "Illustrator"], role_type=RoleTypes.admin)
     assert user.wire_dict() == {"do": [{"addRoles": {"admin": ["Photoshop", "Illustrator"]}}],
                                 "user": "dbrotsky@o.on-the-side.net"}
 
 
 def test_remove_role_enterpriseid():
     user = UserAction(id_type='enterpriseID', email="dbrotsky@o.on-the-side.net")
-    user.remove_role(groups=["Photoshop", "Illustrator"])
-    assert user.wire_dict() == {"do": [{"removeRoles": {"admin": ["Photoshop", "Illustrator"]}}],
+    user.remove_role(groups=["Photoshop", "Illustrator"], role_type="productAdmin")
+    assert user.wire_dict() == {"do": [{"removeRoles": {"productAdmin": ["Photoshop", "Illustrator"]}}],
                                 "user": "dbrotsky@o.on-the-side.net"}
 
 
@@ -177,13 +193,14 @@ def test_remove_from_organization_adobeid():
     user = UserAction(id_type='adobeID', email="dbrotsky@adobe.com")
     user.remove_from_organization()
     assert user.wire_dict() == {"do": [{"removeFromOrg": {}}],
-                                "user": "dbrotsky@adobe.com"}
+                                "user": "dbrotsky@adobe.com",
+                                "useAdobeID": True}
 
 
 def test_remove_from_organization_delete_federatedid():
     user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
     user.remove_from_organization(delete_account=True)
-    assert user.wire_dict() == {"do": [{"removeFromOrg": {"removedDomain": "k.on-the-side.net"}}],
+    assert user.wire_dict() == {"do": [{"removeFromOrg": {}}, {"removeFromDomain": {}}],
                                 "user": "dbrotsky@k.on-the-side.net"}
 
 
@@ -196,7 +213,7 @@ def test_remove_from_organization_delete_adobeid():
 def test_delete_account_enterpriseid():
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="dbrotsky@o.on-the-side.net")
     user.delete_account()
-    assert user.wire_dict() == {"do": [{"removeFromDomain": {"domain": "o.on-the-side.net"}}],
+    assert user.wire_dict() == {"do": [{"removeFromDomain": {}}],
                                 "user": "dbrotsky@o.on-the-side.net"}
 
 

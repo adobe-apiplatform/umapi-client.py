@@ -41,9 +41,9 @@ class Connection:
                  org_id,
                  auth_dict=None,
                  auth=None,
-                 ims_host='ims-na1.adobelogin.com',
-                 ims_endpoint_jwt='/ims/exchange/jwt/',
-                 user_management_endpoint='https://usermanagement.adobe.io/v2/usermanagement',
+                 ims_host="ims-na1.adobelogin.com",
+                 ims_endpoint_jwt="/ims/exchange/jwt/",
+                 user_management_endpoint="https://usermanagement.adobe.io/v2/usermanagement",
                  test_mode=False,
                  logger=logging.getLogger("umapi_client"),
                  retry_max_attempts=4,
@@ -79,6 +79,9 @@ class Connection:
         :param retry_max_attempts: How many times to retry on temporary errors
         :param retry_first_delay: The time to delay first retry (grows exponentially from there)
         :param retry_random_delay: The max random delay to add on each exponential backoff retry
+        :param timeout_seconds: How many seconds to wait for server response (default=60, <= 0 or None means forever)
+        :param throttle_actions: Max number of actions to pack into a single call
+        :param throttle_commands: Max number of commands allowed in a single action
 
         Additional keywords are allowed to make it easy to pass a big dictionary with other values
         :param kwargs: any keywords passed that we ignore.
@@ -90,7 +93,7 @@ class Connection:
         self.retry_max_attempts = retry_max_attempts
         self.retry_first_delay = retry_first_delay
         self.retry_random_delay = retry_random_delay
-        self.timeout = float(timeout_seconds) if float(timeout_seconds) > 0.0 else 60.0
+        self.timeout = float(timeout_seconds) if timeout_seconds and float(timeout_seconds) > 0.0 else None
         self.throttle_actions = max(int(throttle_actions), 1)
         self.throttle_commands = max(int(throttle_commands), 1)
         self.action_queue = []

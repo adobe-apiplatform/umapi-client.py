@@ -226,7 +226,7 @@ users from user groups and product configuration groups.  Because each
 operation specifier returns the user, it's easy to chain the together:
 
 ```python
-user2.add_group(groups=["Photoshop", "Illustrator"]).remove_group(groups=["CC All Apps"])
+user2.add_to_groups(groups=["Photoshop", "Illustrator"]).remove_from_groups(groups=["CC All Apps"])
 ```
 
 The details of all the possible commands are specified in the code,

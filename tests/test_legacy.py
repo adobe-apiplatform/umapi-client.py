@@ -36,21 +36,21 @@ error_response = MockResponse(200, {"result": "error", "errors": [{"errorCode": 
 retry_response = MockResponse(429, headers={"Retry-After": "1"})
 not_found_response = MockResponse(404, text="404 Object Not Found")
                 
-@mock.patch('umapi_client.legacy.requests.get', return_value=success_response)
+@mock.patch('umapi_client.legacy.requests.Session.get', return_value=success_response)
 def test_list_users_success(_):
     """Test Users List - SUCCESS"""
     api = v1.UMAPI('http://example.com/success', "N/A", retry_max_attempts=1)
     assert api.users(None) == {"result": "success"}
 
 
-@mock.patch('umapi_client.legacy.requests.get', return_value=error_response)
+@mock.patch('umapi_client.legacy.requests.Session.get', return_value=error_response)
 def test_list_users_error(_):
     """Test Users List - ERROR"""
     api = v1.UMAPI('http://example.com/error', "N/A", retry_max_attempts=1)
     pytest.raises(v1.UMAPIRequestError, api.users, None)
 
 
-@mock.patch('umapi_client.legacy.requests.get', return_value=not_found_response)
+@mock.patch('umapi_client.legacy.requests.Session.get', return_value=not_found_response)
 def test_list_users_failure(patch):
     """Test Users List - FAILURE"""
     api = v1.UMAPI('http://example.com/failure', "N/A", retry_max_attempts=1)
@@ -60,14 +60,14 @@ def test_list_users_failure(patch):
     pytest.raises(v1.UMAPIRetryError, api.users, None)
 
 
-@mock.patch('umapi_client.legacy.requests.get', return_value=success_response)
+@mock.patch('umapi_client.legacy.requests.Session.get', return_value=success_response)
 def test_list_groups_success(_):
     """Test Groups List - SUCCESS"""
     api = v1.UMAPI('http://example.com/success', "N/A", retry_max_attempts=1)
     assert api.groups(None) == {"result": "success"}
 
 
-@mock.patch('umapi_client.legacy.requests.post', return_value=success_response)
+@mock.patch('umapi_client.legacy.requests.Session.post', return_value=success_response)
 def test_user_create_success(_):
     """Test User Creation - SUCCESS"""
     api = v1.UMAPI('http://example.com/success', "N/A", retry_max_attempts=1)
@@ -79,7 +79,7 @@ def test_user_create_success(_):
     assert api.action(None, action) == {"result": "success"}
 
 
-@mock.patch('umapi_client.legacy.requests.post', return_value=error_response)
+@mock.patch('umapi_client.legacy.requests.Session.post', return_value=error_response)
 def test_user_create_error(_):
     """Test User Creation - ERROR"""
     api = v1.UMAPI('http://example.com/error', "N/A", retry_max_attempts=1)
@@ -90,7 +90,7 @@ def test_user_create_error(_):
     pytest.raises(v1.UMAPIRequestError, api.action, None, action)
 
 
-@mock.patch('umapi_client.legacy.requests.post', return_value=not_found_response)
+@mock.patch('umapi_client.legacy.requests.Session.post', return_value=not_found_response)
 def test_user_create_failure(patch):
     """Test User Creation - FAILURE"""
     action = v1.Action(user_key="user@example.com").do(
@@ -103,7 +103,7 @@ def test_user_create_failure(patch):
     pytest.raises(v1.UMAPIRetryError, api.action, None, action)
 
 
-@mock.patch('umapi_client.legacy.requests.post', return_value=success_response)
+@mock.patch('umapi_client.legacy.requests.Session.post', return_value=success_response)
 def test_product_add(_):
     """Test Product Add - SUCCESS"""
     api = v1.UMAPI('http://example.com/success', "N/A", retry_max_attempts=1)
@@ -115,7 +115,7 @@ def test_product_add(_):
     assert api.action(None, action) == {"result": "success"}
 
 
-@mock.patch('umapi_client.legacy.requests.post', return_value=success_response)
+@mock.patch('umapi_client.legacy.requests.Session.post', return_value=success_response)
 def test_action_format_error(_):
     """Test v1.Action Format Error"""
     api = v1.UMAPI('http://example.com/success', "N/A", retry_max_attempts=1)

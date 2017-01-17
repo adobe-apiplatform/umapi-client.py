@@ -110,6 +110,7 @@ class Connection:
             self.auth = self._get_auth(ims_host=ims_host, ims_endpoint_jwt=ims_endpoint_jwt, **auth_dict)
         else:
             raise ValueError("Connector create: either auth (an Auth object) or auth_dict (a dictionary) is required")
+        self.session = requests.Session()
 
     def _get_auth(self, ims_host, ims_endpoint_jwt,
                   tech_acct_id=None, api_key=None, client_secret=None, private_key_file=None,
@@ -142,7 +143,7 @@ class Connection:
         if remote:
             components = urlparse.urlparse(self.endpoint)
             try:
-                result = requests.get(components[0] + "://" + components[1] + "/status", timeout=self.timeout)
+                result = self.session.get(components[0] + "://" + components[1] + "/status", timeout=self.timeout)
             except Exception as e:
                 if self.logger: self.logger.debug("Failed to connect to server for status: %s", e)
                 result = None
@@ -327,7 +328,7 @@ class Connection:
         """
         wire_form = [a.wire_dict() for a in actions]
         if self.test_mode:
-            result = self.make_call("/action/%s?testOnly=true" % self.org_id, wire_form).json()
+            result = self.make_call("/action/%s?testOnly=true" % self.org_id, wire_form)
         else:
             result = self.make_call("/action/%s" % self.org_id, wire_form)
         body = result.json()
@@ -355,10 +356,10 @@ class Connection:
             request_body = json.dumps(body)
 
             def call():
-                return requests.post(self.endpoint + path, auth=self.auth, data=request_body, timeout=self.timeout)
+                return self.session.post(self.endpoint + path, auth=self.auth, data=request_body, timeout=self.timeout)
         else:
             def call():
-                return requests.get(self.endpoint + path, auth=self.auth, timeout=self.timeout)
+                return self.session.get(self.endpoint + path, auth=self.auth, timeout=self.timeout)
 
         total_time = wait_time = 0
         result = None

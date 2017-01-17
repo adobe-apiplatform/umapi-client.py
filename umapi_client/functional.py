@@ -71,11 +71,22 @@ class UserAction(Action):
     def __init__(self, id_type=IdentityTypes.adobeID, email=None, username=None, domain=None, **kwargs):
         """
         Create an Action for a user identified either by email or by username and domain.
-        You can specify email and username in which case the email provides the domain and is remembered
-        for use in later commands associated with this user.
+        You should pretty much always use just email, unless the user has a Federated ID and his
+        username is different from his email.  In that case you can give either username and email
+        (and we'll get the domain from his email) or the username and domain (in case you don't
+        know or don't care about the user's email).
+        Note that the identity type determines what you can do with this user.  For example,
+        create will create a user of the specified identity type.  Similarly, each identity type restricts
+        what fields can be updated.  If you are specifying an existing user by email, and you are not
+        sure what identity type the existing user is, and you are doing something (such as add_to_groups)
+        that can be done with any identity type, then you can specify any type, and the type you specify
+        will be used to break ties if there is both an AdobeID and an EnterpriseID or FederatedID user
+        with that same email.  Normally, we choose Enterprise ID or Federated ID *over* Adobe ID, but
+        if you specify the type as Adobe ID then we will act on the Adobe ID user instead.
         :param id_type: IdentityTypes enum value (or the name of one), defaults to adobeID
-        :param username: string, username in the Adobe domain (might be email)
-        :param domain: string, required if the username is not an email address
+        :param email: The user's email.  Typically this is also the user's username.
+        :param username: The username on the Adobe side.  If it's the same as email, it's ignored.
+        :param domain: string, needed only if you specified a username but NOT an email.
         :param kwargs: other key/value pairs for the action, such as requestID
         """
         if str(id_type) in IdentityTypes.__members__:
@@ -150,8 +161,8 @@ class UserAction(Action):
             return self.insert(addAdobeID=dict(email=str(email), **create_params))
         else:
             # Federated and Enterprise allow specifying the name
-            if first_name: create_params["firstName"] = str(first_name)
-            if last_name: create_params["lastName"] = str(last_name)
+            if first_name: create_params["firstname"] = str(first_name)
+            if last_name: create_params["lastname"] = str(last_name)
             if self.id_type == IdentityTypes.enterpriseID:
                 # Enterprise ID can default country, already has email on create
                 create_params["country"] = str(country) if country else "UD"
@@ -181,7 +192,7 @@ class UserAction(Action):
             self._validate(email=username)
         updates = {}
         for k, v in six.iteritems(dict(email=email, username=username,
-                                       firstName=first_name, lastName=last_name,
+                                       firstname=first_name, lastname=last_name,
                                        country=country)):
             if v: updates[k] = str(v)
         return self.append(update=updates)

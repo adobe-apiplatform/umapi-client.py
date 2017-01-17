@@ -74,7 +74,7 @@ def test_create_user_enterpriseid():
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="dbrotsky@o.on-the-side.net")
     user.create(first_name="Daniel", last_name="Brotsky")
     assert user.wire_dict() == {"do": [{"createEnterpriseID": {"email": "dbrotsky@o.on-the-side.net",
-                                                               "firstName": "Daniel", "lastName": "Brotsky",
+                                                               "firstname": "Daniel", "lastname": "Brotsky",
                                                                "country": "UD"}}],
                                 "user": "dbrotsky@o.on-the-side.net"}
 
@@ -83,7 +83,7 @@ def test_create_user_federatedid():
     user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
     user.create(first_name="Daniel", last_name="Brotsky", country="US")
     assert user.wire_dict() == {"do": [{"createFederatedID": {"email": "dbrotsky@k.on-the-side.net",
-                                                              "firstName": "Daniel", "lastName": "Brotsky",
+                                                              "firstname": "Daniel", "lastname": "Brotsky",
                                                               "country": "US"}}],
                                 "user": "dbrotsky@k.on-the-side.net"}
 
@@ -92,7 +92,7 @@ def test_create_user_federatedid_username():
     user = UserAction(id_type=IdentityTypes.federatedID, username="dbrotsky", domain="k.on-the-side.net")
     user.create(first_name="Daniel", last_name="Brotsky", country="US", email="dbrotsky@k.on-the-side.net")
     assert user.wire_dict() == {"do": [{"createFederatedID": {"email": "dbrotsky@k.on-the-side.net",
-                                                              "firstName": "Daniel", "lastName": "Brotsky",
+                                                              "firstname": "Daniel", "lastname": "Brotsky",
                                                               "country": "US"}}],
                                 "user": "dbrotsky", "domain": "k.on-the-side.net"}
 
@@ -102,7 +102,7 @@ def test_create_user_federatedid_username_email():
                       email="dbrotsky@k.on-the-side.net")
     user.create(first_name="Daniel", last_name="Brotsky", country="US")
     assert user.wire_dict() == {"do": [{"createFederatedID": {"email": "dbrotsky@k.on-the-side.net",
-                                                              "firstName": "Daniel", "lastName": "Brotsky",
+                                                              "firstname": "Daniel", "lastname": "Brotsky",
                                                               "country": "US"}}],
                                 "user": "dbrotsky", "domain": "k.on-the-side.net"}
 
@@ -117,7 +117,7 @@ def test_create_user_federatedid_username_mismatch():
 def test_update_user_federatedid():
     user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
     user.update(first_name="Johnny", last_name="Danger")
-    assert user.wire_dict() == {"do": [{"update": {"firstName": "Johnny", "lastName": "Danger"}}],
+    assert user.wire_dict() == {"do": [{"update": {"firstname": "Johnny", "lastname": "Danger"}}],
                                 "user": "dbrotsky@k.on-the-side.net"}
 
 

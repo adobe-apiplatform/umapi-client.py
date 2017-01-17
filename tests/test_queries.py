@@ -27,28 +27,28 @@ from umapi_client import Connection, QueryMultiple, QuerySingle, ClientError
 
 
 def test_query_single_success():
-    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200, {"result": "success", "object": {"name": "n1", "type": "object"}})
         conn = Connection(**mock_connection_params)
         assert conn.query_single("object", ["n1"]) == {"name": "n1", "type": "object"}
 
 
 def test_query_single_not_found():
-    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(404, text="404 Object not found")
         conn = Connection(**mock_connection_params)
         assert conn.query_single("object", ["n1"]) == {}
 
 
 def test_query_single_error():
-    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200, {"result": "error"})
         conn = Connection(**mock_connection_params)
         pytest.raises(ClientError, conn.query_single, "object", ["n1"])
 
 
 def test_query_multiple_success():
-    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200, {"result": "success",
                                                    "lastPage": False,
                                                    "objects": [{"name": "n1", "type": "object"},
@@ -60,7 +60,7 @@ def test_query_multiple_success():
 
 
 def test_query_multiple_empty():
-    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200, {"result": "success",
                                                    "lastPage": True,
                                                    "objects": []})
@@ -69,14 +69,14 @@ def test_query_multiple_empty():
 
 
 def test_query_multiple_not_found():
-    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(404, text="404 Object not found")
         conn = Connection(**mock_connection_params)
         assert conn.query_multiple("object") == ([], True)
 
 
 def test_query_multiple_paged():
-    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200, {"result": "success",
                                                    "lastPage": False,
                                                    "objects": [{"name": "n1", "type": "object"},
@@ -95,7 +95,7 @@ def test_query_multiple_paged():
 
 
 def test_qs_success():
-    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200, {"result": "success",
                                                    "object": {"user": "foo@bar.com", "type": "adobeID"}})
         conn = Connection(**mock_connection_params)
@@ -104,7 +104,7 @@ def test_qs_success():
 
 
 def test_qs_not_found():
-    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(404, text="404 Object not found")
         conn = Connection(**mock_connection_params)
         qs = QuerySingle(conn, "object", ["foo@bar.com"])
@@ -112,7 +112,7 @@ def test_qs_not_found():
 
 
 def test_qs_reload():
-    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200, {"result": "success",
                                                    "object": {"user": "foo1@bar.com", "type": "adobeID"}}),
                                 MockResponse(200, {"result": "success",
@@ -127,7 +127,7 @@ def test_qs_reload():
 
 
 def test_qm_iterate_complete():
-    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200, {"result": "success",
                                                    "lastPage": False,
                                                    "objects": [{"name": "n1", "type": "object"},
@@ -148,7 +148,7 @@ def test_qm_iterate_complete():
 
 
 def test_qm_iterate_partial():
-    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200, {"result": "success",
                                                    "lastPage": False,
                                                    "objects": [{"name": "n1", "type": "object"},
@@ -170,7 +170,7 @@ def test_qm_iterate_partial():
 
 
 def test_qm_reload():
-    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200, {"result": "success",
                                                    "lastPage": False,
                                                    "objects": [{"name": "n1", "type": "object"},

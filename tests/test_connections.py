@@ -60,10 +60,24 @@ def test_get_success():
         assert conn.make_call("").json() == ["test", "body"]
 
 
+def test_get_success_test_mode():
+    with mock.patch("umapi_client.connection.requests.get") as mock_get:
+        mock_get.return_value = MockResponse(200, body=["test", "body"])
+        conn = Connection(test_mode=True, **mock_connection_params)
+        assert conn.make_call("").json() == ["test", "body"]
+
+
 def test_post_success():
     with mock.patch("umapi_client.connection.requests.post") as mock_post:
         mock_post.return_value = MockResponse(200, body=["test", "body"])
         conn = Connection(**mock_connection_params)
+        assert conn.make_call("", [3, 5]).json() == ["test", "body"]
+
+
+def test_post_success_test_mode():
+    with mock.patch("umapi_client.connection.requests.post") as mock_post:
+        mock_post.return_value = MockResponse(200, body=["test", "body"])
+        conn = Connection(test_mode=True, **mock_connection_params)
         assert conn.make_call("", [3, 5]).json() == ["test", "body"]
 
 

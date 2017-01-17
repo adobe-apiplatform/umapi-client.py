@@ -73,7 +73,6 @@ def test_list_groups(config):
             assert name in params["big_groups"]
     logging.info("Found %d groups.", len(groups.all_results()))
 
-
 def test_get_user(config):
     conn, params = config
     user_query = umapi_client.UserQuery(conn, params["test_user"]["email"])
@@ -81,3 +80,12 @@ def test_get_user(config):
     logging.info("User: %s", user)
     for k, v in six.iteritems(params["test_user"]):
         assert user[k].lower() == v.lower()
+
+def test_rename_user(config):
+    conn, params = config
+    user = umapi_client.UserAction(id_type=params["test_user"]["type"],
+                                   email=params["test_user"]["email"],
+                                   username=params["test_user"]["username"])
+    user.update(first_name="Rodney", last_name="Danger")
+    user.update(first_name=params["test_user"]["firstname"], last_name=params["test_user"]["lastname"])
+    assert (0, 1, 1) == conn.execute_single(user, immediate=True)

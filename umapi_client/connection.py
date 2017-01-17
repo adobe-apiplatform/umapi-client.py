@@ -327,7 +327,7 @@ class Connection:
         """
         wire_form = [a.wire_dict() for a in actions]
         if self.test_mode:
-            result = self.make_call("/action/%s?testOnly=true" % self.org_id, wire_form).json()
+            result = self.make_call("/action/%s?testOnly=true" % self.org_id, wire_form)
         else:
             result = self.make_call("/action/%s" % self.org_id, wire_form)
         body = result.json()

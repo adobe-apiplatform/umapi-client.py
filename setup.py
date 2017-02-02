@@ -20,8 +20,12 @@
 
 from setuptools import setup, find_packages
 
+version_namespace = {}
+with open('umapi_client/version.py') as f:
+    exec(f.read(), version_namespace)
+
 setup(name='umapi-client',
-      version='2.0.1',
+      version=version_namespace['__version__'],
       description='Client for the User Management API (UMAPI) from Adobe - see https://adobe.ly/2h1pHgV',
       long_description=('The User Management API (aka the UMAPI) is an Adobe-hosted network service '
                         'which provides Adobe Enterprise customers the ability to manage their users.  This '

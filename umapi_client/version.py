@@ -18,10 +18,4 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .connection import Connection
-from .api import Action, QuerySingle, QueryMultiple
-from .error import ClientError, RequestError, ServerError, UnavailableError
-from .functional import IdentityTypes, GroupTypes, RoleTypes, IfAlreadyExistsOptions
-from .functional import UserAction, UserQuery, UsersQuery
-from .functional import UserGroupAction, GroupsQuery
-from .version import __version__
+__version__ = "2.0.2"

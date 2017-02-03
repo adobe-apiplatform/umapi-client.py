@@ -21,6 +21,7 @@
 import json
 import logging
 from email.utils import parsedate_tz, mktime_tz
+from platform import python_version, version as platform_version
 from random import randint
 from time import time, sleep, gmtime, strftime
 
@@ -29,6 +30,7 @@ import six.moves.urllib.parse as urlparse
 
 from .auth import JWT, Auth, AccessRequest
 from .error import UnavailableError, ClientError, RequestError, ServerError
+from .version import __version__ as umapi_version
 
 
 class Connection:
@@ -52,6 +54,7 @@ class Connection:
                  timeout_seconds=60.0,
                  throttle_actions=10,
                  throttle_commands=10,
+                 user_agent=None,
                  **kwargs):
         """
         Open a connection for the given parameters that has the given options.
@@ -82,6 +85,7 @@ class Connection:
         :param timeout_seconds: How many seconds to wait for server response (default=60, <= 0 or None means forever)
         :param throttle_actions: Max number of actions to pack into a single call
         :param throttle_commands: Max number of commands allowed in a single action
+        :param user_agent: (optional) string to use as User-Agent header (umapi-client/version data will be added)
 
         Additional keywords are allowed to make it easy to pass a big dictionary with other values
         :param kwargs: any keywords passed that we ignore.
@@ -111,6 +115,10 @@ class Connection:
         else:
             raise ValueError("Connector create: either auth (an Auth object) or auth_dict (a dictionary) is required")
         self.session = requests.Session()
+        ua_string = "umapi-client/" + umapi_version + " Python/" + python_version() + " (" + platform_version() + ")"
+        if user_agent and user_agent.strip():
+            ua_string = user_agent.strip() + " " + ua_string
+        self.session.headers["User-Agent"] = ua_string
 
     def _get_auth(self, ims_host, ims_endpoint_jwt,
                   tech_acct_id=None, api_key=None, client_secret=None, private_key_file=None,

@@ -27,6 +27,7 @@ import requests
 
 from conftest import mock_connection_params, MockResponse
 from umapi_client import Connection, UnavailableError, ServerError, RequestError
+from umapi_client import __version__ as umapi_version
 
 
 def test_remote_status_success():
@@ -52,6 +53,25 @@ def test_remote_status_timeout():
         _, remote_status = conn.status(remote=True)
         assert remote_status["status"].startswith("Unreachable")
 
+def test_ua_string():
+    conn = Connection(**mock_connection_params)
+    req = conn.session.prepare_request(requests.Request('GET', "http://test.com/"))
+    ua_header = req.headers.get("User-Agent")
+    assert ua_header.startswith("umapi-client/" + umapi_version)
+    assert " Python" in ua_header
+    req = conn.session.prepare_request(requests.Request('POST', "http://test.com/", data="This is a test"))
+    ua_header = req.headers.get("User-Agent")
+    assert ua_header.startswith("umapi-client/" + umapi_version)
+    assert " Python" in ua_header
+
+def test_ua_string_additional():
+    conn = Connection(user_agent="additional/1.0", **mock_connection_params)
+    req = conn.session.prepare_request(requests.Request('GET', "http://test.com/"))
+    ua_header = req.headers.get("User-Agent")
+    assert ua_header.startswith("additional/1.0 umapi-client/" + umapi_version)
+    req = conn.session.prepare_request(requests.Request('POST', "http://test.com/", data="This is a test"))
+    ua_header = req.headers.get("User-Agent")
+    assert ua_header.startswith("additional/1.0 umapi-client/" + umapi_version)
 
 def test_get_success():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:

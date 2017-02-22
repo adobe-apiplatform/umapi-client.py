@@ -104,15 +104,17 @@ def test_post_success_test_mode():
 def test_get_timeout():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = requests.Timeout
-        conn = Connection(**mock_connection_params)
+        conn = Connection(**dict(mock_connection_params, retry_max_attempts=7))
         pytest.raises(UnavailableError, conn.make_call, "")
+        assert mock_get.call_count == 7
 
 
 def test_post_timeout():
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.side_effect = requests.Timeout
-        conn = Connection(**mock_connection_params)
+        conn = Connection(**dict(mock_connection_params, retry_max_attempts=2))
         pytest.raises(UnavailableError, conn.make_call, "", [3, 5])
+        assert mock_post.call_count == 2
 
 
 def test_get_retry_header_1():
@@ -187,8 +189,7 @@ Next retry in 3 seconds...
 UMAPI timeout...service unavailable (code 429 on try 2)
 Next retry in 3 seconds...
 UMAPI timeout...service unavailable (code 429 on try 3)
-Next retry in 3 seconds...
-UMAPI timeout...giving up after 3 attempts.
+UMAPI timeout...giving up after 3 attempts (6 seconds).
 """
 
 
@@ -208,8 +209,7 @@ Next retry in 3 seconds...
 UMAPI timeout...service unavailable (code 429 on try 2)
 Next retry in 3 seconds...
 UMAPI timeout...service unavailable (code 429 on try 3)
-Next retry in 3 seconds...
-UMAPI timeout...giving up after 3 attempts.
+UMAPI timeout...giving up after 3 attempts (6 seconds).
 """
 
 

@@ -127,9 +127,12 @@ class UserAction(Action):
             Action.__init__(self, user=email, **kwargs)
 
     def create(self, first_name=None, last_name=None, country=None, email=None,
-               on_conflict=IfAlreadyExistsOptions.errorIfAlreadyExists):
+               on_conflict=IfAlreadyExistsOptions.ignoreIfAlreadyExists):
         """
         Create the user on the Adobe back end.
+        See [Issue 32](https://github.com/adobe-apiplatform/umapi-client.py/issues/32): because
+        we retry create calls if they time out, the default conflict handling for creation is to ignore the
+        create call if the user already exists (possibly from an earlier call that timed out).
         :param first_name: (optional) user first name
         :param last_name: (optional) user last name
         :param country: (optional except for Federated ID) user 2-letter ISO country code

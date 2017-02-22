@@ -59,7 +59,8 @@ def test_user_federatedid_username():
 def test_create_user_adobeid():
     user = UserAction(email="dbrotsky@adobe.com")
     user.create()
-    assert user.wire_dict() == {"do": [{"addAdobeID": {"email": "dbrotsky@adobe.com"}}],
+    assert user.wire_dict() == {"do": [{"addAdobeID": {"email": "dbrotsky@adobe.com",
+                                                       "option": "ignoreIfAlreadyExists"}}],
                                 "user": "dbrotsky@adobe.com",
                                 "useAdobeID": True}
 
@@ -75,7 +76,8 @@ def test_create_user_enterpriseid():
     user.create(first_name="Daniel", last_name="Brotsky")
     assert user.wire_dict() == {"do": [{"createEnterpriseID": {"email": "dbrotsky@o.on-the-side.net",
                                                                "firstname": "Daniel", "lastname": "Brotsky",
-                                                               "country": "UD"}}],
+                                                               "country": "UD",
+                                                               "option": "ignoreIfAlreadyExists"}}],
                                 "user": "dbrotsky@o.on-the-side.net"}
 
 
@@ -84,7 +86,8 @@ def test_create_user_federatedid():
     user.create(first_name="Daniel", last_name="Brotsky", country="US")
     assert user.wire_dict() == {"do": [{"createFederatedID": {"email": "dbrotsky@k.on-the-side.net",
                                                               "firstname": "Daniel", "lastname": "Brotsky",
-                                                              "country": "US"}}],
+                                                              "country": "US",
+                                                              "option": "ignoreIfAlreadyExists"}}],
                                 "user": "dbrotsky@k.on-the-side.net"}
 
 
@@ -93,7 +96,8 @@ def test_create_user_federatedid_username():
     user.create(first_name="Daniel", last_name="Brotsky", country="US", email="dbrotsky@k.on-the-side.net")
     assert user.wire_dict() == {"do": [{"createFederatedID": {"email": "dbrotsky@k.on-the-side.net",
                                                               "firstname": "Daniel", "lastname": "Brotsky",
-                                                              "country": "US"}}],
+                                                              "country": "US",
+                                                              "option": "ignoreIfAlreadyExists"}}],
                                 "user": "dbrotsky", "domain": "k.on-the-side.net"}
 
 
@@ -103,7 +107,8 @@ def test_create_user_federatedid_username_email():
     user.create(first_name="Daniel", last_name="Brotsky", country="US")
     assert user.wire_dict() == {"do": [{"createFederatedID": {"email": "dbrotsky@k.on-the-side.net",
                                                               "firstname": "Daniel", "lastname": "Brotsky",
-                                                              "country": "US"}}],
+                                                              "country": "US",
+                                                              "option": "ignoreIfAlreadyExists"}}],
                                 "user": "dbrotsky", "domain": "k.on-the-side.net"}
 
 

@@ -40,7 +40,7 @@ extensions.
 # Getting Started
 
 Before making calls to the User Management API, you must complete
-the following prepartory steps:
+the following preparatory steps:
 
 1. Obtain admin access to an Adobe Enterprise Dashboard.
 2. Set up a private/public key pair

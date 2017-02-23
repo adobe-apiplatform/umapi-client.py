@@ -1,6 +1,7 @@
 # platform artifacts
 .*
 !.travis.yml
+!.gitignore
 
 # build and scratch areas
 local/

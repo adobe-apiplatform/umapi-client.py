@@ -51,7 +51,7 @@ class Connection:
                  retry_max_attempts=4,
                  retry_first_delay=15,
                  retry_random_delay=5,
-                 timeout_seconds=60.0,
+                 timeout_seconds=120.0,
                  throttle_actions=10,
                  throttle_commands=10,
                  user_agent=None,
@@ -369,42 +369,49 @@ class Connection:
             def call():
                 return self.session.get(self.endpoint + path, auth=self.auth, timeout=self.timeout)
 
-        total_time = wait_time = 0
+        total_time = 0
         result = None
         for num_attempts in range(1, self.retry_max_attempts + 1):
-            if wait_time > 0:
-                sleep(wait_time)
-                total_time += wait_time
-                wait_time = 0
             try:
                 result = call()
+                if result.status_code == 200:
+                    return result
+                elif result.status_code in [429, 502, 503, 504]:
+                    if self.logger: self.logger.warning("UMAPI timeout...service unavailable (code %d on try %d)",
+                                                        result.status_code, num_attempts)
+                    retry_wait = 0
+                    if "Retry-After" in result.headers:
+                        advice = result.headers["Retry-After"]
+                        advised_time = parsedate_tz(advice)
+                        if advised_time is not None:
+                            # header contains date
+                            retry_wait = int(mktime_tz(advised_time) - time())
+                        else:
+                            # header contains delta seconds
+                            retry_wait = int(advice)
+                    if retry_wait <= 0:
+                        # use exponential back-off with random delay
+                        delay = randint(0, self.retry_random_delay)
+                        retry_wait = (int(pow(2, num_attempts - 1)) * self.retry_first_delay) + delay
+                elif 201 <= result.status_code < 400:
+                    raise ClientError("Unexpected HTTP Status {:d}: {}".format(result.status_code, result.text), result)
+                elif 400 <= result.status_code < 500:
+                    raise RequestError(result)
+                else:
+                    raise ServerError(result)
             except requests.Timeout:
                 total_time += int(self.timeout)
-                raise UnavailableError(num_attempts, total_time, result)
-            if result.status_code == 200:
-                return result
-            elif result.status_code in [429, 502, 503, 504]:
-                if self.logger: self.logger.warning("UMAPI timeout...service unavailable (code %d on try %d)",
-                                                    result.status_code, num_attempts)
-                if "Retry-After" in result.headers:
-                    advice = result.headers["Retry-After"]
-                    advised_time = parsedate_tz(advice)
-                    if advised_time is not None:
-                        # header contains date
-                        wait_time = int(mktime_tz(advised_time) - time())
-                    else:
-                        # header contains delta seconds
-                        wait_time = int(advice)
-                if wait_time <= 0:
-                    # use exponential back-off with random delay
-                    delay = randint(0, self.retry_random_delay)
-                    wait_time = (int(pow(2, num_attempts)) * self.retry_first_delay) + delay
-                if self.logger: self.logger.warning("Next retry in %d seconds...", wait_time)
-            elif 201 <= result.status_code < 400:
-                raise ClientError("Unexpected HTTP Status {:d}: {}".format(result.status_code, result.text), result)
-            elif 400 <= result.status_code < 500:
-                raise RequestError(result)
-            else:
-                raise ServerError(result)
-        if self.logger: self.logger.error("UMAPI timeout...giving up after %d attempts.", self.retry_max_attempts)
+                if self.logger: self.logger.warning("UMAPI connection timeout...(%d seconds on try %d)",
+                                                    self.timeout, num_attempts)
+                retry_wait = 0
+                result = None
+            if num_attempts < self.retry_max_attempts:
+                if retry_wait > 0:
+                    if self.logger: self.logger.warning("Next retry in %d seconds...", retry_wait)
+                    sleep(retry_wait)
+                    total_time += retry_wait
+                else:
+                    if self.logger: self.logger.warning("Immediate retry...", retry_wait)
+        if self.logger: self.logger.error("UMAPI timeout...giving up after %d attempts (%d seconds).",
+                                          self.retry_max_attempts, total_time)
         raise UnavailableError(self.retry_max_attempts, total_time, result)

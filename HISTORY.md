@@ -10,7 +10,7 @@ Fast-follow bug fix release:
     * Update parameter names were incorrect.
     * Test mode wasn't working.
 * [Issue 28](https://github.com/adobe-apiplatform/umapi-client.py/issues/28)
-    * Reuse exisiting open connections across calls.
+    * Reuse existing open connections across calls.
 
 ### Version 2.0.2
 
@@ -21,3 +21,15 @@ Enhancement release:
 * (No Issue)
     * Add this HISTORY.md file to summarize releases
     * Add version.py file to synchronize version between setup and module.
+
+### Version 2.0.3
+
+Enhancement release:
+
+* [Issue 32](https://github.com/adobe-apiplatform/umapi-client.py/issues/32)
+    * change timeout default to 2 minutes
+    * add retry after timeout.
+    * change default create behavior to "ignoreIfAlreadyExists"
+* (No issue)
+    * fix misspellings
+    * change .gitignore so that .gitignore is not ignored

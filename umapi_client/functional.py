@@ -205,7 +205,7 @@ class UserAction(Action):
         Add user to some (typically PLC) groups.  Note that, if you add to no groups, the effect
         is simply to do an "add to organization Everybody group", so we let that be done.
         :param groups: list of group names the user should be added to
-        :param all_groups: a boolean meaning remove from all (don't specify groups or group_type in this case)
+        :param all_groups: a boolean meaning add to all (don't specify groups or group_type in this case)
         :param group_type: the type of group (defaults to "product")
         :return: the User, so you can do User(...).add_to_groups(...).add_role(...)
         """
@@ -252,8 +252,8 @@ class UserAction(Action):
     def add_role(self, groups=None, role_type=RoleTypes.admin):
         """
         Make user have a role (typically PLC admin) with respect to some PLC groups.
-        :param groups: list of group names the user should be an admin for
-        :param role_type: the type of role (defaults to "admin")
+        :param groups: list of group names the user should have this role for
+        :param role_type: the role (defaults to "admin")
         :return: the User, so you can do User(...).add_role(...).add_to_groups(...)
         """
         if not groups:
@@ -268,7 +268,7 @@ class UserAction(Action):
     def remove_role(self, groups=None, role_type=RoleTypes.admin):
         """
         Remove user from a role (typically admin) of some groups.
-        :param groups: list of group names the user should NOT be an admin for
+        :param groups: list of group names the user should NOT have this role for
         :param role_type: the type of role (defaults to "admin")
         :return: the User, so you can do User(...).remove_role(...).remove_from_groups(...)
         """
@@ -288,9 +288,9 @@ class UserAction(Action):
         :param delete_account: Whether to delete the account after removing from the organization (default false)
         :return: None, because you cannot follow this command with another.
         """
-        self.append(removeFromOrg={})
-        if delete_account:
-            self.delete_account()
+        if delete_account and self.id_type == IdentityTypes.adobeID:
+            raise ValueError("You cannot delete an Adobe ID account.")
+        self.append(removeFromOrg={"deleteAccount": delete_account == True})
         return None
 
     def delete_account(self):
@@ -356,9 +356,9 @@ class UserGroupAction(Action):
 
     def add_to_products(self, products=None, all_products=False):
         """
-        Add user product to some PLC products.
+        Add user group to some product license configuration groups (PLCs), or all of them.
         :param products: list of product names the user should be added to
-        :param all_products: a boolean meaning remove from all (don't specify products in this case)
+        :param all_products: a boolean meaning add to all (don't specify products in this case)
         :return: the Group, so you can do Group(...).add_to_products(...).add_users(...)
         """
         if all_products:
@@ -373,7 +373,7 @@ class UserGroupAction(Action):
 
     def remove_from_products(self, products=None, all_products=False):
         """
-        Remove user group from some PLC products, or all of them.
+        Remove user group from some product license configuration groups (PLCs), or all of them.
         :param products: list of product names the user group should be removed from
         :param all_products: a boolean meaning remove from all (don't specify products in this case)
         :return: the Group, so you can do Group(...).remove_from_products(...).add_users(...)

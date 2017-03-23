@@ -216,14 +216,14 @@ def test_remove_role_enterpriseid():
 def test_remove_from_organization_federatedid():
     user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
     user.remove_from_organization()
-    assert user.wire_dict() == {"do": [{"removeFromOrg": {}}],
+    assert user.wire_dict() == {"do": [{"removeFromOrg": {"deleteAccount": False}}],
                                 "user": "dbrotsky@k.on-the-side.net"}
 
 
 def test_remove_from_organization_adobeid():
     user = UserAction(id_type='adobeID', email="dbrotsky@adobe.com")
     user.remove_from_organization()
-    assert user.wire_dict() == {"do": [{"removeFromOrg": {}}],
+    assert user.wire_dict() == {"do": [{"removeFromOrg": {"deleteAccount": False}}],
                                 "user": "dbrotsky@adobe.com",
                                 "useAdobeID": True}
 
@@ -231,7 +231,7 @@ def test_remove_from_organization_adobeid():
 def test_remove_from_organization_delete_federatedid():
     user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
     user.remove_from_organization(delete_account=True)
-    assert user.wire_dict() == {"do": [{"removeFromOrg": {}}, {"removeFromDomain": {}}],
+    assert user.wire_dict() == {"do": [{"removeFromOrg": {"deleteAccount": True}}],
                                 "user": "dbrotsky@k.on-the-side.net"}
 
 

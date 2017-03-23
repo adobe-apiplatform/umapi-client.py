@@ -96,11 +96,11 @@ a Python dictionary of its attributes.
 The following code enumerates the first 5 users, printing the email of each.
 This will only have fetched the first page of results.  Then, after the loop,
 the `all_results` call will force the fetch of all remaining pages so the
-list of all results can be constructed.  ()Once the `all_results` call has been made,
+list of all results can be constructed.  (Once the `all_results` call has been made,
 you cannot enumerate again without first calling `reload`.)
 
 ```python
-users = umapi_client.QueryUsers(conn)
+users = umapi_client.UsersQuery(conn)
 # print first 5 users
 for i, user in enumerate(users):
     if i == 5: break
@@ -109,13 +109,22 @@ for i, user in enumerate(users):
 user_count = len(users.all_results())
 ```
 
+You can also query for a particular user by email:
+
+```python
+query = umapi_client.UserQuery(conn, "jruser@example.com")
+jruser = query.result()
+if jruser:
+    name = jruser["lastname"] + ", " + jruser["firstname"]
+```
+
 ## Get a List of Groups
 
 This list of groups will contain both user groups and product license
 configuration groups.
 
 ```python
-groups = umapi_client.QueryGroups(conn)
+groups = umapi_client.GroupsQuery(conn)
 # print all the group details
 for group in groups:
     print(group)

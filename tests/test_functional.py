@@ -237,8 +237,10 @@ def test_remove_from_organization_delete_federatedid():
 
 def test_remove_from_organization_delete_adobeid():
     user = UserAction(id_type=IdentityTypes.adobeID, email="dbrotsky@adobe.com")
-    with pytest.raises(ValueError):
-        user.remove_from_organization(delete_account=True)
+    user.remove_from_organization(delete_account=True)
+    assert user.wire_dict() == {"do": [{"removeFromOrg": {"deleteAccount": True}}],
+                                "user": "dbrotsky@adobe.com",
+                                "useAdobeID": True}
 
 
 def test_delete_account_enterpriseid():

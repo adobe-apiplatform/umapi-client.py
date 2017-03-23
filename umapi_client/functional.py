@@ -288,9 +288,7 @@ class UserAction(Action):
         :param delete_account: Whether to delete the account after removing from the organization (default false)
         :return: None, because you cannot follow this command with another.
         """
-        if delete_account and self.id_type == IdentityTypes.adobeID:
-            raise ValueError("You cannot delete an Adobe ID account.")
-        self.append(removeFromOrg={"deleteAccount": delete_account == True})
+        self.append(removeFromOrg={"deleteAccount": True if delete_account else False})
         return None
 
     def delete_account(self):

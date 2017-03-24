@@ -29,13 +29,13 @@ class UnavailableError(Exception):
 
 class ServerError(Exception):
     def __init__(self, result):
-        Exception.__init__(self, "Server error: " + result.text)
+        Exception.__init__(self, "Server error ({}): ".format(result.status_code) + result.text)
         self.result = result
 
 
 class RequestError(Exception):
     def __init__(self, result):
-        Exception.__init__(self, "Request Error: " + result.text)
+        Exception.__init__(self, "Request Error ({}): ".format(result.status_code) + result.text)
         self.result = result
 
 

@@ -33,3 +33,12 @@ Enhancement release:
 * (No issue)
     * fix misspellings
     * change .gitignore so that .gitignore is not ignored
+
+### Version 2.1
+
+Server-compatibility release:
+
+* (No Issue)
+    * fix typos in docs
+    * fix param documentation in functional API
+    * update wire protocol for remove_from_organization with deletion of account to match server changes

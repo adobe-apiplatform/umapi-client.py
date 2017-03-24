@@ -57,21 +57,31 @@ def test_status(config):
 def test_list_users(config):
     conn, _ = config
     users = umapi_client.UsersQuery(connection=conn, in_domain="")
+    user_count = 0
     for user in users:
         email = user.get("email", "")
         if re.match(r".*@adobe.com$", str(email).lower()):
             assert str(user["type"]) == "adobeID"
-    logging.info("Found %d users.", len(users.all_results()))
+        user_count += 1
+        if user_count >= 2000:
+            logging.info("Quitting enumeration after 2000 users.")
+            break
+    logging.info("Found %d users.", user_count)
 
 def test_list_groups(config):
     conn, params = config
     groups = umapi_client.GroupsQuery(connection=conn)
+    group_count = 0
     for group in groups:
         name = group.get("groupName")
-        logging.debug("Group: %s", group)
-        if group.get("memberCount", 0) > params["big_group_size"]:
-            assert name in params["big_groups"]
-    logging.info("Found %d groups.", len(groups.all_results()))
+        member_count = group.get("memberCount", -1)
+        logging.info("Group %s has %d members.", name, member_count)
+        assert member_count >= 0
+        group_count += 1
+    logging.info("Found %d groups.", group_count)
+    groups.reload()
+    group_count_2 = len(groups.all_results())
+    assert group_count == group_count_2
 
 def test_get_user(config):
     conn, params = config

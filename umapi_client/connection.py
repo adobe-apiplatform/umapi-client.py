@@ -123,6 +123,8 @@ class Connection:
     def _get_auth(self, ims_host, ims_endpoint_jwt,
                   tech_acct_id=None, api_key=None, client_secret=None, private_key_file=None,
                   **kwargs):
+        tech_acct_id = tech_acct_id or kwargs.get("tech_acct")
+        private_key_file = private_key_file or kwargs.get("priv_key_path")
         if not (tech_acct_id and api_key and client_secret and private_key_file):
             raise ValueError("Connector create: not all required auth parameters were supplied; please see docs")
         with open(private_key_file, 'r') as private_key_stream:

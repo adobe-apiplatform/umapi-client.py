@@ -42,3 +42,10 @@ Server-compatibility release:
     * fix typos in docs
     * fix param documentation in functional API
     * update wire protocol for remove_from_organization with deletion of account to match server changes
+
+### Version TBD
+
+Enhancement release:
+
+* (No Issue)
+    * allow User Sync config key names in the connection `auth_dict`

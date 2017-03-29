@@ -22,9 +22,9 @@ import json
 
 import mock
 import pytest
-
 from conftest import mock_connection_params, MockResponse
-from umapi_client import Connection, Action, ServerError
+
+from umapi_client import Connection, Action, BatchError
 
 
 def test_action_create():
@@ -292,7 +292,9 @@ def test_execute_multiple_single_queued_throttle_actions():
 
 def test_execute_multiple_queued_throttle_actions_error():
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
-        mock_post.return_value = MockResponse(500)
+        mock_post.side_effect = [MockResponse(500),
+                                 MockResponse(200, {"result": "success"}),
+                                 MockResponse(200, {"result": "success"})]
         conn = Connection(throttle_actions=2, **mock_connection_params)
         action0 = Action(top="top0").append(a="a0")
         action1 = Action(top="top1").append(a="a1")
@@ -300,16 +302,8 @@ def test_execute_multiple_queued_throttle_actions_error():
         action3 = Action(top="top3").append(a="a3")
         action4 = Action(top="top4").append(a="a4")
         action5 = Action(top="top5").append(a="a5")
-        pytest.raises(ServerError, conn.execute_multiple,
+        pytest.raises(BatchError, conn.execute_multiple,
                       [action0, action1, action2, action3, action4, action5], immediate=False)
-        local_status, _ = conn.status(remote=False)
-        assert local_status == {"multiple-query-count": 0,
-                                "single-query-count": 0,
-                                "actions-sent": 2,
-                                "actions-completed": 0,
-                                "actions-queued": 4}
-        mock_post.return_value = MockResponse(200, {"result": "success"})
-        assert conn.execute_queued() == (0, 4, 4)
         local_status, _ = conn.status(remote=False)
         assert local_status == {"multiple-query-count": 0,
                                 "single-query-count": 0,

@@ -29,7 +29,7 @@ import requests
 import six.moves.urllib.parse as urlparse
 
 from .auth import JWT, Auth, AccessRequest
-from .error import UnavailableError, ClientError, RequestError, ServerError
+from .error import BatchError, UnavailableError, ClientError, RequestError, ServerError
 from .version import __version__ as umapi_version
 
 
@@ -285,6 +285,10 @@ class Connection:
 
         NOTE: This is where we throttle the number of commands per action.  So the number
         of actions we were given may not be the same as the number we queue or send to the server.
+        
+        NOTE: If the server gives us a response we don't understand, we note that and continue
+        processing as usual.  Then, at the end of the batch, we throw in order to warn the client
+        that we had a problem understanding the server.
 
         :param actions: the list of Action objects to be executed
         :param immediate: whether to immediately send them to the server
@@ -292,6 +296,7 @@ class Connection:
         """
         # throttling part 1: split up each action into smaller actions, as needed
         split_actions = []
+        exceptions = []
         for a in actions:
             if len(a.commands) == 0:
                 if self.logger: self.logger.warning("Sending action with no commands: %s", a.frame)
@@ -303,29 +308,24 @@ class Connection:
                 split_actions.append(a)
         actions = self.action_queue + split_actions
         # throttling part 2: execute the action list in batches, as needed
-        sent = completed = last_batch_sent = last_batch_completed = 0
-        try:
-            while len(actions) >= self.throttle_actions:
-                batch, actions = actions[0:self.throttle_actions], actions[self.throttle_actions:]
-                if self.logger: self.logger.debug("Executing %d actions (%d remaining).", len(batch), len(actions))
-                sent += len(batch)
-                completed += self._execute_batch(batch)
-        finally:
-            self.action_queue = actions
-            self.local_status["actions-queued"] = len(actions)
-            self.local_status["actions-sent"] += sent
-            self.local_status["actions-completed"] += completed
-        # there may be actions left over
-        if actions and immediate:
+        sent = completed = 0
+        batch_size = self.throttle_actions
+        min_size = 1 if immediate else batch_size
+        while len(actions) >= min_size:
+            batch, actions = actions[0:batch_size], actions[batch_size:]
+            if self.logger: self.logger.debug("Executing %d actions (%d remaining).", len(batch), len(actions))
+            sent += len(batch)
             try:
-                last_batch_sent = len(actions)
-                last_batch_completed += self._execute_batch(actions)
-            finally:
-                self.action_queue = []
-                self.local_status["actions-queued"] = 0
-                self.local_status["actions-sent"] += last_batch_sent
-                self.local_status["actions-completed"] += last_batch_completed
-        return len(self.action_queue), sent + last_batch_sent, completed + last_batch_completed
+                completed += self._execute_batch(batch)
+            except Exception as e:
+                exceptions.append(e)
+        self.action_queue = actions
+        self.local_status["actions-queued"] = queued = len(actions)
+        self.local_status["actions-sent"] += sent
+        self.local_status["actions-completed"] += completed
+        if exceptions:
+            raise BatchError(exceptions, queued, sent, completed)
+        return queued, sent, completed
 
     def _execute_batch(self, actions):
         """

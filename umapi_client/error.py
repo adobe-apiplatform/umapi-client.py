@@ -43,3 +43,12 @@ class ClientError(Exception):
     def __init__(self, message, result):
         Exception.__init__(self, "Server response not understood: " + message)
         self.result = result
+
+
+class BatchError(Exception):
+    def __init__(self, causes, queued, sent, completed):
+        prefix = "Exception{} during batch processing: ".format("s" if len(causes) > 1 else "")
+        tail = ", ".join([str(cause) for cause in causes])
+        Exception.__init__(self, prefix + tail)
+        self.causes = causes
+        self.statistics = (queued, sent, completed)

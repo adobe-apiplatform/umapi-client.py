@@ -43,9 +43,12 @@ Server-compatibility release:
     * fix param documentation in functional API
     * update wire protocol for remove_from_organization with deletion of account to match server changes
 
-### Version TBD
+### Version 2.2
 
 Enhancement release:
 
+* [Issue 36](https://github.com/adobe-apiplatform/umapi-client.py/issues/36)
+    * catch errors during batch processing
+    * return a new BatchError that has caught exceptions and batch statistics
 * (No Issue)
     * allow User Sync config key names in the connection `auth_dict`

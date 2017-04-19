@@ -26,6 +26,7 @@ from random import randint
 from time import time, sleep, gmtime, strftime
 
 import requests
+import six
 import six.moves.urllib.parse as urlparse
 
 from .auth import JWT, Auth, AccessRequest
@@ -69,7 +70,12 @@ class Connection:
         :param tech_acct_id: string technical account ID from Adobe.IO integration data
         :param api_key: string api_key from Adobe.IO integration data
         :param client_secret: string client secret from Adobe.IO integration data
+        and one of:
         :param private_key_file: path to local private key file that matches Adobe.IO public key for integration
+        or:
+        :param private_key_data: the contents of the private_key_file (PEM format)
+        (NOTE: for compatibility with User Sync config files, the key names priv_key_path and tech_acct
+         are accepted as aliases for private_key_file and tech_acct_id, respectively.)
 
         Optional connection parameters (defaults are for Adobe production):
         :param ims_host: the IMS host which will exchange your JWT for an access token
@@ -121,14 +127,18 @@ class Connection:
         self.session.headers["User-Agent"] = ua_string
 
     def _get_auth(self, ims_host, ims_endpoint_jwt,
-                  tech_acct_id=None, api_key=None, client_secret=None, private_key_file=None,
+                  tech_acct_id=None, api_key=None, client_secret=None,
+                  private_key_file=None, private_key_data=None,
                   **kwargs):
         tech_acct_id = tech_acct_id or kwargs.get("tech_acct")
         private_key_file = private_key_file or kwargs.get("priv_key_path")
-        if not (tech_acct_id and api_key and client_secret and private_key_file):
+        if not (tech_acct_id and api_key and client_secret and (private_key_data or private_key_file)):
             raise ValueError("Connector create: not all required auth parameters were supplied; please see docs")
-        with open(private_key_file, 'r') as private_key_stream:
-            jwt = JWT(self.org_id, tech_acct_id, ims_host, api_key, private_key_stream)
+        if private_key_data:
+            jwt = JWT(self.org_id, tech_acct_id, ims_host, api_key, six.StringIO(private_key_data))
+        else:
+            with open(private_key_file, 'r') as private_key_stream:
+                jwt = JWT(self.org_id, tech_acct_id, ims_host, api_key, private_key_stream)
         token = AccessRequest("https://" + ims_host + ims_endpoint_jwt, api_key, client_secret, jwt())
         return Auth(api_key, token())
 

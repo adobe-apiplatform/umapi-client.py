@@ -52,3 +52,13 @@ Enhancement release:
     * return a new BatchError that has caught exceptions and batch statistics
 * (No Issue)
     * allow User Sync config key names in the connection `auth_dict`
+
+### Version 2.3
+
+Enhancement release:
+
+* [Issue 38](https://github.com/adobe-apiplatform/umapi-client.py/issues/38)
+    * accept private_key_data instead private_key_file
+    * document all accepted `auth_dict` keys
+* (No Issue)
+    * certify for Python 3.6

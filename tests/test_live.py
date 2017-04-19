@@ -41,16 +41,26 @@ logging.basicConfig(level=logging.INFO,
 @pytest.fixture(scope="module")
 def config():
     with open(config_file_name, "r") as f:
-        config = yaml.load(f)
-    creds = config["test_org"]
+        conf_dict = yaml.load(f)
+    creds = conf_dict["test_org"]
     conn = umapi_client.Connection(org_id=creds["org_id"], auth_dict=creds)
-    return conn, config
+    return conn, conf_dict
 
 
-def test_status(config):
-    conn, _ = config
-    _, status = conn.status(remote=True)
-    logging.info("Server status is %s", status)
+def test_conn_and_status(config):
+    # first create conn using key file, as usual
+    conn1, params = config
+    _, status = conn1.status(remote=True)
+    logging.info("Server connection from key file, status is %s", status)
+    assert status["state"] == "LIVE"
+    # next create conn using key data
+    creds = params["test_org"]
+    key_file = creds.pop("private_key_file")
+    with open(key_file) as f:
+        creds["private_key_data"] = f.read()
+    conn2 = umapi_client.Connection(org_id=creds["org_id"], auth_dict=creds)
+    _, status = conn2.status(remote=True)
+    logging.info("Server connection from key data, status is %s", status)
     assert status["state"] == "LIVE"
 
 
@@ -63,8 +73,8 @@ def test_list_users(config):
         if re.match(r".*@adobe.com$", str(email).lower()):
             assert str(user["type"]) == "adobeID"
         user_count += 1
-        if user_count >= 2000:
-            logging.info("Quitting enumeration after 2000 users.")
+        if user_count >= 600:
+            logging.info("Quitting enumeration after 600 users.")
             break
     logging.info("Found %d users.", user_count)
 

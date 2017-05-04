@@ -62,3 +62,11 @@ Enhancement release:
     * document all accepted `auth_dict` keys
 * (No Issue)
     * certify for Python 3.6
+
+### Version 2.4
+
+Bug fix release:
+
+* [Issue 41](https://github.com/adobe-apiplatform/umapi-client.py/issues/41)
+    * accept unicode strings from Python 2.7 clients
+    * do unicode-compliant validation of usernames and email addresses

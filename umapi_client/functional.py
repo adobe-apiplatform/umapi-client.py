@@ -54,19 +54,29 @@ class UserAction(Action):
     A sequence of commands to perform on a single user.
     """
 
-    @staticmethod
-    def _validate(email=None, username=None, domain=None):
-        local_regex = r"[a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+([.][a-zA-Z0-9!#$%&'*+/=?^_`{|}~;-]+)*"
-        dns_regex = r"[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+"
-        email_regex = r"^" + local_regex + r"@" + dns_regex + r"$"
-        username_regex = r"^" + local_regex + r"$"
-        domain_regex = r"^" + dns_regex + r"$"
-        if email and not re.match(email_regex, email):
-            raise ValueError("Illegal email format (must not be quoted or contain comments)")
-        if domain and not re.match(domain_regex, domain):
-            raise ValueError("Illegal domain format")
-        if username and not re.match(username_regex, username):
-            raise ValueError("Illegal username format: must be the unquoted local part of an email")
+    # regex patterns to be compiled once and used in _validate
+    _atext_pattern = r"(\w|[!#$%&'*+/=?^_`{|}~;-])+"
+    _local_pattern = _atext_pattern + r"([.]" + _atext_pattern + ")*"
+    _dns_pattern = r"[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+"
+    _email_regex = re.compile(r"\A" + _local_pattern + r"@" + _dns_pattern + r"\Z", re.UNICODE)
+    _username_regex = re.compile(r"^" + _local_pattern + r"$", re.UNICODE)
+    _domain_regex = re.compile(r"^" + _dns_pattern + r"$", re.UNICODE)
+
+    @classmethod
+    def _validate(cls, email=None, username=None, domain=None):
+        '''
+        Validates the specified user attributes against their specifications.
+        Input values must be strings (standard or unicode).  Throws ValueError if any input is invalid
+        :param email: an email address
+        :param username: a username
+        :param domain: a domain
+        '''
+        if email and not cls._email_regex.match(email):
+            raise ValueError("'%s': Illegal email format (must not be quoted or contain comments)" % (email,))
+        if domain and not cls._domain_regex.match(domain):
+            raise ValueError("'%s': Illegal domain format" % (domain,))
+        if username and not cls._username_regex.match(username):
+            raise ValueError("'%s': Illegal username format (must be unquoted email local part)" % (username,))
 
     def __init__(self, id_type=IdentityTypes.adobeID, email=None, username=None, domain=None, **kwargs):
         """
@@ -89,7 +99,7 @@ class UserAction(Action):
         :param domain: string, needed only if you specified a username but NOT an email.
         :param kwargs: other key/value pairs for the action, such as requestID
         """
-        if str(id_type) in IdentityTypes.__members__:
+        if id_type in IdentityTypes.__members__:
             id_type = IdentityTypes[id_type]
         if id_type not in IdentityTypes:
             raise ValueError("Identity type ({}}) must be one of {}}".format(id_type, [i.name for i in IdentityTypes]))
@@ -149,7 +159,7 @@ class UserAction(Action):
             self.email = email
         elif self.email.lower() != email.lower():
             raise ValueError("Specified email ({}) doesn't match user's email({})", email, self.email)
-        if str(on_conflict) in IfAlreadyExistsOptions.__members__:
+        if on_conflict in IfAlreadyExistsOptions.__members__:
             on_conflict = IfAlreadyExistsOptions[on_conflict]
         if on_conflict not in IfAlreadyExistsOptions:
             raise ValueError("on_conflict must be one of {}".format([o.name for o in IfAlreadyExistsOptions]))
@@ -161,22 +171,22 @@ class UserAction(Action):
             # Adobe ID doesn't allow anything but email
             if first_name or last_name or country:
                 raise ValueError("You cannot specify first or last name or country for an Adobe ID.")
-            return self.insert(addAdobeID=dict(email=str(email), **create_params))
+            return self.insert(addAdobeID=dict(email=email, **create_params))
         else:
             # Federated and Enterprise allow specifying the name
-            if first_name: create_params["firstname"] = str(first_name)
-            if last_name: create_params["lastname"] = str(last_name)
+            if first_name: create_params["firstname"] = first_name
+            if last_name: create_params["lastname"] = last_name
             if self.id_type == IdentityTypes.enterpriseID:
                 # Enterprise ID can default country, already has email on create
-                create_params["country"] = str(country) if country else "UD"
-                return self.insert(createEnterpriseID=dict(email=str(email), **create_params))
+                create_params["country"] = country if country else "UD"
+                return self.insert(createEnterpriseID=dict(email=email, **create_params))
             else:
                 # Federated ID must specify email if that wasn't done already
                 if not email:
                     raise ValueError("You must specify email when creating a Federated ID")
                 if not country:
                     raise ValueError("You must specify country when creating a Federated ID")
-                return self.insert(createFederatedID=dict(email=str(email), country=str(country), **create_params))
+                return self.insert(createFederatedID=dict(email=email, country=country, **create_params))
 
     def update(self, email=None, username=None, first_name=None, last_name=None, country=None):
         """
@@ -197,7 +207,7 @@ class UserAction(Action):
         for k, v in six.iteritems(dict(email=email, username=username,
                                        firstname=first_name, lastname=last_name,
                                        country=country)):
-            if v: updates[k] = str(v)
+            if v: updates[k] = v
         return self.append(update=updates)
 
     def add_to_groups(self, groups=None, all_groups=False, group_type=None):
@@ -218,11 +228,11 @@ class UserAction(Action):
                 groups = []
             if not group_type:
                 group_type = GroupTypes.product
-            elif str(group_type) in GroupTypes.__members__:
+            elif group_type in GroupTypes.__members__:
                 group_type = GroupTypes[group_type]
             if group_type not in GroupTypes:
                 raise ValueError("You must specify a GroupType value for argument group_type")
-            glist = {group_type.name: [str(group) for group in groups]}
+            glist = {group_type.name: [group for group in groups]}
         return self.append(add=glist)
 
     def remove_from_groups(self, groups=None, all_groups=False, group_type=None):
@@ -242,11 +252,11 @@ class UserAction(Action):
                 raise ValueError("You must specify groups from which to remove the user")
             if not group_type:
                 group_type = GroupTypes.product
-            elif str(group_type) in GroupTypes.__members__:
+            elif group_type in GroupTypes.__members__:
                 group_type = GroupTypes[group_type]
             if group_type not in GroupTypes:
                 raise ValueError("You must specify a GroupType value for argument group_type")
-            glist = {group_type.name: [str(group) for group in groups]}
+            glist = {group_type.name: [group for group in groups]}
         return self.append(remove=glist)
 
     def add_role(self, groups=None, role_type=RoleTypes.admin):
@@ -258,11 +268,11 @@ class UserAction(Action):
         """
         if not groups:
             raise ValueError("You must specify groups to which to add the role for this user")
-        if str(role_type) in RoleTypes.__members__:
+        if role_type in RoleTypes.__members__:
             role_type = RoleTypes[role_type]
         if role_type not in RoleTypes:
             raise ValueError("You must specify a RoleType value for argument role_type")
-        glist = {role_type.name: [str(group) for group in groups]}
+        glist = {role_type.name: [group for group in groups]}
         return self.append(addRoles=glist)
 
     def remove_role(self, groups=None, role_type=RoleTypes.admin):
@@ -274,11 +284,11 @@ class UserAction(Action):
         """
         if not groups:
             raise ValueError("You must specify groups from which to remove the role for this user")
-        if str(role_type) in RoleTypes.__members__:
+        if role_type in RoleTypes.__members__:
             role_type = RoleTypes[role_type]
         if role_type not in RoleTypes:
             raise ValueError("You must specify a RoleType value for argument role_type")
-        glist = {role_type.name: [str(group) for group in groups]}
+        glist = {role_type.name: [group for group in groups]}
         return self.append(removeRoles=glist)
 
     def remove_from_organization(self, delete_account=False):
@@ -318,8 +328,8 @@ class UsersQuery(QueryMultiple):
         """
         groups = [in_group] if in_group else []
         params = {}
-        if in_domain: params["domain"] = str(in_domain)
-        if identity_type: params["type"] = str(identity_type)
+        if in_domain: params["domain"] = in_domain
+        if identity_type: params["type"] = identity_type
         QueryMultiple.__init__(self, connection=connection, object_type="user", url_params=groups, query_params=params)
 
 
@@ -334,7 +344,7 @@ class UserQuery(QuerySingle):
         :param connection: Connection to run the query against
         :param email: email of user to query for
         """
-        QuerySingle.__init__(self, connection=connection, object_type="user", url_params=[str(email)])
+        QuerySingle.__init__(self, connection=connection, object_type="user", url_params=[email])
 
 
 class UserGroupAction(Action):
@@ -350,7 +360,7 @@ class UserGroupAction(Action):
         """
         if not group_name:
             ValueError("You must provide the name of the group")
-        Action.__init__(self, usergroup=str(group_name), **kwargs)
+        Action.__init__(self, usergroup=group_name, **kwargs)
 
     def add_to_products(self, products=None, all_products=False):
         """
@@ -366,7 +376,7 @@ class UserGroupAction(Action):
         else:
             if not products:
                 raise ValueError("You must specify products to which to add the user group")
-            plist = {GroupTypes.product.name: [str(product) for product in products]}
+            plist = {GroupTypes.product.name: [product for product in products]}
         return self.append(add=plist)
 
     def remove_from_products(self, products=None, all_products=False):
@@ -383,7 +393,7 @@ class UserGroupAction(Action):
         else:
             if not products:
                 raise ValueError("You must specify products from which to remove the user group")
-            plist = {GroupTypes.product.name: [str(product) for product in products]}
+            plist = {GroupTypes.product.name: [product for product in products]}
         return self.append(remove=plist)
 
     def add_users(self, users=None):
@@ -395,7 +405,7 @@ class UserGroupAction(Action):
         """
         if not users:
             raise ValueError("You must specify emails for users to add to the user group")
-        ulist = {"user": [str(user) for user in users]}
+        ulist = {"user": [user for user in users]}
         return self.append(add=ulist)
 
     def remove_users(self, users=None):
@@ -407,7 +417,7 @@ class UserGroupAction(Action):
         """
         if not users:
             raise ValueError("You must specify emails for users to remove from the user group")
-        ulist = {"user": [str(user) for user in users]}
+        ulist = {"user": [user for user in users]}
         return self.append(remove=ulist)
 
 

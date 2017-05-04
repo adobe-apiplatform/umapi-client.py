@@ -1,3 +1,5 @@
+# coding: utf-8
+
 # Copyright (c) 2016-2017 Adobe Systems Incorporated.  All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -36,9 +38,31 @@ def test_user_adobeid():
                                 "useAdobeID": True}
 
 
+def test_user_adobeid_unicode():
+    user = UserAction(email=u"lwałęsa@adobe.com")
+    assert user.wire_dict() == {"do": [],
+                                "user": u"lwałęsa@adobe.com",
+                                "useAdobeID": True}
+
+
+def test_user_adobeid_unicode_error_trailing_dot():
+    with pytest.raises(ValueError):
+        UserAction(email=u"lwałęsa.@adobe.com")
+
+
+def test_user_adobeid_unicode_error_unicode_dot_above():
+    with pytest.raises(ValueError):
+        UserAction(email=u"l˙wałęsa@adobe.com")
+
+
 def test_user_enterpriseid():
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="dbrotsky@o.on-the-side.net")
     assert user.wire_dict() == {"do": [], "user": "dbrotsky@o.on-the-side.net"}
+
+
+def test_user_enterpriseid_unicode():
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email=u"lwałęsa@o.on-the-side.net")
+    assert user.wire_dict() == {"do": [], "user": u"lwałęsa@o.on-the-side.net"}
 
 
 def test_user_enterpriseid_username():
@@ -51,9 +75,19 @@ def test_user_federatedid():
     assert user.wire_dict() == {"do": [], "user": "dbrotsky@k.on-the-side.net"}
 
 
+def test_user_federatedid_unicode():
+    user = UserAction(id_type=IdentityTypes.federatedID, email=u"lwałęsa@k.on-the-side.net")
+    assert user.wire_dict() == {"do": [], "user": u"lwałęsa@k.on-the-side.net"}
+
+
 def test_user_federatedid_username():
     user = UserAction(id_type=IdentityTypes.federatedID, username="dbrotsky", domain="k.on-the-side.net")
     assert user.wire_dict() == {"do": [], "user": "dbrotsky", "domain": "k.on-the-side.net"}
+
+
+def test_user_federatedid_username_unicode():
+    user = UserAction(id_type=IdentityTypes.federatedID, username=u"lwałęsa", domain="k.on-the-side.net")
+    assert user.wire_dict() == {"do": [], "user": u"lwałęsa", "domain": "k.on-the-side.net"}
 
 
 def test_create_user_adobeid():
@@ -91,6 +125,16 @@ def test_create_user_federatedid():
                                 "user": "dbrotsky@k.on-the-side.net"}
 
 
+def test_create_user_federated_id_unicode():
+    user = UserAction(id_type=IdentityTypes.federatedID, email=u"lwałęsa@k.on-the-side.net")
+    user.create(first_name="Lech", last_name=u"Wałęsa", country="PL")
+    assert user.wire_dict() == {"do": [{"createFederatedID": {"email": u"lwałęsa@k.on-the-side.net",
+                                                              "firstname": "Lech", "lastname": u"Wałęsa",
+                                                              "country": "PL",
+                                                              "option": "ignoreIfAlreadyExists"}}],
+                                "user": u"lwałęsa@k.on-the-side.net"}
+
+
 def test_create_user_federatedid_username():
     user = UserAction(id_type=IdentityTypes.federatedID, username="dbrotsky", domain="k.on-the-side.net")
     user.create(first_name="Daniel", last_name="Brotsky", country="US", email="dbrotsky@k.on-the-side.net")
@@ -99,6 +143,16 @@ def test_create_user_federatedid_username():
                                                               "country": "US",
                                                               "option": "ignoreIfAlreadyExists"}}],
                                 "user": "dbrotsky", "domain": "k.on-the-side.net"}
+
+
+def test_create_user_federatedid_username_unicode():
+    user = UserAction(id_type=IdentityTypes.federatedID, username=u"lwałęsa", domain="k.on-the-side.net")
+    user.create(first_name="Lech", last_name=u"Wałęsa", country="PL", email=u"lwałęsa@k.on-the-side.net")
+    assert user.wire_dict() == {"do": [{"createFederatedID": {"email": u"lwałęsa@k.on-the-side.net",
+                                                              "firstname": "Lech", "lastname": u"Wałęsa",
+                                                              "country": "PL",
+                                                              "option": "ignoreIfAlreadyExists"}}],
+                                "user": u"lwałęsa", "domain": "k.on-the-side.net"}
 
 
 def test_create_user_federatedid_username_email():
@@ -123,6 +177,13 @@ def test_update_user_federatedid():
     user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
     user.update(first_name="Johnny", last_name="Danger")
     assert user.wire_dict() == {"do": [{"update": {"firstname": "Johnny", "lastname": "Danger"}}],
+                                "user": "dbrotsky@k.on-the-side.net"}
+
+
+def test_update_user_federatedid_unicode():
+    user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
+    user.update(first_name=u"André", last_name="Danger")
+    assert user.wire_dict() == {"do": [{"update": {"firstname": u"André", "lastname": "Danger"}}],
                                 "user": "dbrotsky@k.on-the-side.net"}
 
 
@@ -153,6 +214,13 @@ def test_add_products_federatedid():
                                 "user": "dbrotsky@k.on-the-side.net"}
 
 
+def test_add_products_federatedid_unicode():
+    user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
+    user.add_to_groups(groups=["Photoshop", u"Người vẽ minh hoạ"])
+    assert user.wire_dict() == {"do": [{"add": {"product": ["Photoshop", u"Người vẽ minh hoạ"]}}],
+                                "user": "dbrotsky@k.on-the-side.net"}
+
+
 def test_add_to_groups_federatedid_all():
     user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
     user.add_to_groups(all_groups=True)
@@ -170,6 +238,13 @@ def test_add_to_usergroups_federatedid():
     user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
     user.add_to_groups(groups=["Photoshop", "Illustrator"], group_type=GroupTypes.usergroup)
     assert user.wire_dict() == {"do": [{"add": {"usergroup": ["Photoshop", "Illustrator"]}}],
+                                "user": "dbrotsky@k.on-the-side.net"}
+
+
+def test_add_to_usergroups_federatedid_unicode():
+    user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
+    user.add_to_groups(groups=["Photoshop", u"Người vẽ minh hoạ"], group_type=GroupTypes.usergroup)
+    assert user.wire_dict() == {"do": [{"add": {"usergroup": ["Photoshop", u"Người vẽ minh hoạ"]}}],
                                 "user": "dbrotsky@k.on-the-side.net"}
 
 
@@ -200,6 +275,13 @@ def test_add_role_enterpriseid():
                                 "user": "dbrotsky@o.on-the-side.net"}
 
 
+def test_add_role_enterpriseid_unicode():
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email="dbrotsky@o.on-the-side.net")
+    user.add_role(groups=[u"người quản lý"])
+    assert user.wire_dict() == {"do": [{"addRoles": {"admin": [u"người quản lý"]}}],
+                                "user": "dbrotsky@o.on-the-side.net"}
+
+
 def test_add_role_enterpriseid_error():
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="dbrotsky@o.on-the-side.net")
     with pytest.raises(ValueError):
@@ -225,6 +307,14 @@ def test_remove_from_organization_adobeid():
     user.remove_from_organization()
     assert user.wire_dict() == {"do": [{"removeFromOrg": {"deleteAccount": False}}],
                                 "user": "dbrotsky@adobe.com",
+                                "useAdobeID": True}
+
+
+def test_remove_from_organization_adobeid_unicode():
+    user = UserAction(id_type='adobeID', email=u"lwałęsa@adobe.com")
+    user.remove_from_organization()
+    assert user.wire_dict() == {"do": [{"removeFromOrg": {"deleteAccount": False}}],
+                                "user": u"lwałęsa@adobe.com",
                                 "useAdobeID": True}
 
 
@@ -301,6 +391,13 @@ def test_add_users():
     group.add_users(users=["user1@example.com", "user2@mydomain.net"])
     assert group.wire_dict() == {"do": [{"add": {"user": ["user1@example.com", "user2@mydomain.net"]}}],
                                  "usergroup": "SampleUsers"}
+
+
+def test_add_users_unicode():
+    group = UserGroupAction(group_name=u"người quản lý")
+    group.add_users(users=[u"lwałęsa@adobe.com", u"tkolář@test1.on-the-side.net"])
+    assert group.wire_dict() == {"do": [{"add": {"user": [u"lwałęsa@adobe.com", u"tkolář@test1.on-the-side.net"]}}],
+                                 "usergroup": u"người quản lý"}
 
 
 def test_add_users_error():

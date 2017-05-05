@@ -39,30 +39,25 @@ def test_user_adobeid():
 
 
 def test_user_adobeid_unicode():
-    user = UserAction(email=u"lwałęsa@adobe.com")
+    user = UserAction(email=u"lwalesa@adobe.com")
     assert user.wire_dict() == {"do": [],
-                                "user": u"lwałęsa@adobe.com",
+                                "user": u"lwalesa@adobe.com",
                                 "useAdobeID": True}
-
-
-def test_user_adobeid_unicode_error_trailing_dot():
-    with pytest.raises(ValueError):
-        UserAction(email=u"lwałęsa.@adobe.com")
 
 
 def test_user_adobeid_unicode_error_unicode_dot_above():
     with pytest.raises(ValueError):
-        UserAction(email=u"l˙wałęsa@adobe.com")
+        UserAction(email=u"lwałęsa@adobe.com")
+
+
+def test_user_adobeid_unicode_error_trailing_dot():
+    with pytest.raises(ValueError):
+        UserAction(email=u"lwalesa.@adobe.com")
 
 
 def test_user_enterpriseid():
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="dbrotsky@o.on-the-side.net")
     assert user.wire_dict() == {"do": [], "user": "dbrotsky@o.on-the-side.net"}
-
-
-def test_user_enterpriseid_unicode():
-    user = UserAction(id_type=IdentityTypes.enterpriseID, email=u"lwałęsa@o.on-the-side.net")
-    assert user.wire_dict() == {"do": [], "user": u"lwałęsa@o.on-the-side.net"}
 
 
 def test_user_enterpriseid_username():
@@ -75,19 +70,14 @@ def test_user_federatedid():
     assert user.wire_dict() == {"do": [], "user": "dbrotsky@k.on-the-side.net"}
 
 
-def test_user_federatedid_unicode():
-    user = UserAction(id_type=IdentityTypes.federatedID, email=u"lwałęsa@k.on-the-side.net")
-    assert user.wire_dict() == {"do": [], "user": u"lwałęsa@k.on-the-side.net"}
-
-
 def test_user_federatedid_username():
     user = UserAction(id_type=IdentityTypes.federatedID, username="dbrotsky", domain="k.on-the-side.net")
     assert user.wire_dict() == {"do": [], "user": "dbrotsky", "domain": "k.on-the-side.net"}
 
 
-def test_user_federatedid_username_unicode():
-    user = UserAction(id_type=IdentityTypes.federatedID, username=u"lwałęsa", domain="k.on-the-side.net")
-    assert user.wire_dict() == {"do": [], "user": u"lwałęsa", "domain": "k.on-the-side.net"}
+def test_user_federatedid_username_unicode_error():
+    with pytest.raises(ValueError):
+        UserAction(id_type=IdentityTypes.federatedID, username=u"lwałęsa", domain="k.on-the-side.net")
 
 
 def test_create_user_adobeid():
@@ -126,13 +116,13 @@ def test_create_user_federatedid():
 
 
 def test_create_user_federated_id_unicode():
-    user = UserAction(id_type=IdentityTypes.federatedID, email=u"lwałęsa@k.on-the-side.net")
+    user = UserAction(id_type=IdentityTypes.federatedID, email=u"lwalesa@k.on-the-side.net")
     user.create(first_name="Lech", last_name=u"Wałęsa", country="PL")
-    assert user.wire_dict() == {"do": [{"createFederatedID": {"email": u"lwałęsa@k.on-the-side.net",
+    assert user.wire_dict() == {"do": [{"createFederatedID": {"email": u"lwalesa@k.on-the-side.net",
                                                               "firstname": "Lech", "lastname": u"Wałęsa",
                                                               "country": "PL",
                                                               "option": "ignoreIfAlreadyExists"}}],
-                                "user": u"lwałęsa@k.on-the-side.net"}
+                                "user": u"lwalesa@k.on-the-side.net"}
 
 
 def test_create_user_federatedid_username():
@@ -146,13 +136,13 @@ def test_create_user_federatedid_username():
 
 
 def test_create_user_federatedid_username_unicode():
-    user = UserAction(id_type=IdentityTypes.federatedID, username=u"lwałęsa", domain="k.on-the-side.net")
-    user.create(first_name="Lech", last_name=u"Wałęsa", country="PL", email=u"lwałęsa@k.on-the-side.net")
-    assert user.wire_dict() == {"do": [{"createFederatedID": {"email": u"lwałęsa@k.on-the-side.net",
+    user = UserAction(id_type=IdentityTypes.federatedID, username=u"lwalesa", domain="k.on-the-side.net")
+    user.create(first_name="Lech", last_name=u"Wałęsa", country="PL", email=u"lwalesa@k.on-the-side.net")
+    assert user.wire_dict() == {"do": [{"createFederatedID": {"email": u"lwalesa@k.on-the-side.net",
                                                               "firstname": "Lech", "lastname": u"Wałęsa",
                                                               "country": "PL",
                                                               "option": "ignoreIfAlreadyExists"}}],
-                                "user": u"lwałęsa", "domain": "k.on-the-side.net"}
+                                "user": u"lwalesa", "domain": "k.on-the-side.net"}
 
 
 def test_create_user_federatedid_username_email():
@@ -307,14 +297,6 @@ def test_remove_from_organization_adobeid():
     user.remove_from_organization()
     assert user.wire_dict() == {"do": [{"removeFromOrg": {"deleteAccount": False}}],
                                 "user": "dbrotsky@adobe.com",
-                                "useAdobeID": True}
-
-
-def test_remove_from_organization_adobeid_unicode():
-    user = UserAction(id_type='adobeID', email=u"lwałęsa@adobe.com")
-    user.remove_from_organization()
-    assert user.wire_dict() == {"do": [{"removeFromOrg": {"deleteAccount": False}}],
-                                "user": u"lwałęsa@adobe.com",
                                 "useAdobeID": True}
 
 

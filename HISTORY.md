@@ -70,3 +70,11 @@ Bug fix release:
 * [Issue 41](https://github.com/adobe-apiplatform/umapi-client.py/issues/41)
     * accept unicode strings from Python 2.7 clients
     * do unicode-compliant validation of usernames and email addresses
+
+### Version 2.4.1
+
+Bug fix release:
+
+* [Issue 41](https://github.com/adobe-apiplatform/umapi-client.py/issues/41)
+    * original fix had an overly accepting email/username validator
+    * there were formatting errors in the failed validation reports

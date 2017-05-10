@@ -78,3 +78,10 @@ Bug fix release:
 * [Issue 41](https://github.com/adobe-apiplatform/umapi-client.py/issues/41)
     * original fix had an overly accepting email/username validator
     * there were formatting errors in the failed validation reports
+
+### Version 2.5
+
+Bug fix release:
+
+* [Issue 44](https://github.com/adobe-apiplatform/umapi-client.py/issues/44)
+    * Default behavior of UsersQuery is now correct: only return direct memberships in the info about queried users.

@@ -22,8 +22,11 @@
 
 import pytest
 
+from conftest import mock_connection_params
+from umapi_client import Connection
 from umapi_client import IdentityTypes, GroupTypes, RoleTypes
 from umapi_client import UserAction, UserGroupAction
+from umapi_client import UsersQuery
 
 
 def test_user_emptyid():
@@ -399,3 +402,13 @@ def test_remove_users_error():
     group = UserGroupAction(group_name="SampleUsers")
     with pytest.raises(ValueError):
         group.remove_users(users=[])
+
+
+def test_query_users():
+    conn = Connection(**mock_connection_params)
+    query = UsersQuery(conn)
+    assert query.url_params == []
+    assert query.query_params == {"directOnly": True}
+    query = UsersQuery(conn, in_group="test", in_domain="test.com", direct_only=False)
+    assert query.url_params == ["test"]
+    assert query.query_params == {"directOnly": False, "domain": "test.com"}

@@ -423,7 +423,7 @@ class Connection:
                     sleep(retry_wait)
                     total_time += retry_wait
                 else:
-                    if self.logger: self.logger.warning("Immediate retry...", retry_wait)
+                    if self.logger: self.logger.warning("Immediate retry...")
         if self.logger: self.logger.error("UMAPI timeout...giving up after %d attempts (%d seconds).",
                                           self.retry_max_attempts, total_time)
         raise UnavailableError(self.retry_max_attempts, total_time, result)

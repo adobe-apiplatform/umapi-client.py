@@ -92,3 +92,12 @@ Bug fix release:
 
 * [Issue 47](https://github.com/adobe-apiplatform/umapi-client.py/issues/47)
     * When an immediate retry was done due to a timeout, there was a logging error.
+
+### Version 2.5.2
+
+Enhancement release:
+
+* (No Issue)
+    * Read the wall clock to return an accurate "total time" in the `UnavailableError` (and associated logging).
+
+

@@ -88,7 +88,7 @@ class Connection:
         :param retry_max_attempts: How many times to retry on temporary errors
         :param retry_first_delay: The time to delay first retry (grows exponentially from there)
         :param retry_random_delay: The max random delay to add on each exponential backoff retry
-        :param timeout_seconds: How many seconds to wait for server response (default=60, <= 0 or None means forever)
+        :param timeout_seconds: How many seconds to wait for server response (<= 0 or None means forever)
         :param throttle_actions: Max number of actions to pack into a single call
         :param throttle_commands: Max number of commands allowed in a single action
         :param user_agent: (optional) string to use as User-Agent header (umapi-client/version data will be added)
@@ -381,7 +381,7 @@ class Connection:
             def call():
                 return self.session.get(self.endpoint + path, auth=self.auth, timeout=self.timeout)
 
-        total_time = 0
+        start_time = time()
         result = None
         for num_attempts in range(1, self.retry_max_attempts + 1):
             try:
@@ -412,7 +412,6 @@ class Connection:
                 else:
                     raise ServerError(result)
             except requests.Timeout:
-                total_time += int(self.timeout)
                 if self.logger: self.logger.warning("UMAPI connection timeout...(%d seconds on try %d)",
                                                     self.timeout, num_attempts)
                 retry_wait = 0
@@ -421,9 +420,9 @@ class Connection:
                 if retry_wait > 0:
                     if self.logger: self.logger.warning("Next retry in %d seconds...", retry_wait)
                     sleep(retry_wait)
-                    total_time += retry_wait
                 else:
                     if self.logger: self.logger.warning("Immediate retry...")
+        total_time = int(time() - start_time)
         if self.logger: self.logger.error("UMAPI timeout...giving up after %d attempts (%d seconds).",
                                           self.retry_max_attempts, total_time)
         raise UnavailableError(self.retry_max_attempts, total_time, result)

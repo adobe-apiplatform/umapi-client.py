@@ -85,3 +85,10 @@ Bug fix release:
 
 * [Issue 44](https://github.com/adobe-apiplatform/umapi-client.py/issues/44)
     * Default behavior of UsersQuery is now correct: only return direct memberships in the info about queried users.
+
+### Version 2.5.1
+
+Bug fix release:
+
+* [Issue 47](https://github.com/adobe-apiplatform/umapi-client.py/issues/47)
+    * When an immediate retry was done due to a timeout, there was a logging error.

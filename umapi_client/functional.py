@@ -77,13 +77,10 @@ class UserAction(Action):
         :param domain: a domain
         '''
         if email and not cls._email_regex.match(email):
-            email = email.encode('utf-8')
             raise ValueError("'%s': Illegal email format (must be ascii, unquoted, with no comment part)" % (email,))
         if domain and not cls._domain_regex.match(domain):
-            domain = domain.encode('utf-8')
             raise ValueError("'%s': Illegal domain format" % (domain,))
         if username and not cls._username_regex.match(username):
-            username = username.encode('utf-8')
             raise ValueError("'%s': Illegal username format (must be unquoted email local part)" % (username,))
 
     def __init__(self, id_type=IdentityTypes.adobeID, email=None, username=None, domain=None, **kwargs):

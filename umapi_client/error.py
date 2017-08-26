@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import six
+
 
 class UnavailableError(Exception):
     def __init__(self, attempts, seconds, result):
@@ -52,3 +54,10 @@ class BatchError(Exception):
         Exception.__init__(self, prefix + tail)
         self.causes = causes
         self.statistics = (queued, sent, completed)
+
+
+class ArgumentError(ValueError):
+    def __init__(self, message):
+        if six.PY2 and isinstance(message, unicode):
+            message = message.encode('utf8')
+        ValueError.__init__(self, message)

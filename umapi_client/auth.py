@@ -21,7 +21,7 @@
 import datetime as dt
 import time
 
-import jwt      # package name is PyJWT in setup
+import jwt  # package name is PyJWT in setup
 import requests
 import six.moves.urllib.parse as urlparse
 

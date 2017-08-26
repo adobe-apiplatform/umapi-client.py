@@ -30,7 +30,7 @@ import six
 import six.moves.urllib.parse as urlparse
 
 from .auth import JWT, Auth, AccessRequest
-from .error import BatchError, UnavailableError, ClientError, RequestError, ServerError
+from .error import BatchError, UnavailableError, ClientError, RequestError, ServerError, ArgumentError
 from .version import __version__ as umapi_version
 
 
@@ -119,7 +119,7 @@ class Connection:
         elif auth_dict:
             self.auth = self._get_auth(ims_host=ims_host, ims_endpoint_jwt=ims_endpoint_jwt, **auth_dict)
         else:
-            raise ValueError("Connector create: either auth (an Auth object) or auth_dict (a dictionary) is required")
+            raise ArgumentError("Connector create: either auth (an Auth object) or auth_dict (a dict) is required")
         self.session = requests.Session()
         ua_string = "umapi-client/" + umapi_version + " Python/" + python_version() + " (" + platform_version() + ")"
         if user_agent and user_agent.strip():
@@ -133,7 +133,7 @@ class Connection:
         tech_acct_id = tech_acct_id or kwargs.get("tech_acct")
         private_key_file = private_key_file or kwargs.get("priv_key_path")
         if not (tech_acct_id and api_key and client_secret and (private_key_data or private_key_file)):
-            raise ValueError("Connector create: not all required auth parameters were supplied; please see docs")
+            raise ArgumentError("Connector create: not all required auth parameters were supplied; please see docs")
         if private_key_data:
             jwt = JWT(self.org_id, tech_acct_id, ims_host, api_key, six.StringIO(private_key_data))
         else:
@@ -196,7 +196,7 @@ class Connection:
         query_type = object_type + "s"  # poor man's plural
         query_path = "/organizations/{}/{}".format(self.org_id, query_type)
         for component in url_params if url_params else []:
-            query_path += "/" + urlparse.quote(component)
+            query_path += "/" + urlparse.quote(component, safe='/@')
         if query_params: query_path += "?" + urlparse.urlencode(query_params)
         try:
             result = self.make_call(query_path)

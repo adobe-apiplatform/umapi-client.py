@@ -32,10 +32,10 @@ from umapi_client import __version__ as umapi_version
 
 def test_remote_status_success():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
-        mock_get.return_value = MockResponse(200, body={"build": "2559", "version": "2.1.54", "state":"LIVE"})
+        mock_get.return_value = MockResponse(200, body={"build": "2559", "version": "2.1.54", "state": "LIVE"})
         conn = Connection(**mock_connection_params)
         _, remote_status = conn.status(remote=True)
-        assert remote_status == {"endpoint": "https://test/", "build": "2559", "version": "2.1.54", "state":"LIVE"}
+        assert remote_status == {"endpoint": "https://test/", "build": "2559", "version": "2.1.54", "state": "LIVE"}
 
 
 def test_remote_status_failure():
@@ -53,6 +53,7 @@ def test_remote_status_timeout():
         _, remote_status = conn.status(remote=True)
         assert remote_status["status"].startswith("Unreachable")
 
+
 def test_ua_string():
     conn = Connection(**mock_connection_params)
     req = conn.session.prepare_request(requests.Request('GET', "http://test.com/"))
@@ -64,6 +65,7 @@ def test_ua_string():
     assert ua_header.startswith("umapi-client/" + umapi_version)
     assert " Python" in ua_header
 
+
 def test_ua_string_additional():
     conn = Connection(user_agent="additional/1.0", **mock_connection_params)
     req = conn.session.prepare_request(requests.Request('GET', "http://test.com/"))
@@ -72,6 +74,7 @@ def test_ua_string_additional():
     req = conn.session.prepare_request(requests.Request('POST', "http://test.com/", data="This is a test"))
     ua_header = req.headers.get("User-Agent")
     assert ua_header.startswith("additional/1.0 umapi-client/" + umapi_version)
+
 
 def test_get_success():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:

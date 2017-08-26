@@ -21,8 +21,10 @@
 # SOFTWARE.
 
 import pytest
+import six
 
 from conftest import mock_connection_params
+from umapi_client import ArgumentError
 from umapi_client import Connection
 from umapi_client import IdentityTypes, GroupTypes, RoleTypes
 from umapi_client import UserAction, UserGroupAction
@@ -49,8 +51,15 @@ def test_user_adobeid_unicode():
 
 
 def test_user_adobeid_unicode_error_unicode_dot_above():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as excinfo:
         UserAction(email=u"lwałęsa@adobe.com")
+    assert excinfo.type == ArgumentError
+    if six.PY2:
+        assert excinfo.match(u"lwałęsa@adobe.com".encode('utf8'))
+        with pytest.raises(ValueError) as excinfo:
+            UserAction(email=u"lwałęsa@adobe.com".encode('utf8'))
+        assert excinfo.type == ArgumentError
+        assert excinfo.match(u"lwałęsa@adobe.com".encode('utf8'))
 
 
 def test_user_adobeid_unicode_error_trailing_dot():

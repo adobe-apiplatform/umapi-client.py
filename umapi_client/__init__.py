@@ -18,9 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .connection import Connection
 from .api import Action, QuerySingle, QueryMultiple
-from .error import BatchError, ClientError, RequestError, ServerError, UnavailableError
+from .connection import Connection
+from .error import BatchError, ClientError, RequestError, ServerError, UnavailableError, ArgumentError
 from .functional import IdentityTypes, GroupTypes, RoleTypes, IfAlreadyExistsOptions
 from .functional import UserAction, UserQuery, UsersQuery
 from .functional import UserGroupAction, GroupsQuery

@@ -100,9 +100,9 @@ Enhancement release:
 * (No Issue)
     * Read the wall clock to return an accurate "total time" in the `UnavailableError` (and associated logging).
 
-### Version 2.6
+### Version 2.6, 2.7
 
-Bug fix release:
+Bug fix releases: The first fix attempt had problems, the second is better.
 
 * [Issue 50](https://github.com/adobe-apiplatform/umapi-client.py/issues/50)
     * Unicode input for email produced error strings that were incorrectly encoded, so clients crashed trying to use them.

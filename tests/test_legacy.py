@@ -36,6 +36,7 @@ error_response = MockResponse(200, {"result": "error", "errors": [{"errorCode": 
 retry_response = MockResponse(429, headers={"Retry-After": "1"})
 not_found_response = MockResponse(404, text="404 Object Not Found")
                 
+
 @mock.patch('umapi_client.legacy.requests.Session.get', return_value=success_response)
 def test_list_users_success(_):
     """Test Users List - SUCCESS"""
@@ -173,7 +174,10 @@ def test_action_obj_multi():
         remove=["product3"]
     )
     assert json.dumps(action.wire_dict(), sort_keys=True) == \
-           '{"do": [{"addAdobeID": {"email": "user@example.com"}}, {"add": {"product": ["product1", "product2"]}}, {"remove": {"product": ["product3"]}}], "user": "user@example.com"}'
+           '{"do": [{"addAdobeID": {"email": "user@example.com"}}, ' \
+                   '{"add": {"product": ["product1", "product2"]}}, ' \
+                   '{"remove": {"product": ["product3"]}}], ' \
+            '"user": "user@example.com"}'
 
 
 def test_action_obj_requestid():

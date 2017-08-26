@@ -35,7 +35,7 @@ import six
 
 from .api import Action as NewAction
 from .connection import Connection
-from .error import RequestError, ServerError, UnavailableError
+from .error import RequestError, ServerError, UnavailableError, ArgumentError
 
 # make the retry options module-global so they can be set by clients
 retry_max_attempts = 4
@@ -52,9 +52,9 @@ class Action(NewAction):
     """
     def __init__(self, user=None, user_key=None, **kwargs):
         if user is None and user_key is None:
-            ValueError("Must specify one of user or user_key")
+            ArgumentError("Must specify one of user or user_key")
         if user and user_key:
-            ValueError("Must specify only one of user or user_key")
+            ArgumentError("Must specify only one of user or user_key")
         if user_key:
             user = user_key
         NewAction.__init__(self, user=user, **kwargs)
@@ -107,7 +107,7 @@ class UMAPI:
             self.endpoint = str(endpoint)
             self.test_mode = test_mode
         else:
-            ValueError("UMAPI create: you must specify either auth and endpoint, or conn, but not both")
+            ArgumentError("UMAPI create: you must specify either auth and endpoint, or conn, but not both")
 
     def _get_conn(self, org_id):
         if not self.conn:
@@ -118,7 +118,7 @@ class UMAPI:
                                    **self.conn_options)
         else:
             if org_id != self.org_id:
-                ValueError("OrganizationID (%s) does not match that in access token (%s)", org_id, self.org_id)
+                ArgumentError("OrganizationID (%s) does not match that in access token (%s)" % (org_id, self.org_id))
 
     def users(self, org_id, page=0):
         self._get_conn(org_id)

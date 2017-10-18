@@ -106,3 +106,16 @@ Bug fix releases: The first fix attempt had problems, the second is better.
 
 * [Issue 50](https://github.com/adobe-apiplatform/umapi-client.py/issues/50)
     * Unicode input for email produced error strings that were incorrectly encoded, so clients crashed trying to use them.
+
+### Version 2.8
+
+UMAPI compatibility release:
+
+Because the UMAPI functionality around Adobe IDs is now different for migrated organizations, the client no longer does a lot of redundant validation of server-side checks.  This makes it more tolerant of clients who use it against both migrated and non-migrated orgs.
+
+**NOTE**: Clients that were relying on the client to default Enterprise ID country code to "UD" now need to specify it themselves.
+
+* [Issue 54](https://github.com/adobe-apiplatform/umapi-client.py/issues/54)
+    * Allow setting attributes on Adobe ID users as long as the server allows it.
+* [Issue 55](https://github.com/adobe-apiplatform/umapi-client.py/issues/55)
+    * Don't default the country code when creating new Enterprise ID users.

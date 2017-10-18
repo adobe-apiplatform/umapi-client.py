@@ -155,43 +155,34 @@ class UserAction(Action):
         :param on_conflict: IfAlreadyExistsOption (or string name thereof) controlling creation of existing users
         :return: the User, so you can do User(...).create(...).add_to_groups(...)
         """
-        # all types handle email and on_conflict similarly
+        # first validate the params: email, on_conflict, first_name, last_name, country
         create_params = {}
         if email is None:
-            email = self.email
+            if not self.email:
+                raise ArgumentError("You must specify email when creating a user")
         elif self.email is None:
             self._validate(email=email)
             self.email = email
         elif self.email.lower() != email.lower():
             raise ArgumentError("Specified email (%s) doesn't match user's email (%s)" % (email, self.email))
+        create_params["email"] = self.email
         if on_conflict in IfAlreadyExistsOptions.__members__:
             on_conflict = IfAlreadyExistsOptions[on_conflict]
         if on_conflict not in IfAlreadyExistsOptions:
             raise ArgumentError("on_conflict must be one of {}".format([o.name for o in IfAlreadyExistsOptions]))
         if on_conflict != IfAlreadyExistsOptions.errorIfAlreadyExists:
             create_params["option"] = on_conflict.name
+        if first_name: create_params["firstname"] = first_name  # per issue #54 now allowed for all identity types
+        if last_name: create_params["lastname"] = last_name     # per issue #54 now allowed for all identity types
+        if country: create_params["country"] = country          # per issue #55 should not be defaulted
 
-        # each type handles the create differently
+        # each type is created using a different call
         if self.id_type == IdentityTypes.adobeID:
-            # Adobe ID doesn't allow anything but email
-            if first_name or last_name or country:
-                raise ArgumentError("You cannot specify first or last name or country for an Adobe ID.")
-            return self.insert(addAdobeID=dict(email=email, **create_params))
+            return self.insert(addAdobeID=dict(**create_params))
+        elif self.id_type == IdentityTypes.enterpriseID:
+            return self.insert(createEnterpriseID=dict(**create_params))
         else:
-            # Federated and Enterprise allow specifying the name
-            if first_name: create_params["firstname"] = first_name
-            if last_name: create_params["lastname"] = last_name
-            if self.id_type == IdentityTypes.enterpriseID:
-                # Enterprise ID can default country, already has email on create
-                create_params["country"] = country if country else "UD"
-                return self.insert(createEnterpriseID=dict(email=email, **create_params))
-            else:
-                # Federated ID must specify email if that wasn't done already
-                if not email:
-                    raise ArgumentError("You must specify email when creating a Federated ID")
-                if not country:
-                    raise ArgumentError("You must specify country when creating a Federated ID")
-                return self.insert(createFederatedID=dict(email=email, country=country, **create_params))
+            return self.insert(createFederatedID=dict(**create_params))
 
     def update(self, email=None, username=None, first_name=None, last_name=None, country=None):
         """
@@ -203,11 +194,10 @@ class UserAction(Action):
         :param country: new country for this user
         :return: the User, so you can do User(...).update(...).add_to_groups(...)
         """
-        if self.id_type is IdentityTypes.adobeID:
-            raise ArgumentError("You cannot update any attributes of an Adobe ID.")
-        if email: self._validate(email=email)
-        if username and self.id_type is IdentityTypes.enterpriseID:
-            self._validate(email=username)
+        if email:
+            self._validate(email=email)
+        if username:
+            self._validate(username=username)
         updates = {}
         for k, v in six.iteritems(dict(email=email, username=username,
                                        firstname=first_name, lastname=last_name,

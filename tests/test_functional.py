@@ -103,8 +103,12 @@ def test_create_user_adobeid():
 
 def test_create_user_adobeid_country():
     user = UserAction(email="dbrotsky@adobe.com")
-    with pytest.raises(ValueError):
-        user.create(country="US")
+    user.create(country="US")
+    assert user.wire_dict() == {"do": [{"addAdobeID": {"email": "dbrotsky@adobe.com",
+                                                       "country": "US",
+                                                       "option": "ignoreIfAlreadyExists"}}],
+                                "user": "dbrotsky@adobe.com",
+                                "useAdobeID": True}
 
 
 def test_create_user_enterpriseid():
@@ -112,7 +116,6 @@ def test_create_user_enterpriseid():
     user.create(first_name="Daniel", last_name="Brotsky")
     assert user.wire_dict() == {"do": [{"createEnterpriseID": {"email": "dbrotsky@o.on-the-side.net",
                                                                "firstname": "Daniel", "lastname": "Brotsky",
-                                                               "country": "UD",
                                                                "option": "ignoreIfAlreadyExists"}}],
                                 "user": "dbrotsky@o.on-the-side.net"}
 
@@ -175,6 +178,14 @@ def test_create_user_federatedid_username_mismatch():
         user.create(first_name="Daniel", last_name="Brotsky", country="US", email="foo@bar.com")
 
 
+def test_update_user_adobeid():
+    user = UserAction(id_type=IdentityTypes.adobeID, email="dbrotsky@adobe.com")
+    user.update(first_name="Johnny", last_name="Danger")
+    assert user.wire_dict() == {"do": [{"update": {"firstname": "Johnny", "lastname": "Danger"}}],
+                                "user": "dbrotsky@adobe.com",
+                                "useAdobeID": True}
+
+
 def test_update_user_federatedid():
     user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
     user.update(first_name="Johnny", last_name="Danger")
@@ -192,7 +203,7 @@ def test_update_user_federatedid_unicode():
 def test_update_user_enterpriseid_username():
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="dbrotsky@o.on-the-side.net")
     with pytest.raises(ValueError):
-        user.update(username="dbrotsky1")
+        user.update(username="dbrotsky1@o.on-the-side.net")
 
 
 def test_update_user_federatedid_username():

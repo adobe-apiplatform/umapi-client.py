@@ -417,6 +417,19 @@ class UserGroupAction(Action):
         return self.append(remove=ulist)
 
 
+class UserGroupsQuery(QueryMultiple):
+    """
+    Query for just user groups
+    """
+
+    def __init__(self, connection):
+        """
+        Create a query for all groups
+        :param connection: Connection to run the query against
+        """
+        QueryMultiple.__init__(self, connection=connection, object_type="user-group")
+
+
 class GroupsQuery(QueryMultiple):
     """
     Query for all groups

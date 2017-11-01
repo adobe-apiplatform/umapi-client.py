@@ -23,83 +23,36 @@ import pytest
 import mock
 
 from conftest import mock_connection_params, MockResponse
-from umapi_client import Connection, QueryMultiple, QuerySingle, ClientError
+from umapi_client import Connection, QueryMultiple, QuerySingle, ClientError, RequestError
 
 
 def test_query_single_success():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
-        mock_get.return_value = MockResponse(200, {"result": "success", "object": {"name": "n1", "type": "object"}})
+        mock_get.return_value = MockResponse(200, {"result": "success", "user": {"name": "n1", "type": "user"}})
         conn = Connection(**mock_connection_params)
-        assert conn.query_single("object", ["n1"]) == {"name": "n1", "type": "object"}
+        assert conn.query_single("user", ["n1"]) == {"name": "n1", "type": "user"}
 
 
 def test_query_single_not_found():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(404, text="404 Object not found")
         conn = Connection(**mock_connection_params)
-        assert conn.query_single("object", ["n1"]) == {}
+        assert conn.query_single("user", ["n1"]) == {}
 
 
 def test_query_single_error():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200, {"result": "error"})
         conn = Connection(**mock_connection_params)
-        pytest.raises(ClientError, conn.query_single, "object", ["n1"])
-
-
-def test_query_multiple_success():
-    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
-        mock_get.return_value = MockResponse(200, {"result": "success",
-                                                   "lastPage": False,
-                                                   "objects": [{"name": "n1", "type": "object"},
-                                                               {"name": "n2", "type": "object"}]})
-        conn = Connection(**mock_connection_params)
-        assert conn.query_multiple("object") == ([{"name": "n1", "type": "object"},
-                                                  {"name": "n2", "type": "object"}],
-                                                 False)
-
-
-def test_query_multiple_empty():
-    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
-        mock_get.return_value = MockResponse(200, {"result": "success",
-                                                   "lastPage": True,
-                                                   "objects": []})
-        conn = Connection(**mock_connection_params)
-        assert conn.query_multiple("object") == ([], True)
-
-
-def test_query_multiple_not_found():
-    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
-        mock_get.return_value = MockResponse(404, text="404 Object not found")
-        conn = Connection(**mock_connection_params)
-        assert conn.query_multiple("object") == ([], True)
-
-
-def test_query_multiple_paged():
-    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
-        mock_get.side_effect = [MockResponse(200, {"result": "success",
-                                                   "lastPage": False,
-                                                   "objects": [{"name": "n1", "type": "object"},
-                                                               {"name": "n2", "type": "object"}]}),
-                                MockResponse(200, {"result": "success",
-                                                   "lastPage": True,
-                                                   "objects": [{"name": "n3", "type": "object"},
-                                                               {"name": "n4", "type": "object"}]})]
-        conn = Connection(**mock_connection_params)
-        assert conn.query_multiple("object", 0) == ([{"name": "n1", "type": "object"},
-                                                     {"name": "n2", "type": "object"}],
-                                                    False)
-        assert conn.query_multiple("object", 1) == ([{"name": "n3", "type": "object"},
-                                                     {"name": "n4", "type": "object"}],
-                                                    True)
+        pytest.raises(ClientError, conn.query_single, "user", ["n1"])
 
 
 def test_qs_success():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200, {"result": "success",
-                                                   "object": {"user": "foo@bar.com", "type": "adobeID"}})
+                                                   "user": {"user": "foo@bar.com", "type": "adobeID"}})
         conn = Connection(**mock_connection_params)
-        qs = QuerySingle(conn, "object", ["foo@bar.com"])
+        qs = QuerySingle(conn, "user", ["foo@bar.com"])
         assert qs.result() == {"user": "foo@bar.com", "type": "adobeID"}
 
 
@@ -107,18 +60,18 @@ def test_qs_not_found():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(404, text="404 Object not found")
         conn = Connection(**mock_connection_params)
-        qs = QuerySingle(conn, "object", ["foo@bar.com"])
+        qs = QuerySingle(conn, "user", ["foo@bar.com"])
         assert qs.result() == {}
 
 
 def test_qs_reload():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200, {"result": "success",
-                                                   "object": {"user": "foo1@bar.com", "type": "adobeID"}}),
+                                                   "user": {"user": "foo1@bar.com", "type": "adobeID"}}),
                                 MockResponse(200, {"result": "success",
-                                                   "object": {"user": "foo2@bar.com", "type": "adobeID"}})]
+                                                   "user": {"user": "foo2@bar.com", "type": "adobeID"}})]
         conn = Connection(**mock_connection_params)
-        qs = QuerySingle(conn, "object", ["foo@bar.com"])
+        qs = QuerySingle(conn, "user", ["foo@bar.com"])
         assert qs.result() == {"user": "foo1@bar.com", "type": "adobeID"}
         # second verse, same as the first
         assert qs.result() == {"user": "foo1@bar.com", "type": "adobeID"}
@@ -126,40 +79,87 @@ def test_qs_reload():
         assert qs.result() == {"user": "foo2@bar.com", "type": "adobeID"}
 
 
-def test_qm_iterate_complete():
+def test_query_multiple_user_success():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.return_value = MockResponse(200, {"result": "success",
+                                                   "lastPage": False,
+                                                   "users": [{"name": "n1", "type": "user"},
+                                                             {"name": "n2", "type": "user"}]})
+        conn = Connection(**mock_connection_params)
+        assert conn.query_multiple("user") == ([{"name": "n1", "type": "user"},
+                                                {"name": "n2", "type": "user"}],
+                                               False)
+
+
+def test_query_multiple_user_empty():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.return_value = MockResponse(200, {"result": "success",
+                                                   "lastPage": True,
+                                                   "users": []})
+        conn = Connection(**mock_connection_params)
+        assert conn.query_multiple("user") == ([], True)
+
+
+def test_query_multiple_user_not_found():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.return_value = MockResponse(404, text="404 Object not found")
+        conn = Connection(**mock_connection_params)
+        assert conn.query_multiple("user") == ([], True)
+
+
+def test_query_multiple_user_paged():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200, {"result": "success",
                                                    "lastPage": False,
-                                                   "objects": [{"name": "n1", "type": "object"},
-                                                               {"name": "n2", "type": "object"}]}),
+                                                   "users": [{"name": "n1", "type": "user"},
+                                                             {"name": "n2", "type": "user"}]}),
                                 MockResponse(200, {"result": "success",
                                                    "lastPage": True,
-                                                   "objects": [{"name": "n3", "type": "object"},
-                                                               {"name": "n4", "type": "object"}]})]
+                                                   "users": [{"name": "n3", "type": "user"},
+                                                             {"name": "n4", "type": "user"}]})]
         conn = Connection(**mock_connection_params)
-        qm = QueryMultiple(conn, "object")
+        assert conn.query_multiple("user", 0) == ([{"name": "n1", "type": "user"},
+                                                   {"name": "n2", "type": "user"}],
+                                                  False)
+        assert conn.query_multiple("user", 1) == ([{"name": "n3", "type": "user"},
+                                                   {"name": "n4", "type": "user"}],
+                                                  True)
+
+
+def test_qm_user_iterate_complete():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.side_effect = [MockResponse(200, {"result": "success",
+                                                   "lastPage": False,
+                                                   "users": [{"name": "n1", "type": "user"},
+                                                             {"name": "n2", "type": "user"}]}),
+                                MockResponse(200, {"result": "success",
+                                                   "lastPage": True,
+                                                   "users": [{"name": "n3", "type": "user"},
+                                                             {"name": "n4", "type": "user"}]})]
+        conn = Connection(**mock_connection_params)
+        qm = QueryMultiple(conn, "user")
         for obj in qm:
             if obj["name"] == "n3":
                 break
-        assert qm.all_results() == [{"name": "n1", "type": "object"},
-                                    {"name": "n2", "type": "object"},
-                                    {"name": "n3", "type": "object"},
-                                    {"name": "n4", "type": "object"}]
+        assert qm.all_results() == [{"name": "n1", "type": "user"},
+                                    {"name": "n2", "type": "user"},
+                                    {"name": "n3", "type": "user"},
+                                    {"name": "n4", "type": "user"}]
 
 
-def test_qm_iterate_partial():
+def test_qm_user_iterate_partial():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200, {"result": "success",
                                                    "lastPage": False,
-                                                   "objects": [{"name": "n1", "type": "object"},
-                                                               {"name": "n2", "type": "object"}]}),
+                                                   "users": [{"name": "n1", "type": "user"},
+                                                             {"name": "n2", "type": "user"}]}),
                                 MockResponse(200, {"result": "success",
                                                    "lastPage": False,
-                                                   "objects": [{"name": "n1", "type": "object"},
-                                                               {"name": "n2", "type": "object"}]}),
+                                                   "users": [{"name": "n1", "type": "user"},
+                                                             {"name": "n2", "type": "user"}]}),
                                 MockResponse(200, {"result": "error"})]
         conn = Connection(**mock_connection_params)
-        qm = QueryMultiple(conn, "object")
+        qm = QueryMultiple(conn, "user")
         for obj in qm:
             if obj["name"] == "n2":
                 break
@@ -169,32 +169,189 @@ def test_qm_iterate_partial():
         pytest.raises(ClientError, qm.all_results)
 
 
-def test_qm_reload():
+def test_qm_user_reload():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200, {"result": "success",
                                                    "lastPage": False,
-                                                   "objects": [{"name": "n1", "type": "object"},
-                                                               {"name": "n2", "type": "object"}]}),
+                                                   "users": [{"name": "n1", "type": "user"},
+                                                             {"name": "n2", "type": "user"}]}),
                                 MockResponse(200, {"result": "success",
                                                    "lastPage": True,
-                                                   "objects": [{"name": "n3", "type": "object"},
-                                                               {"name": "n4", "type": "object"}]}),
+                                                   "users": [{"name": "n3", "type": "user"},
+                                                             {"name": "n4", "type": "user"}]}),
                                 MockResponse(200, {"result": "success",
                                                    "lastPage": False,
-                                                   "objects": [{"name": "n5", "type": "object"},
-                                                               {"name": "n6", "type": "object"}]}),
+                                                   "users": [{"name": "n5", "type": "user"},
+                                                             {"name": "n6", "type": "user"}]}),
                                 MockResponse(200, {"result": "success",
                                                    "lastPage": True,
-                                                   "objects": [{"name": "n7", "type": "object"},
-                                                               {"name": "n8", "type": "object"}]})]
+                                                   "users": [{"name": "n7", "type": "user"},
+                                                             {"name": "n8", "type": "user"}]})]
         conn = Connection(**mock_connection_params)
-        qm = QueryMultiple(conn, "object")
-        assert list(qm) == [{"name": "n1", "type": "object"},
-                            {"name": "n2", "type": "object"},
-                            {"name": "n3", "type": "object"},
-                            {"name": "n4", "type": "object"}]
+        qm = QueryMultiple(conn, "user")
+        assert list(qm) == [{"name": "n1", "type": "user"},
+                            {"name": "n2", "type": "user"},
+                            {"name": "n3", "type": "user"},
+                            {"name": "n4", "type": "user"}]
         qm.reload()
-        assert qm.all_results() == [{"name": "n5", "type": "object"},
-                                    {"name": "n6", "type": "object"},
-                                    {"name": "n7", "type": "object"},
-                                    {"name": "n8", "type": "object"}]
+        assert qm.all_results() == [{"name": "n5", "type": "user"},
+                                    {"name": "n6", "type": "user"},
+                                    {"name": "n7", "type": "user"},
+                                    {"name": "n8", "type": "user"}]
+
+
+def test_query_multiple_usergroup_success():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.return_value = MockResponse(200,
+                                             [{"name": "n1", "type": "user-group"},
+                                              {"name": "n2", "type": "user-group"}],
+                                             {"X-Total-Count": "4",
+                                              "X-Page-Count": "2",
+                                              "X-Current-Page": "1",
+                                              "X-Page-Size:": "2"})
+        conn = Connection(**mock_connection_params)
+        assert conn.query_multiple("user-group") == ([{"name": "n1", "type": "user-group"},
+                                                      {"name": "n2", "type": "user-group"}],
+                                                     False)
+
+
+def test_query_multiple_usergroup_empty():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.return_value = MockResponse(200,
+                                             [],
+                                             {"X-Total-Count": "0",
+                                              "X-Page-Count": "1",
+                                              "X-Current-Page": "1",
+                                              "X-Page-Size:": "0"})
+        conn = Connection(**mock_connection_params)
+        assert conn.query_multiple("user-group") == ([], True)
+
+
+def test_query_multiple_usergroup_not_found():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.return_value = MockResponse(404, text="404 Object not found")
+        conn = Connection(**mock_connection_params)
+        assert conn.query_multiple("user-group") == ([], True)
+
+
+def test_query_multiple_usergroup_paged():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.side_effect = [MockResponse(200,
+                                             [{"name": "n1", "type": "user-group"},
+                                              {"name": "n2", "type": "user-group"}],
+                                             {"X-Total-Count": "4",
+                                              "X-Page-Count": "2",
+                                              "X-Current-Page": "1",
+                                              "X-Page-Size:": "2"}),
+                                MockResponse(200,
+                                             [{"name": "n3", "type": "user-group"},
+                                              {"name": "n4", "type": "user-group"}],
+                                             {"X-Total-Count": "4",
+                                              "X-Page-Count": "2",
+                                              "X-Current-Page": "2",
+                                              "X-Page-Size:": "2"})]
+        conn = Connection(**mock_connection_params)
+        assert conn.query_multiple("user-group", 0) == ([{"name": "n1", "type": "user-group"},
+                                                         {"name": "n2", "type": "user-group"}],
+                                                        False)
+        assert conn.query_multiple("user-group", 1) == ([{"name": "n3", "type": "user-group"},
+                                                         {"name": "n4", "type": "user-group"}],
+                                                        True)
+
+
+def test_qm_usergroup_iterate_complete():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.side_effect = [MockResponse(200,
+                                             [{"name": "n1", "type": "user-group"},
+                                              {"name": "n2", "type": "user-group"}],
+                                             {"X-Total-Count": "4",
+                                              "X-Page-Count": "2",
+                                              "X-Current-Page": "1",
+                                              "X-Page-Size:": "2"}),
+                                MockResponse(200,
+                                             [{"name": "n3", "type": "user-group"},
+                                              {"name": "n4", "type": "user-group"}],
+                                             {"X-Total-Count": "4",
+                                              "X-Page-Count": "2",
+                                              "X-Current-Page": "2",
+                                              "X-Page-Size:": "2"})]
+        conn = Connection(**mock_connection_params)
+        qm = QueryMultiple(conn, "user-group")
+        for obj in qm:
+            if obj["name"] == "n3":
+                break
+        assert qm.all_results() == [{"name": "n1", "type": "user-group"},
+                                    {"name": "n2", "type": "user-group"},
+                                    {"name": "n3", "type": "user-group"},
+                                    {"name": "n4", "type": "user-group"}]
+
+
+def test_qm_usergroup_iterate_partial():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.side_effect = [MockResponse(200,
+                                             [{"name": "n1", "type": "user-group"},
+                                              {"name": "n2", "type": "user-group"}],
+                                             {"X-Total-Count": "6",
+                                              "X-Page-Count": "3",
+                                              "X-Current-Page": "1",
+                                              "X-Page-Size:": "2"}),
+                                MockResponse(200,
+                                             [{"name": "n1", "type": "user-group"},
+                                              {"name": "n2", "type": "user-group"}],
+                                             {"X-Total-Count": "6",
+                                              "X-Page-Count": "3",
+                                              "X-Current-Page": "2",
+                                              "X-Page-Size:": "2"}),
+                                MockResponse(400, text="400 bad request")]
+        conn = Connection(**mock_connection_params)
+        qm = QueryMultiple(conn, "user-group")
+        for obj in qm:
+            if obj["name"] == "n2":
+                break
+        for obj in qm:
+            if obj["name"] == "n2":
+                break
+        pytest.raises(RequestError, qm.all_results)
+
+
+def test_qm_usergroup_reload():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.side_effect = [MockResponse(200,
+                                             [{"name": "n1", "type": "user-group"},
+                                              {"name": "n2", "type": "user-group"}],
+                                             {"X-Total-Count": "4",
+                                              "X-Page-Count": "2",
+                                              "X-Current-Page": "1",
+                                              "X-Page-Size:": "2"}),
+                                MockResponse(200,
+                                             [{"name": "n3", "type": "user-group"},
+                                              {"name": "n4", "type": "user-group"}],
+                                             {"X-Total-Count": "4",
+                                              "X-Page-Count": "2",
+                                              "X-Current-Page": "2",
+                                              "X-Page-Size:": "2"}),
+                                MockResponse(200,
+                                             [{"name": "n5", "type": "user-group"},
+                                              {"name": "n6", "type": "user-group"}],
+                                             {"X-Total-Count": "4",
+                                              "X-Page-Count": "2",
+                                              "X-Current-Page": "1",
+                                              "X-Page-Size:": "2"}),
+                                MockResponse(200,
+                                             [{"name": "n7", "type": "user-group"},
+                                              {"name": "n8", "type": "user-group"}],
+                                             {"X-Total-Count": "4",
+                                              "X-Page-Count": "2",
+                                              "X-Current-Page": "2",
+                                              "X-Page-Size:": "2"})]
+        conn = Connection(**mock_connection_params)
+        qm = QueryMultiple(conn, "user-group")
+        assert list(qm) == [{"name": "n1", "type": "user-group"},
+                            {"name": "n2", "type": "user-group"},
+                            {"name": "n3", "type": "user-group"},
+                            {"name": "n4", "type": "user-group"}]
+        qm.reload()
+        assert qm.all_results() == [{"name": "n5", "type": "user-group"},
+                                    {"name": "n6", "type": "user-group"},
+                                    {"name": "n7", "type": "user-group"},
+                                    {"name": "n8", "type": "user-group"}]

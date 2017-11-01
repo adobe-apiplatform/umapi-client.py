@@ -23,5 +23,5 @@ from .connection import Connection
 from .error import BatchError, ClientError, RequestError, ServerError, UnavailableError, ArgumentError
 from .functional import IdentityTypes, GroupTypes, RoleTypes, IfAlreadyExistsOptions
 from .functional import UserAction, UserQuery, UsersQuery
-from .functional import UserGroupAction, UserGroupsQuery, GroupsQuery, UserGroups
+from .functional import UserGroupAction, UserGroupsQuery, GroupsQuery
 from .version import __version__

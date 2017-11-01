@@ -40,7 +40,7 @@ mock_connection_params = {
 class MockResponse:
     def __init__(self, status=200, body=None, headers=None, text=None):
         self.status_code = status
-        self.body = body if body else {}
+        self.body = body if body is not None else {}
         self.headers = headers if headers else {}
         self.text = text if text else ""
 

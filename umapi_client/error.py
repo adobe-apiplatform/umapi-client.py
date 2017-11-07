@@ -61,3 +61,8 @@ class ArgumentError(ValueError):
         if six.PY2 and isinstance(message, unicode):
             message = message.encode('utf8')
         ValueError.__init__(self, message)
+
+
+class UnsupportedError(Exception):
+    def __init__(self, message):
+        Exception.__init__(self, "Unsupported Feature Error: " + message)

@@ -49,7 +49,7 @@ def config():
     with open(config_file_name, "r") as f:
         conf_dict = yaml.load(f)
     creds = conf_dict["test_org"]
-    conn = umapi_client.Connection(org_id=creds["org_id"], auth_dict=creds)
+    conn = umapi_client.Connection(ims_host='ims-na1-stg1.adobelogin.com', user_management_endpoint='https://usermanagement-stage.adobe.io/v2/usermanagement', org_id=creds["org_id"], auth_dict=creds)
     return conn, conf_dict
 
 
@@ -146,3 +146,24 @@ def test_rename_user(config):
     user.update(first_name="Rodney", last_name="Danger")
     user.update(first_name=params["test_user"]["firstname"], last_name=params["test_user"]["lastname"])
     assert (0, 1, 1) == conn.execute_single(user, immediate=True)
+
+def test_create_user_group(config):
+    conn, params = config
+    usergroups = umapi_client.UserGroups(conn)
+    groupName = "Test-Dummy-Group"
+    groupID = usergroups.getGroupIDByName(groupName)
+    if groupID:
+        usergroups.delete(groupName)
+    result = usergroups.create("Test-Dummy-Group")
+    assert result.name == "Test-Dummy-Group"
+
+def test_remove_user_group(config):
+    conn, params = config
+    usergroups = umapi_client.UserGroups(conn)
+    groupName = "Test-Dummy-Group"
+    groupID = usergroups.getGroupIDByName(groupName)
+    if not groupID:
+        result = usergroups.create(groupName)
+        groupID = result.groupid
+    usergroups.delete(groupID)
+    assert usergroups.getGroupIDByName(groupName) == None

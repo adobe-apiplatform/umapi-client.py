@@ -24,7 +24,6 @@ from email.utils import parsedate_tz, mktime_tz
 from platform import python_version, version as platform_version
 from random import randint
 from time import time, sleep, gmtime, strftime
-
 import requests
 import six
 import six.moves.urllib.parse as urlparse
@@ -383,7 +382,7 @@ class Connection:
             raise ClientError(str(body), result)
         return body.get("completed", 0)
 
-    def make_call(self, path, body=None):
+    def make_call(self, path, body=None, delete=False):
         """
         Make a single UMAPI call with error handling and retry on temporary failure.
         :param path: the string endpoint path for the call
@@ -392,19 +391,22 @@ class Connection:
         """
         if body:
             request_body = json.dumps(body)
-
             def call():
                 return self.session.post(self.endpoint + path, auth=self.auth, data=request_body, timeout=self.timeout)
         else:
-            def call():
-                return self.session.get(self.endpoint + path, auth=self.auth, timeout=self.timeout)
+            if not delete:
+                def call():
+                    return self.session.get(self.endpoint + path, auth=self.auth, timeout=self.timeout)
+            else:
+                def call():
+                    return self.session.delete(self.endpoint + path, auth=self.auth, timeout=self.timeout)
 
         start_time = time()
         result = None
         for num_attempts in range(1, self.retry_max_attempts + 1):
             try:
                 result = call()
-                if result.status_code == 200:
+                if result.status_code in [200,201,204]:
                     return result
                 elif result.status_code in [429, 502, 503, 504]:
                     if self.logger: self.logger.warning("UMAPI timeout...service unavailable (code %d on try %d)",

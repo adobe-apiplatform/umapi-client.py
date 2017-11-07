@@ -23,7 +23,7 @@ import six
 from enum import Enum
 
 from .api import Action, QuerySingle, QueryMultiple
-from .error import ArgumentError
+from .error import ArgumentError, UnsupportedError
 
 
 class IdentityTypes(Enum):
@@ -441,3 +441,53 @@ class GroupsQuery(QueryMultiple):
         :param connection: Connection to run the query against
         """
         QueryMultiple.__init__(self, connection=connection, object_type="group")
+
+class UserGroups:
+    """
+    Create and Remove commands to perform on user-groups.
+    """
+    def __init__(self, connection):
+        self.connection = connection
+        self.path = "/%s/user-groups" % connection.org_id
+
+    def create(self, name, description=None):
+        """
+        Create user group
+        :param name: name of user-group
+        :param description: (optional) description field for user-group
+        :return: On success, return JSON
+        """
+        if self.connection.test_mode:
+            raise UnsupportedError("Test Mode is not supported")
+        if description:
+            data = dict(name=name,description=description)
+        else:
+            data = dict(name=name)
+        result = self.connection.make_call(self.path, data)
+        body = result.json()
+        return body
+
+    def delete(self, groupId):
+        """
+        Remove user group by groupId
+        :param groupId: GroupID of user-group
+        """
+        if groupId:
+            if self.connection.test_mode:
+                raise UnsupportedError("Test Mode is not supported")
+            path = self.path + '/%s' % groupId
+            self.connection.make_call(path=path, delete=True)
+        else:
+            raise ArgumentError("remove() required either name or groupId argument")
+
+    def getGroupIDByName(self,name):
+        """
+        Search for GroupID by Name
+        :param name: name of user-group
+        :return: GroupID string
+        """
+        groups = UserGroupsQuery(connection=self.connection)
+        for group in groups:
+            if group['name'] == name:
+                return group['groupId']
+        return None

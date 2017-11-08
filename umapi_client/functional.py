@@ -308,6 +308,24 @@ class UserAction(Action):
         self.append(removeFromDomain={})
         return None
 
+    def split_groups(self, index, verb, group_type, max_groups):
+        if index > len(self.commands):
+            raise ArgumentError(six.text_type("Index {} not found in commands list").format(index))
+        if verb not in self.commands[index]:
+            raise ArgumentError(six.text_type("'{}' not specified in command").format(verb))
+        if group_type not in self.commands[index][verb]:
+            raise ArgumentError(six.text_type("'{}' not specified in command").format(group_type))
+        groups = self.commands[index][verb][group_type]
+        if len(groups) > max_groups:
+            updated_index = False
+            while len(groups) >= 1:
+                batch, groups = groups[0:max_groups], groups[max_groups:]
+                if not updated_index:
+                    self.commands[index][verb][group_type] = batch
+                    updated_index = True
+                else:
+                    self.commands.append({verb: {group_type: batch}})
+
 
 class UsersQuery(QueryMultiple):
     """

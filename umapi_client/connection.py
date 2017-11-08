@@ -55,6 +55,7 @@ class Connection:
                  timeout_seconds=120.0,
                  throttle_actions=10,
                  throttle_commands=10,
+                 throttle_groups=10,
                  user_agent=None,
                  **kwargs):
         """
@@ -91,6 +92,7 @@ class Connection:
         :param timeout_seconds: How many seconds to wait for server response (<= 0 or None means forever)
         :param throttle_actions: Max number of actions to pack into a single call
         :param throttle_commands: Max number of commands allowed in a single action
+        :param throttle_groups: Max number of groups to add/remove to/from a user
         :param user_agent: (optional) string to use as User-Agent header (umapi-client/version data will be added)
 
         Additional keywords are allowed to make it easy to pass a big dictionary with other values
@@ -106,6 +108,7 @@ class Connection:
         self.timeout = float(timeout_seconds) if timeout_seconds and float(timeout_seconds) > 0.0 else None
         self.throttle_actions = max(int(throttle_actions), 1)
         self.throttle_commands = max(int(throttle_commands), 1)
+        self.throttle_groups = max(int(throttle_groups), 1)
         self.action_queue = []
         self.local_status = {"multiple-query-count": 0,
                              "single-query-count": 0,
@@ -310,6 +313,20 @@ class Connection:
         for a in actions:
             if len(a.commands) == 0:
                 if self.logger: self.logger.warning("Sending action with no commands: %s", a.frame)
+            # throttling part 1a: split commands with group assignments > self.throttle_groups
+            # if an action gets more than 10 commands per verb/group type combination, then it will
+            # be split below
+            for i, c in enumerate(a.commands):
+                for verb in ['add', 'remove']:
+                    subcommand = c.get(verb, {})
+                    if not subcommand:
+                        continue
+                    for group_type in ['product', 'usergroup', 'productConfiguration']:
+                        groups = subcommand.get(group_type, [])
+                        if not groups:
+                            continue
+                        if len(groups) > self.throttle_groups:
+                            a.split_groups(i, verb, group_type, self.throttle_groups)
             if len(a.commands) > self.throttle_commands:
                 if self.logger: self.logger.debug("Throttling action %s to have a maximum of %d commands.",
                                                   a.frame, self.throttle_commands)

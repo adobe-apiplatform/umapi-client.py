@@ -309,6 +309,14 @@ class UserAction(Action):
         return None
 
     def split_groups(self, index, verb, group_type, max_groups):
+        """
+        Split a long list of groups in an add/remove command
+        :param index: index of command to split
+        :param verb: add or remove
+        :param group_type: group type - product, productConfiguration or usergroup
+        :param max_groups: max size of groups (if group list is larger than max it will be split)
+        :return:
+        """
         if index > len(self.commands):
             raise ArgumentError(six.text_type("Index {} not found in commands list").format(index))
         if verb not in self.commands[index]:

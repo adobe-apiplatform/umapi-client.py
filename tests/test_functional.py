@@ -488,3 +488,21 @@ def test_large_group_action_split():
         user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
         user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
         assert conn.execute_single(user, immediate=True) == (0, 2, 2)
+
+
+def test_group_size_limit():
+    """
+    Test with different 'throttle_groups' value, which governs the max size of the group list before commands are split
+    :return:
+    """
+    with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
+        mock_post.return_value = MockResponse(200, {"result": "success"})
+        params = mock_connection_params
+        params['throttle_groups'] = 5
+        conn = Connection(**params)
+
+        group_prefix = "G"
+        add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 150)]
+        user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+        user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
+        assert conn.execute_single(user, immediate=True) == (0, 3, 3)

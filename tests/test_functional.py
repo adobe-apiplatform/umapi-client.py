@@ -23,7 +23,6 @@
 import pytest
 import six
 
-import mock
 from conftest import mock_connection_params, MockResponse
 from umapi_client import ArgumentError
 from umapi_client import Connection
@@ -433,76 +432,3 @@ def test_query_users():
     query = UsersQuery(conn, in_group="test", in_domain="test.com", direct_only=False)
     assert query.url_params == ["test"]
     assert query.query_params == {"directOnly": False, "domain": "test.com"}
-
-
-def test_large_group_assignment_split():
-    """
-    Ensure that large group list can be split into multiple commands
-    :return:
-    """
-    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
-    user.add_to_groups(groups=["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11",
-                               "G12", "G13", "G14", "G15"], group_type=GroupTypes.usergroup)
-    user.split_groups(0, "add", GroupTypes.usergroup.name, 10)
-    assert len(user.commands) == 2
-    assert user.commands[0]["add"][GroupTypes.usergroup.name] == \
-           ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10"]
-    assert user.commands[1]["add"][GroupTypes.usergroup.name] == \
-           ["G11", "G12", "G13", "G14", "G15"]
-
-
-def test_large_group_mix_split():
-    """
-    Ensure that group split works on add and remove
-    Each "add" and "remove" group should be split into 2 groups each
-    :return:
-    """
-    group_prefix = "G"
-    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 15)]
-    remove_groups = [group_prefix+six.text_type(n+1) for n in range(15, 30)]
-    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
-    user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)\
-        .remove_from_groups(groups=remove_groups, group_type=GroupTypes.usergroup)
-    user.split_groups(0, "add", GroupTypes.usergroup.name, 10)
-    user.split_groups(1, "remove", GroupTypes.usergroup.name, 10)
-    assert len(user.commands) == 4
-    assert user.commands[0]["add"][GroupTypes.usergroup.name] == add_groups[0:10]
-    assert user.commands[1]["remove"][GroupTypes.usergroup.name] == remove_groups[0:10]
-    assert user.commands[2]["add"][GroupTypes.usergroup.name] == add_groups[10:]
-    assert user.commands[3]["remove"][GroupTypes.usergroup.name] == remove_groups[10:]
-
-
-def test_large_group_action_split():
-    """
-    Ensure that very large group lists (100+) will be handled appropriately
-    Connection.execute_multiple splits commands and splits actions
-    Result should be 2 actions, even though we only created one action
-    :return:
-    """
-    with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
-        mock_post.return_value = MockResponse(200, {"result": "success"})
-        conn = Connection(**mock_connection_params)
-
-        group_prefix = "G"
-        add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 150)]
-        user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
-        user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
-        assert conn.execute_single(user, immediate=True) == (0, 2, 2)
-
-
-def test_group_size_limit():
-    """
-    Test with different 'throttle_groups' value, which governs the max size of the group list before commands are split
-    :return:
-    """
-    with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
-        mock_post.return_value = MockResponse(200, {"result": "success"})
-        params = mock_connection_params
-        params['throttle_groups'] = 5
-        conn = Connection(**params)
-
-        group_prefix = "G"
-        add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 150)]
-        user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
-        user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
-        assert conn.execute_single(user, immediate=True) == (0, 3, 3)

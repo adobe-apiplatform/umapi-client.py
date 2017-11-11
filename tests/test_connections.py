@@ -250,15 +250,27 @@ def test_large_group_assignment_split():
     Ensure that large group list can be split into multiple commands
     :return:
     """
+    group_prefix = "G"
+    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 15)]
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
-    user.add_to_groups(groups=["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11",
-                               "G12", "G13", "G14", "G15"], group_type=GroupTypes.usergroup)
-    user.split_groups(0, "add", GroupTypes.usergroup.name, 10)
+    user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
+    assert user.maybe_split_groups(10) is True
     assert len(user.commands) == 2
-    assert user.commands[0]["add"][GroupTypes.usergroup.name] == \
-           ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10"]
-    assert user.commands[1]["add"][GroupTypes.usergroup.name] == \
-           ["G11", "G12", "G13", "G14", "G15"]
+    assert user.commands[0]["add"][GroupTypes.usergroup.name] == add_groups[0:10]
+    assert user.commands[1]["add"][GroupTypes.usergroup.name] == add_groups[10:]
+
+
+def test_large_group_assignment_split_recursive():
+    """
+    Test group list large enough to trigger recursive split
+    :return:
+    """
+    group_prefix = "G"
+    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 100)]
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+    user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
+    assert user.maybe_split_groups(10) is True
+    assert len(user.commands) == 10
 
 
 def test_large_group_mix_split():
@@ -273,12 +285,11 @@ def test_large_group_mix_split():
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
     user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup) \
         .remove_from_groups(groups=remove_groups, group_type=GroupTypes.usergroup)
-    user.split_groups(0, "add", GroupTypes.usergroup.name, 10)
-    user.split_groups(1, "remove", GroupTypes.usergroup.name, 10)
+    assert user.maybe_split_groups(10) is True
     assert len(user.commands) == 4
     assert user.commands[0]["add"][GroupTypes.usergroup.name] == add_groups[0:10]
-    assert user.commands[1]["remove"][GroupTypes.usergroup.name] == remove_groups[0:10]
-    assert user.commands[2]["add"][GroupTypes.usergroup.name] == add_groups[10:]
+    assert user.commands[1]["add"][GroupTypes.usergroup.name] == add_groups[10:]
+    assert user.commands[2]["remove"][GroupTypes.usergroup.name] == remove_groups[0:10]
     assert user.commands[3]["remove"][GroupTypes.usergroup.name] == remove_groups[10:]
 
 
@@ -316,3 +327,29 @@ def test_group_size_limit():
         user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
         user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
         assert conn.execute_single(user, immediate=True) == (0, 3, 3)
+
+
+def test_complex_group_split():
+    """
+    Test a complex command with add and remove directive, with multiple group types
+    UserAction's interface doesn't support this, so we build our own command array
+    :return:
+    """
+    group_prefix = "G"
+    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 150)]
+    add_products = [group_prefix+six.text_type(n+1) for n in range(0, 6)]
+    remove_groups = [group_prefix+six.text_type(n+1) for n in range(0, 75)]
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+    user.commands = [{
+        "add": {
+            GroupTypes.usergroup.name: add_groups,
+            GroupTypes.product.name: add_products,
+        },
+        "remove": {
+            GroupTypes.usergroup.name: remove_groups
+        }
+    }]
+    assert user.maybe_split_groups(10) is True
+    assert len(user.commands) == 15
+    assert GroupTypes.product.name not in user.commands[1]['add']
+    assert 'remove' not in user.commands[8]

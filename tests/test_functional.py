@@ -23,7 +23,7 @@
 import pytest
 import six
 
-from conftest import mock_connection_params, MockResponse
+from conftest import mock_connection_params
 from umapi_client import ArgumentError
 from umapi_client import Connection
 from umapi_client import IdentityTypes, GroupTypes, RoleTypes

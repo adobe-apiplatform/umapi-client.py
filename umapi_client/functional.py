@@ -20,6 +20,7 @@
 
 import re
 import six
+import copy
 from enum import Enum
 
 from .api import Action, QuerySingle, QueryMultiple
@@ -308,31 +309,60 @@ class UserAction(Action):
         self.append(removeFromDomain={})
         return None
 
-    def split_groups(self, index, verb, group_type, max_groups):
+    def maybe_split_groups(self, max_groups):
         """
-        Split a long list of groups in an add/remove command
-        :param index: index of command to split
-        :param verb: add or remove
-        :param group_type: group type - product, productConfiguration or usergroup
-        :param max_groups: max size of groups (if group list is larger than max it will be split)
-        :return:
+        Check if group lists in add/remove directives should be split and split them if needed
+        :param max_groups: Max group list size
+        :return: True if at least one command was split, False if none were split
         """
-        if index > len(self.commands):
-            raise ArgumentError(six.text_type("Index {} not found in commands list").format(index))
-        if verb not in self.commands[index]:
-            raise ArgumentError(six.text_type("'{}' not specified in command").format(verb))
-        if group_type not in self.commands[index][verb]:
-            raise ArgumentError(six.text_type("'{}' not specified in command").format(group_type))
-        groups = self.commands[index][verb][group_type]
-        if len(groups) > max_groups:
-            updated_index = False
-            while len(groups) >= 1:
-                batch, groups = groups[0:max_groups], groups[max_groups:]
-                if not updated_index:
-                    self.commands[index][verb][group_type] = batch
-                    updated_index = True
+        new_commands = []
+        # return True if we split at least once
+        maybe_split = False
+        for command in self.commands:
+            do_split = False
+            for verb, verb_commands in six.iteritems(command):
+                for group_type, groups in six.iteritems(verb_commands):
+                    if len(groups) > max_groups:
+                        do_split = True
+            if do_split:
+                maybe_split = True
+                new_commands += self._split_groups(command, max_groups)
+            else:
+                new_commands.append(command)
+        self.commands = new_commands
+        return maybe_split
+
+    def _split_groups(self, command, max_groups):
+        """
+        Split long group lists of individual command
+        Creates additional commands for each split and recursively splits new groups until no commands exceed group
+        limit.  Assumes that at least one split should occur.
+        :param command: Single command containing one or more group lists to add, remove, etc
+        :param max_groups: Max group list size
+        :return: List of at least two commands that resulted from split
+        """
+        new_command = copy.deepcopy(command)
+        split_again = False
+        for verb, verb_commands in six.iteritems(command):
+            for group_type, groups in six.iteritems(verb_commands):
+                batch, rest = groups[0:max_groups], groups[max_groups:]
+                command[verb][group_type] = batch
+                if rest:
+                    new_command[verb][group_type] = rest
+                    if len(rest) > max_groups:
+                        split_again = True
                 else:
-                    self.commands.append({verb: {group_type: batch}})
+                    del new_command[verb][group_type]
+        empty_verbs = []
+        for verb in new_command:
+            if not new_command[verb]:
+                empty_verbs.append(verb)
+        for verb in empty_verbs:
+            del new_command[verb]
+        if split_again:
+            return [command] + self._split_groups(new_command, max_groups)
+        else:
+            return [command, new_command]
 
 
 class UsersQuery(QueryMultiple):

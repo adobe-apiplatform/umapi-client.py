@@ -308,25 +308,20 @@ class Connection:
         :return: tuple: the number of actions in the queue, that got sent, and that executed successfully.
         """
         # throttling part 1: split up each action into smaller actions, as needed
+        # optionally split large lists of groups in add/remove commands (if action supports it)
         split_actions = []
         exceptions = []
         for a in actions:
             if len(a.commands) == 0:
                 if self.logger: self.logger.warning("Sending action with no commands: %s", a.frame)
-            # throttling part 1a: split commands with group assignments > self.throttle_groups
-            # if an action gets more than 10 commands per verb/group type combination, then it will
-            # be split below
-            for i, c in enumerate(a.commands):
-                for verb in ['add', 'remove']:
-                    subcommand = c.get(verb, {})
-                    if not subcommand:
-                        continue
-                    for group_type in ['product', 'usergroup', 'productConfiguration']:
-                        groups = subcommand.get(group_type, [])
-                        if not groups:
-                            continue
-                        if len(groups) > self.throttle_groups:
-                            a.split_groups(i, verb, group_type, self.throttle_groups)
+            # maybe_split_groups is a UserAction attribute, so the call may throw an AttributeError
+            try:
+                if a.maybe_split_groups(self.throttle_groups):
+                    if self.logger: self.logger.debug(
+                        "Throttling actions %s to have a maximum of %d entries in group lists.",
+                        a.frame, self.throttle_groups)
+            except AttributeError:
+                pass
             if len(a.commands) > self.throttle_commands:
                 if self.logger: self.logger.debug("Throttling action %s to have a maximum of %d commands.",
                                                   a.frame, self.throttle_commands)

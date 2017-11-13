@@ -332,8 +332,6 @@ class UserAction(Action):
         for command in self.commands:
             do_split = False
             for verb, verb_commands in six.iteritems(command):
-                foo = ActionVerbTypes
-                bar = GroupTypes
                 if verb not in [ActionVerbTypes.add.name, ActionVerbTypes.remove.name, ActionVerbTypes.addRoles.name]:
                     continue
                 for group_type, groups in six.iteritems(verb_commands):

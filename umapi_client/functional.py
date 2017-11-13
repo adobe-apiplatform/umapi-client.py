@@ -44,6 +44,17 @@ class RoleTypes(Enum):
     productAdmin = 2
 
 
+class ActionVerbTypes(Enum):
+    add = 1
+    addAdobeID = 2
+    addRoles = 3
+    createEnterpriseID = 4
+    remove = 5
+    removeFromOrg = 6
+    removeRoles = 7
+    update = 8
+
+
 class IfAlreadyExistsOptions(Enum):
     ignoreIfAlreadyExists = 1
     updateIfAlreadyExists = 2
@@ -321,6 +332,10 @@ class UserAction(Action):
         for command in self.commands:
             do_split = False
             for verb, verb_commands in six.iteritems(command):
+                foo = ActionVerbTypes
+                bar = GroupTypes
+                if verb not in [ActionVerbTypes.add.name, ActionVerbTypes.remove.name, ActionVerbTypes.addRoles.name]:
+                    continue
                 for group_type, groups in six.iteritems(verb_commands):
                     if len(groups) > max_groups:
                         do_split = True

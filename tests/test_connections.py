@@ -27,7 +27,8 @@ import pytest
 import requests
 
 from conftest import mock_connection_params, MockResponse
-from umapi_client import Connection, UnavailableError, ServerError, RequestError, UserAction, GroupTypes, IdentityTypes
+from umapi_client import Connection, UnavailableError, ServerError, RequestError, UserAction, GroupTypes, \
+    IdentityTypes, RoleTypes
 from umapi_client import __version__ as umapi_version
 
 
@@ -353,3 +354,22 @@ def test_complex_group_split():
     assert len(user.commands) == 15
     assert GroupTypes.product.name not in user.commands[3]['add']
     assert 'remove' not in user.commands[8]
+
+
+def test_split_add_user():
+    """
+    Make sure split doesn't do anything when we have a non-add/remove group action
+    :return:
+    """
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+    user.create(first_name="Example", last_name="User", country="US", email="user@example.com")
+    assert user.maybe_split_groups(10) is False
+
+
+def test_split_role_assignment():
+    group_prefix = "G"
+    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 25)]
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+    user.add_role(groups=add_groups, role_type=RoleTypes.admin)
+    assert user.maybe_split_groups(10) is True
+    assert len(user.commands) == 3

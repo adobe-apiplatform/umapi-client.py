@@ -337,7 +337,7 @@ def test_complex_group_split():
     """
     group_prefix = "G"
     add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 150)]
-    add_products = [group_prefix+six.text_type(n+1) for n in range(0, 6)]
+    add_products = [group_prefix+six.text_type(n+1) for n in range(0, 26)]
     remove_groups = [group_prefix+six.text_type(n+1) for n in range(0, 75)]
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
     user.commands = [{
@@ -351,5 +351,5 @@ def test_complex_group_split():
     }]
     assert user.maybe_split_groups(10) is True
     assert len(user.commands) == 15
-    assert GroupTypes.product.name not in user.commands[1]['add']
+    assert GroupTypes.product.name not in user.commands[3]['add']
     assert 'remove' not in user.commands[8]

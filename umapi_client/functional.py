@@ -43,17 +43,6 @@ class RoleTypes(Enum):
     productAdmin = 2
 
 
-class StepKeys(Enum):
-    add = 1
-    addAdobeID = 2
-    addRoles = 3
-    createEnterpriseID = 4
-    remove = 5
-    removeFromOrg = 6
-    removeRoles = 7
-    update = 8
-
-
 class IfAlreadyExistsOptions(Enum):
     ignoreIfAlreadyExists = 1
     updateIfAlreadyExists = 2
@@ -328,39 +317,31 @@ class UserAction(Action):
         new_commands = []
         # return True if we split at least once
         maybe_split = False
+        valid_step_keys = ['add', 'addRoles', 'remove']
         for command in self.commands:
+            # commands are assumed to contain a single key
             step_key, step_args = next(six.iteritems(command))
-            if step_key not in [StepKeys.add.name, StepKeys.remove.name, StepKeys.addRoles.name]:
+            if step_key not in valid_step_keys:
                 new_commands.append(command)
                 continue
-            split_commands = self._split_groups(step_key, command, max_groups)
-            if len(split_commands) > 1:
-                maybe_split = True
+            split_commands = [command]
+            while True:
+                new_command = {step_key: {}}
+                if not isinstance(command[step_key], dict):
+                    break
+                for group_type, groups in six.iteritems(command[step_key]):
+                    if len(groups) > max_groups:
+                        maybe_split = True
+                        command[step_key][group_type], new_command[step_key][group_type] = \
+                            groups[0:max_groups], groups[max_groups:]
+                if new_command[step_key]:
+                    split_commands.append(new_command)
+                    command = new_command
+                else:
+                    break
             new_commands += split_commands
         self.commands = new_commands
         return maybe_split
-
-    def _split_groups(self, step_key, command, max_groups):
-        """
-        Split long group lists of individual command
-        Creates additional commands for each split and recursively splits new groups until no commands exceed group
-        limit.  Assumes that at least one split should occur.
-        :param step_key: Step key (add, remove, etc)
-        :param command: Single command containing one or more group lists to add, remove, etc
-        :param max_groups: Max group list size
-        :return: List of at least two commands that resulted from split
-        """
-        new_commands = [command]
-        while True:
-            new_command = {step_key: {}}
-            for group_type, groups in six.iteritems(command[step_key]):
-                if len(groups) > max_groups:
-                    command[step_key][group_type], new_command[step_key][group_type] = \
-                        groups[0:max_groups], groups[max_groups:]
-            if new_command[step_key]:
-                new_commands += self._split_groups(step_key, new_command, max_groups)
-            else:
-                return new_commands
 
 
 class UsersQuery(QueryMultiple):

@@ -369,3 +369,53 @@ def test_no_group_split():
     user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
     assert user.maybe_split_groups(10) is False
     assert len(user.commands) == 1
+
+
+def test_complex_group_split():
+    """
+    Test a complex command with add and remove directive, with multiple group types
+    UserAction's interface doesn't support this, so we build our own command array
+    :return:
+    """
+    group_prefix = "G"
+    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 150)]
+    add_products = [group_prefix+six.text_type(n+1) for n in range(0, 26)]
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+    user.commands = [{
+        "add": {
+            GroupTypes.usergroup.name: add_groups,
+            GroupTypes.product.name: add_products,
+        },
+    }]
+    assert user.maybe_split_groups(10) is True
+    assert len(user.commands) == 15
+    assert len([c for c in user.commands if 'product' in c['add']]) == 3
+    assert GroupTypes.product.name not in user.commands[3]['add']
+
+
+def test_split_remove_all():
+    """
+    Don't split groups if "remove" is "all" instead of list
+    :return:
+    """
+    group_prefix = "G"
+    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 11)]
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+    user.remove_from_groups(all_groups=True)
+    assert user.maybe_split_groups(1) is False
+    assert user.wire_dict() == {'do': [{'remove': 'all'}], 'user': 'user@example.com'}
+    user.add_to_groups(groups=add_groups)
+    assert user.maybe_split_groups(10) is True
+    assert user.wire_dict() == {'do': [{'remove': 'all'},
+                                       {'add': {'product': ['G1',
+                                                            'G2',
+                                                            'G3',
+                                                            'G4',
+                                                            'G5',
+                                                            'G6',
+                                                            'G7',
+                                                            'G8',
+                                                            'G9',
+                                                            'G10']}},
+                                       {'add': {'product': ['G11']}}],
+                                'user': 'user@example.com'}

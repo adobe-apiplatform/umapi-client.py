@@ -44,7 +44,7 @@ class RoleTypes(Enum):
     productAdmin = 2
 
 
-class ActionVerbTypes(Enum):
+class StepKeys(Enum):
     add = 1
     addAdobeID = 2
     addRoles = 3
@@ -330,52 +330,37 @@ class UserAction(Action):
         # return True if we split at least once
         maybe_split = False
         for command in self.commands:
-            do_split = False
-            for verb, verb_commands in six.iteritems(command):
-                if verb not in [ActionVerbTypes.add.name, ActionVerbTypes.remove.name, ActionVerbTypes.addRoles.name]:
-                    continue
-                for group_type, groups in six.iteritems(verb_commands):
-                    if len(groups) > max_groups:
-                        do_split = True
-            if do_split:
+            step_key, step_args = next(six.iteritems(command))
+            if step_key not in [StepKeys.add.name, StepKeys.remove.name, StepKeys.addRoles.name]:
+                continue
+            split_commands = self._split_groups(step_key, command, max_groups)
+            if len(split_commands) > 1:
                 maybe_split = True
-                new_commands += self._split_groups(command, max_groups)
-            else:
-                new_commands.append(command)
+            new_commands += split_commands
         self.commands = new_commands
         return maybe_split
 
-    def _split_groups(self, command, max_groups):
+    def _split_groups(self, step_key, command, max_groups):
         """
         Split long group lists of individual command
         Creates additional commands for each split and recursively splits new groups until no commands exceed group
         limit.  Assumes that at least one split should occur.
+        :param step_key: Step key (add, remove, etc)
         :param command: Single command containing one or more group lists to add, remove, etc
         :param max_groups: Max group list size
         :return: List of at least two commands that resulted from split
         """
-        new_command = copy.deepcopy(command)
-        split_again = False
-        for verb, verb_commands in six.iteritems(command):
-            for group_type, groups in six.iteritems(verb_commands):
-                batch, rest = groups[0:max_groups], groups[max_groups:]
-                command[verb][group_type] = batch
-                if rest:
-                    new_command[verb][group_type] = rest
-                    if len(rest) > max_groups:
-                        split_again = True
-                else:
-                    del new_command[verb][group_type]
-        empty_verbs = []
-        for verb in new_command:
-            if not new_command[verb]:
-                empty_verbs.append(verb)
-        for verb in empty_verbs:
-            del new_command[verb]
-        if split_again:
-            return [command] + self._split_groups(new_command, max_groups)
-        else:
-            return [command, new_command]
+        new_commands = [command]
+        while True:
+            new_command = {step_key: {}}
+            for group_type, groups in six.iteritems(command[step_key]):
+                if len(groups) > max_groups:
+                    command[step_key][group_type], new_command[step_key][group_type] = \
+                        groups[0:max_groups], groups[max_groups:]
+            if new_command[step_key]:
+                new_commands += self._split_groups(step_key, new_command, max_groups)
+            else:
+                return new_commands
 
 
 class UsersQuery(QueryMultiple):

@@ -330,32 +330,6 @@ def test_group_size_limit():
         assert conn.execute_single(user, immediate=True) == (0, 3, 3)
 
 
-def test_complex_group_split():
-    """
-    Test a complex command with add and remove directive, with multiple group types
-    UserAction's interface doesn't support this, so we build our own command array
-    :return:
-    """
-    group_prefix = "G"
-    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 150)]
-    add_products = [group_prefix+six.text_type(n+1) for n in range(0, 26)]
-    remove_groups = [group_prefix+six.text_type(n+1) for n in range(0, 75)]
-    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
-    user.commands = [{
-        "add": {
-            GroupTypes.usergroup.name: add_groups,
-            GroupTypes.product.name: add_products,
-        },
-        "remove": {
-            GroupTypes.usergroup.name: remove_groups
-        }
-    }]
-    assert user.maybe_split_groups(10) is True
-    assert len(user.commands) == 15
-    assert GroupTypes.product.name not in user.commands[3]['add']
-    assert 'remove' not in user.commands[8]
-
-
 def test_split_add_user():
     """
     Make sure split doesn't do anything when we have a non-add/remove group action

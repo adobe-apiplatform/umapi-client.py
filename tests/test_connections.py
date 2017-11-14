@@ -347,3 +347,16 @@ def test_split_role_assignment():
     user.add_role(groups=add_groups, role_type=RoleTypes.admin)
     assert user.maybe_split_groups(10) is True
     assert len(user.commands) == 3
+
+
+def test_no_group_split():
+    """
+    maybe_split should return false if nothing was split
+    :return:
+    """
+    group_prefix = "G"
+    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 5)]
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+    user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
+    assert user.maybe_split_groups(10) is False
+    assert len(user.commands) == 1

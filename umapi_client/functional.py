@@ -20,7 +20,6 @@
 
 import re
 import six
-import copy
 from enum import Enum
 
 from .api import Action, QuerySingle, QueryMultiple
@@ -332,6 +331,7 @@ class UserAction(Action):
         for command in self.commands:
             step_key, step_args = next(six.iteritems(command))
             if step_key not in [StepKeys.add.name, StepKeys.remove.name, StepKeys.addRoles.name]:
+                new_commands.append(command)
                 continue
             split_commands = self._split_groups(step_key, command, max_groups)
             if len(split_commands) > 1:

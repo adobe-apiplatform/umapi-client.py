@@ -337,7 +337,16 @@ def test_split_add_user():
     """
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
     user.create(first_name="Example", last_name="User", country="US", email="user@example.com")
+    user.update(first_name="EXAMPLE")
     assert user.maybe_split_groups(10) is False
+    assert len(user.commands) == 2
+    assert user.wire_dict() == {'do': [{'createEnterpriseID': {'country': 'US',
+                                                               'email': 'user@example.com',
+                                                               'firstname': 'Example',
+                                                               'lastname': 'User',
+                                                               'option': 'ignoreIfAlreadyExists'}},
+                                       {'update': {'firstname': 'EXAMPLE'}}],
+                                'user': 'user@example.com'}
 
 
 def test_split_role_assignment():

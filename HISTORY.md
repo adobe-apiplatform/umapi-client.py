@@ -119,3 +119,10 @@ Because the UMAPI functionality around Adobe IDs is now different for migrated o
     * Allow setting attributes on Adobe ID users as long as the server allows it.
 * [Issue 55](https://github.com/adobe-apiplatform/umapi-client.py/issues/55)
     * Don't default the country code when creating new Enterprise ID users.
+
+### Version 2.9
+
+Bug fix release:
+
+* [Issue 58](https://github.com/adobe-apiplatform/umapi-client.py/issues/58)
+    * Error when adding more than 10 groups in a single action step.

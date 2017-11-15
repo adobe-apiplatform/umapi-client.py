@@ -21,12 +21,14 @@
 import time
 from email.utils import formatdate
 
+import six
 import mock
 import pytest
 import requests
 
 from conftest import mock_connection_params, MockResponse
-from umapi_client import Connection, UnavailableError, ServerError, RequestError
+from umapi_client import Connection, UnavailableError, ServerError, RequestError, UserAction, GroupTypes, \
+    IdentityTypes, RoleTypes
 from umapi_client import __version__ as umapi_version
 
 
@@ -242,3 +244,178 @@ def test_post_request_fail():
         mock_post.return_value = MockResponse(400, text="400 test request failure")
         conn = Connection(**mock_connection_params)
         pytest.raises(RequestError, conn.make_call, "", "[3, 5]")
+
+
+def test_large_group_assignment_split():
+    """
+    Ensure that large group list can be split into multiple commands
+    :return:
+    """
+    group_prefix = "G"
+    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 15)]
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+    user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
+    assert user.maybe_split_groups(10) is True
+    assert len(user.commands) == 2
+    assert user.commands[0]["add"][GroupTypes.usergroup.name] == add_groups[0:10]
+    assert user.commands[1]["add"][GroupTypes.usergroup.name] == add_groups[10:]
+
+
+def test_large_group_assignment_split_recursive():
+    """
+    Test group list large enough to trigger recursive split
+    :return:
+    """
+    group_prefix = "G"
+    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 100)]
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+    user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
+    assert user.maybe_split_groups(10) is True
+    assert len(user.commands) == 10
+
+
+def test_large_group_mix_split():
+    """
+    Ensure that group split works on add and remove
+    Each "add" and "remove" group should be split into 2 groups each
+    :return:
+    """
+    group_prefix = "G"
+    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 15)]
+    remove_groups = [group_prefix+six.text_type(n+1) for n in range(15, 30)]
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+    user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup) \
+        .remove_from_groups(groups=remove_groups, group_type=GroupTypes.usergroup)
+    assert user.maybe_split_groups(10) is True
+    assert len(user.commands) == 4
+    assert user.commands[0]["add"][GroupTypes.usergroup.name] == add_groups[0:10]
+    assert user.commands[1]["add"][GroupTypes.usergroup.name] == add_groups[10:]
+    assert user.commands[2]["remove"][GroupTypes.usergroup.name] == remove_groups[0:10]
+    assert user.commands[3]["remove"][GroupTypes.usergroup.name] == remove_groups[10:]
+
+
+def test_large_group_action_split():
+    """
+    Ensure that very large group lists (100+) will be handled appropriately
+    Connection.execute_multiple splits commands and splits actions
+    Result should be 2 actions, even though we only created one action
+    :return:
+    """
+    with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
+        mock_post.return_value = MockResponse(200, {"result": "success"})
+        conn = Connection(**mock_connection_params)
+
+        group_prefix = "G"
+        add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 150)]
+        user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+        user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
+        assert conn.execute_single(user, immediate=True) == (0, 2, 2)
+
+
+def test_group_size_limit():
+    """
+    Test with different 'throttle_groups' value, which governs the max size of the group list before commands are split
+    :return:
+    """
+    with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
+        mock_post.return_value = MockResponse(200, {"result": "success"})
+        params = mock_connection_params
+        params['throttle_groups'] = 5
+        conn = Connection(**params)
+
+        group_prefix = "G"
+        add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 150)]
+        user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+        user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
+        assert conn.execute_single(user, immediate=True) == (0, 3, 3)
+
+
+def test_split_add_user():
+    """
+    Make sure split doesn't do anything when we have a non-add/remove group action
+    :return:
+    """
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+    user.create(first_name="Example", last_name="User", country="US", email="user@example.com")
+    user.update(first_name="EXAMPLE")
+    assert user.maybe_split_groups(10) is False
+    assert len(user.commands) == 2
+    assert user.wire_dict() == {'do': [{'createEnterpriseID': {'country': 'US',
+                                                               'email': 'user@example.com',
+                                                               'firstname': 'Example',
+                                                               'lastname': 'User',
+                                                               'option': 'ignoreIfAlreadyExists'}},
+                                       {'update': {'firstname': 'EXAMPLE'}}],
+                                'user': 'user@example.com'}
+
+
+def test_split_role_assignment():
+    group_prefix = "G"
+    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 25)]
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+    user.add_role(groups=add_groups, role_type=RoleTypes.admin)
+    assert user.maybe_split_groups(10) is True
+    assert len(user.commands) == 3
+
+
+def test_no_group_split():
+    """
+    maybe_split should return false if nothing was split
+    :return:
+    """
+    group_prefix = "G"
+    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 5)]
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+    user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
+    assert user.maybe_split_groups(10) is False
+    assert len(user.commands) == 1
+
+
+def test_complex_group_split():
+    """
+    Test a complex command with add and remove directive, with multiple group types
+    UserAction's interface doesn't support this, so we build our own command array
+    :return:
+    """
+    group_prefix = "G"
+    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 150)]
+    add_products = [group_prefix+six.text_type(n+1) for n in range(0, 26)]
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+    user.commands = [{
+        "add": {
+            GroupTypes.usergroup.name: add_groups,
+            GroupTypes.product.name: add_products,
+        },
+    }]
+    assert user.maybe_split_groups(10) is True
+    assert len(user.commands) == 15
+    assert len([c for c in user.commands if 'product' in c['add']]) == 3
+    assert GroupTypes.product.name not in user.commands[3]['add']
+
+
+def test_split_remove_all():
+    """
+    Don't split groups if "remove" is "all" instead of list
+    :return:
+    """
+    group_prefix = "G"
+    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 11)]
+    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+    user.remove_from_groups(all_groups=True)
+    assert user.maybe_split_groups(1) is False
+    assert user.wire_dict() == {'do': [{'remove': 'all'}], 'user': 'user@example.com'}
+    user.add_to_groups(groups=add_groups)
+    assert user.maybe_split_groups(10) is True
+    assert user.wire_dict() == {'do': [{'remove': 'all'},
+                                       {'add': {'product': ['G1',
+                                                            'G2',
+                                                            'G3',
+                                                            'G4',
+                                                            'G5',
+                                                            'G6',
+                                                            'G7',
+                                                            'G8',
+                                                            'G9',
+                                                            'G10']}},
+                                       {'add': {'product': ['G11']}}],
+                                'user': 'user@example.com'}

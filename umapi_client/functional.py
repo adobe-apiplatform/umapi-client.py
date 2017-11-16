@@ -491,12 +491,14 @@ class UserGroups:
         :return: On success, return JSON
         """
         if self.connection.test_mode:
-            raise UnsupportedError("Test Mode is not supported")
+            path = "%s?testOnly=true" % self.path
+        else:
+            path = self.path
         if description:
             data = dict(name=name,description=description)
         else:
             data = dict(name=name)
-        result = self.connection.make_call(self.path, data)
+        result = self.connection.make_call(path, data)
         body = result.json()
         return body
 
@@ -507,9 +509,11 @@ class UserGroups:
         """
         if groupId:
             if self.connection.test_mode:
-                raise UnsupportedError("Test Mode is not supported")
-            path = self.path + '/%s' % groupId
-            self.connection.make_call(path=path, delete=True)
+                path = "%s/%s?testOnly=true" % (self.path,groupId)
+            else:
+                path = self.path + '/%s' % groupId
+            result = self.connection.make_call(path=path, delete=True)
+            return result
         else:
             raise ArgumentError("remove() required either name or groupId argument")
 

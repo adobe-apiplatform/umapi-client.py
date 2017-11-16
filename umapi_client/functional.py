@@ -474,3 +474,4 @@ class GroupsQuery(QueryMultiple):
         :param connection: Connection to run the query against
         """
         QueryMultiple.__init__(self, connection=connection, object_type="group")
+

@@ -20,6 +20,7 @@
 
 import json
 import logging
+import os
 from email.utils import parsedate_tz, mktime_tz
 from platform import python_version, version as platform_version
 from random import randint
@@ -39,6 +40,7 @@ class Connection:
     An org-specific, authorized connection to the UMAPI service.  Each method
     makes a single call on the endpoint and returns the result (or raises an error).
     """
+    mock_env_var = "UMAPI_MOCK"
 
     def __init__(self,
                  org_id,
@@ -98,6 +100,21 @@ class Connection:
         Additional keywords are allowed to make it easy to pass a big dictionary with other values
         :param kwargs: any keywords passed that we ignore.
         """
+        # for testing we mock the server, either by using an http relay
+        # which relays and records the requests and responses, or by
+        # using a robot which plays back a previously recorded run.
+        mock_spec = os.getenv(self.mock_env_var, None)
+        if mock_spec:
+            if mock_spec not in ["proxy", "playback"]:
+                raise ArgumentError("Unknown value for %s: %s" % (self.mock_env_var, mock_spec))
+            if logger: logger.warning("%s override specified as '%s'", self.mock_env_var, mock_spec)
+            # mocked servers don't support https
+            if user_management_endpoint.lower().startswith("https://"):
+                user_management_endpoint = "http" + user_management_endpoint[5:]
+            # playback servers don't use authentication/authorization
+            if mock_spec == "playback":
+                auth = Auth("mock", "mock")
+
         self.org_id = str(org_id)
         self.endpoint = user_management_endpoint
         self.test_mode = test_mode

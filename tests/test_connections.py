@@ -21,15 +21,18 @@
 import time
 from email.utils import formatdate
 
-import six
 import mock
 import pytest
 import requests
+import six
 
 from conftest import mock_connection_params, MockResponse
-from umapi_client import Connection, UnavailableError, ServerError, RequestError, UserAction, GroupTypes, \
-    IdentityTypes, RoleTypes
+
+from umapi_client import Connection
+from umapi_client import ArgumentError, UnavailableError, ServerError, RequestError
+from umapi_client import UserAction, GroupTypes, IdentityTypes, RoleTypes
 from umapi_client import __version__ as umapi_version
+from umapi_client.auth import Auth
 
 
 def test_remote_status_success():
@@ -76,6 +79,35 @@ def test_ua_string_additional():
     req = conn.session.prepare_request(requests.Request('POST', "http://test.com/", data="This is a test"))
     ua_header = req.headers.get("User-Agent")
     assert ua_header.startswith("additional/1.0 umapi-client/" + umapi_version)
+
+
+def test_mock_proxy_get():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.return_value = MockResponse(200, body=["test", "body"])
+        with mock.patch("umapi_client.connection.os.getenv") as mock_getenv:
+            mock_getenv.return_value = "proxy"
+            conn = Connection(**mock_connection_params)
+            conn.make_call("").json()
+            mock_get.assert_called_with('http://test/', auth='N/A', timeout=120.0)
+
+
+def test_mock_playback_get():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.return_value = MockResponse(200, body=["test", "body"])
+        with mock.patch("umapi_client.connection.os.getenv") as mock_getenv:
+            mock_getenv.return_value = "playback"
+            conn = Connection(**mock_connection_params)
+            conn.make_call("").json()
+            assert mock_get.call_args[0][0] == 'http://test/'
+            assert isinstance(mock_get.call_args[1]['auth'], Auth)
+
+
+def test_mock_proxy_get():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.return_value = MockResponse(200, body=["test", "body"])
+        with mock.patch("umapi_client.connection.os.getenv") as mock_getenv:
+            mock_getenv.return_value = "error"
+            pytest.raises(ArgumentError, Connection, tuple(), mock_connection_params)
 
 
 def test_get_success():

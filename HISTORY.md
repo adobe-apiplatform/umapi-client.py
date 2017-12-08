@@ -126,3 +126,10 @@ Bug fix release:
 
 * [Issue 58](https://github.com/adobe-apiplatform/umapi-client.py/issues/58)
     * Error when adding more than 10 groups in a single action step.
+
+### Version 2.10
+
+Enhancement release:
+
+* [Issue 33](https://github.com/adobe-apiplatform/umapi-client.py/issues/33)
+    * Allow connection configuration via environment variables.

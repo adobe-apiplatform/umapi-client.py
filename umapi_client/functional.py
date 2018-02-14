@@ -36,6 +36,7 @@ class GroupTypes(Enum):
     product = 1
     # group = product  # deprecated!
     usergroup = 2
+    productConfiguration = 3
 
 
 class RoleTypes(Enum):
@@ -405,7 +406,7 @@ class UserGroupAction(Action):
         else:
             if not products:
                 raise ArgumentError("You must specify products to which to add the user group")
-            plist = {GroupTypes.product.name: [product for product in products]}
+            plist = {GroupTypes.productConfiguration.name: [product for product in products]}
         return self.append(add=plist)
 
     def remove_from_products(self, products=None, all_products=False):
@@ -422,7 +423,7 @@ class UserGroupAction(Action):
         else:
             if not products:
                 raise ArgumentError("You must specify products from which to remove the user group")
-            plist = {GroupTypes.product.name: [product for product in products]}
+            plist = {GroupTypes.productConfiguration.name: [product for product in products]}
         return self.append(remove=plist)
 
     def add_users(self, users=None):
@@ -448,6 +449,27 @@ class UserGroupAction(Action):
             raise ArgumentError("You must specify emails for users to remove from the user group")
         ulist = {"user": [user for user in users]}
         return self.append(remove=ulist)
+
+    def create(self, option=IfAlreadyExistsOptions.ignoreIfAlreadyExists, description=None):
+        create_command_exists = bool([c for c in self.commands if c.get('createUserGroup', None)])
+        if create_command_exists:
+            raise ArgumentError("Only one create() operation allowed per group command entry")
+        create_params = {'option': option.name}
+        if description:
+            create_params['description'] = description
+        return self.insert(createUserGroup=dict(**create_params))
+
+    def update(self, name=None, description=None):
+        update_params = {}
+        if name:
+            update_params['name'] = name
+        if description:
+            update_params['description'] = description
+        return self.append(updateUserGroup=dict(**update_params))
+
+    def delete(self):
+        delete_params = {}
+        return self.append(deleteUserGroup=dict(**delete_params))
 
 
 class UserGroupsQuery(QueryMultiple):

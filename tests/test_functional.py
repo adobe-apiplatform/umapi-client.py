@@ -28,7 +28,7 @@ from conftest import mock_connection_params, MockResponse
 from umapi_client import ArgumentError, RequestError
 from umapi_client import Connection
 from umapi_client import IdentityTypes, GroupTypes, RoleTypes
-from umapi_client import UserAction, UserGroupAction, UserGroups
+from umapi_client import UserAction, UserGroupAction, UserGroups, GroupAction
 from umapi_client import UsersQuery
 
 
@@ -355,7 +355,7 @@ def test_delete_account_adobeid():
 def test_add_to_products():
     group = UserGroupAction(group_name="SampleUsers")
     group.add_to_products(products=["Photoshop", "Illustrator"])
-    assert group.wire_dict() == {"do": [{"add": {"product": ["Photoshop", "Illustrator"]}}],
+    assert group.wire_dict() == {"do": [{"add": {"productConfiguration": ["Photoshop", "Illustrator"]}}],
                                  "usergroup": "SampleUsers"}
 
 
@@ -375,7 +375,7 @@ def test_add_to_products_all_error():
 def test_remove_from_products():
     group = UserGroupAction(group_name="SampleUsers")
     group.remove_from_products(products=["Photoshop", "Illustrator"])
-    assert group.wire_dict() == {"do": [{"remove": {"product": ["Photoshop", "Illustrator"]}}],
+    assert group.wire_dict() == {"do": [{"remove": {"productConfiguration": ["Photoshop", "Illustrator"]}}],
                                  "usergroup": "SampleUsers"}
 
 
@@ -425,6 +425,36 @@ def test_remove_users_error():
         group.remove_users(users=[])
 
 
+def test_create_user_group():
+    group = UserGroupAction(group_name="Test Group")
+    group.create(description="Test Group Description")
+    assert group.wire_dict() == {'do': [{'createUserGroup': {'option': 'ignoreIfAlreadyExists',
+                                                             'description': 'Test Group Description'}}],
+                                 'usergroup': 'Test Group'}
+
+
+def test_create_user_group_error():
+    group = UserGroupAction(group_name="Test Group")
+    group.create(description="Test Group Description")
+    with pytest.raises(ArgumentError):
+        group.create()
+
+
+def test_update_user_group():
+    group = UserGroupAction(group_name="Test Group")
+    group.update(name="Renamed Test Group", description="Test Group Description")
+    assert group.wire_dict() == {'do': [{'updateUserGroup': {'name': 'Renamed Test Group',
+                                                             'description': 'Test Group Description'}}],
+                                 'usergroup': 'Test Group'}
+
+
+def test_delete_user_group():
+    group = UserGroupAction("Test Group")
+    group.delete()
+    assert group.wire_dict() == {'do': [{'deleteUserGroup': {}}],
+                                 'usergroup': 'Test Group'}
+
+
 def test_query_users():
     conn = Connection(**mock_connection_params)
     query = UsersQuery(conn)
@@ -433,32 +463,6 @@ def test_query_users():
     query = UsersQuery(conn, in_group="test", in_domain="test.com", direct_only=False)
     assert query.url_params == ["test"]
     assert query.query_params == {"directOnly": False, "domain": "test.com"}
-
-
-def test_create_user_group():
-    with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
-        mock_post.return_value = MockResponse(201, {"groupId":12345678,"name":"Test-Group","type":"USER_GROUP"})
-        conn = Connection(**mock_connection_params)
-        usergroup = UserGroups(conn)
-        result = usergroup.create("Test-Dummy-Group")
-        assert result == {"groupId":12345678,"name":"Test-Group","type":"USER_GROUP"}
-
-def test_create_user_group_error():
-    with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
-        mock_post.return_value = MockResponse(400,
-                                              {"errorMessage":"DUPLICATE_GROUP_NAME","errorCode":"DUPLICATE_GROUP_NAME"})
-        with pytest.raises(RequestError):
-            conn = Connection(**mock_connection_params)
-            usergroup = UserGroups(conn)
-            result = usergroup.create("Test-Dummy-Group")
-
-
-def test_delete_user_group():
-    with mock.patch("umapi_client.connection.requests.Session.delete") as mock_post:
-        mock_post.return_value = MockResponse(204)
-        conn = Connection(**mock_connection_params)
-        usergroup = UserGroups(conn)
-        usergroup.delete(groupId='12345678')
 
 
 def test_delete_user_group_error():

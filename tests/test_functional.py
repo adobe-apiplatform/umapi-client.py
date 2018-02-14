@@ -28,7 +28,7 @@ from conftest import mock_connection_params, MockResponse
 from umapi_client import ArgumentError, RequestError
 from umapi_client import Connection
 from umapi_client import IdentityTypes, GroupTypes, RoleTypes
-from umapi_client import UserAction, UserGroupAction, UserGroups, GroupAction
+from umapi_client import UserAction, UserGroupAction
 from umapi_client import UsersQuery
 
 
@@ -464,11 +464,3 @@ def test_query_users():
     assert query.url_params == ["test"]
     assert query.query_params == {"directOnly": False, "domain": "test.com"}
 
-
-def test_delete_user_group_error():
-    with mock.patch("umapi_client.connection.requests.Session.delete") as mock_post:
-        mock_post.return_value = MockResponse(404, {"errorMessage":"GROUP_NOT_FOUND","errorCode":"GROUP_NOT_FOUND"})
-        with pytest.raises(RequestError):
-            conn = Connection(**mock_connection_params)
-            usergroup = UserGroups(conn)
-            usergroup.delete(groupId='12345678')

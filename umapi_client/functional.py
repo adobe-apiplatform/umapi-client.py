@@ -484,7 +484,6 @@ class UserGroupsQuery(QueryMultiple):
         """
         QueryMultiple.__init__(self, connection=connection, object_type="user-group")
 
-
 class GroupsQuery(QueryMultiple):
     """
     Query for all groups

@@ -24,5 +24,4 @@ from .error import BatchError, ClientError, RequestError, ServerError, Unavailab
 from .functional import IdentityTypes, GroupTypes, RoleTypes, IfAlreadyExistsOptions
 from .functional import UserAction, UserQuery, UsersQuery
 from .functional import UserGroupAction, UserGroupsQuery, GroupsQuery
-from .functional import UserGroupAction, UserGroupsQuery, GroupsQuery, UserGroups
 from .version import __version__

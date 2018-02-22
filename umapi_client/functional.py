@@ -382,6 +382,21 @@ class UserGroupAction(Action):
     A sequence of commands to perform on a single user group.
     """
 
+    _group_name_regex = re.compile(r'^[^_]')
+    _group_name_length = 255
+
+    @classmethod
+    def _validate(cls, group_name):
+        """
+        Validates the group name
+        Input values must be strings (standard or unicode).  Throws ArgumentError if any input is invalid
+        :param group_name: name of group
+        """
+        if group_name and not cls._group_name_regex.match(group_name):
+            raise ArgumentError("'%s': Illegal group name" % (group_name,))
+        if group_name and len(group_name) > 255:
+            raise ArgumentError("'%s': Group name is too long" % (group_name,))
+
     def __init__(self, group_name=None, **kwargs):
         """
         Create an Action for a user group identified either by name.
@@ -451,6 +466,9 @@ class UserGroupAction(Action):
         return self.append(remove=ulist)
 
     def create(self, option=IfAlreadyExistsOptions.ignoreIfAlreadyExists, description=None):
+        # only validate name on create/update so we can allow profiles and users to be managed for
+        # system groups
+        self._validate(self.frame['usergroup'])
         create_command_exists = bool([c for c in self.commands if c.get('createUserGroup', None)])
         if create_command_exists:
             raise ArgumentError("Only one create() operation allowed per group command entry")
@@ -460,6 +478,7 @@ class UserGroupAction(Action):
         return self.insert(createUserGroup=dict(**create_params))
 
     def update(self, name=None, description=None):
+        self._validate(name)
         update_params = {}
         if name:
             update_params['name'] = name

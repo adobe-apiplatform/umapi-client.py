@@ -440,6 +440,27 @@ def test_create_user_group_error():
         group.create()
 
 
+def test_invalid_user_group_name():
+    group = UserGroupAction(group_name="_Invalid Group Name")
+    with pytest.raises(ArgumentError):
+        group.create()
+    with pytest.raises(ArgumentError):
+        group.update(name="_Another invalid group name")
+
+
+def test_long_user_group_name():
+    long_group_name = """
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna 
+    aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. 
+    Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur 
+    sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."""
+    group = UserGroupAction(group_name=long_group_name)
+    with pytest.raises(ArgumentError):
+        group.create()
+    with pytest.raises(ArgumentError):
+        group.update(name=long_group_name)
+
+
 def test_update_user_group():
     group = UserGroupAction(group_name="Test Group")
     group.update(name="Renamed Test Group", description="Test Group Description")

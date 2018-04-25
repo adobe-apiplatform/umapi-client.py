@@ -22,9 +22,10 @@
 
 import pytest
 import six
+import mock
 
-from conftest import mock_connection_params
-from umapi_client import ArgumentError
+from conftest import mock_connection_params, MockResponse
+from umapi_client import ArgumentError, RequestError
 from umapi_client import Connection
 from umapi_client import IdentityTypes, GroupTypes, RoleTypes
 from umapi_client import UserAction, UserGroupAction
@@ -354,7 +355,7 @@ def test_delete_account_adobeid():
 def test_add_to_products():
     group = UserGroupAction(group_name="SampleUsers")
     group.add_to_products(products=["Photoshop", "Illustrator"])
-    assert group.wire_dict() == {"do": [{"add": {"product": ["Photoshop", "Illustrator"]}}],
+    assert group.wire_dict() == {"do": [{"add": {"productConfiguration": ["Photoshop", "Illustrator"]}}],
                                  "usergroup": "SampleUsers"}
 
 
@@ -374,7 +375,7 @@ def test_add_to_products_all_error():
 def test_remove_from_products():
     group = UserGroupAction(group_name="SampleUsers")
     group.remove_from_products(products=["Photoshop", "Illustrator"])
-    assert group.wire_dict() == {"do": [{"remove": {"product": ["Photoshop", "Illustrator"]}}],
+    assert group.wire_dict() == {"do": [{"remove": {"productConfiguration": ["Photoshop", "Illustrator"]}}],
                                  "usergroup": "SampleUsers"}
 
 
@@ -424,6 +425,57 @@ def test_remove_users_error():
         group.remove_users(users=[])
 
 
+def test_create_user_group():
+    group = UserGroupAction(group_name="Test Group")
+    group.create(description="Test Group Description")
+    assert group.wire_dict() == {'do': [{'createUserGroup': {'option': 'ignoreIfAlreadyExists',
+                                                             'description': 'Test Group Description'}}],
+                                 'usergroup': 'Test Group'}
+
+
+def test_create_user_group_error():
+    group = UserGroupAction(group_name="Test Group")
+    group.create(description="Test Group Description")
+    with pytest.raises(ArgumentError):
+        group.create()
+
+
+def test_invalid_user_group_name():
+    group = UserGroupAction(group_name="_Invalid Group Name")
+    with pytest.raises(ArgumentError):
+        group.create()
+    with pytest.raises(ArgumentError):
+        group.update(name="_Another invalid group name")
+
+
+def test_long_user_group_name():
+    long_group_name = """
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna 
+    aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. 
+    Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur 
+    sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."""
+    group = UserGroupAction(group_name=long_group_name)
+    with pytest.raises(ArgumentError):
+        group.create()
+    with pytest.raises(ArgumentError):
+        group.update(name=long_group_name)
+
+
+def test_update_user_group():
+    group = UserGroupAction(group_name="Test Group")
+    group.update(name="Renamed Test Group", description="Test Group Description")
+    assert group.wire_dict() == {'do': [{'updateUserGroup': {'name': 'Renamed Test Group',
+                                                             'description': 'Test Group Description'}}],
+                                 'usergroup': 'Test Group'}
+
+
+def test_delete_user_group():
+    group = UserGroupAction("Test Group")
+    group.delete()
+    assert group.wire_dict() == {'do': [{'deleteUserGroup': {}}],
+                                 'usergroup': 'Test Group'}
+
+
 def test_query_users():
     conn = Connection(**mock_connection_params)
     query = UsersQuery(conn)
@@ -432,3 +484,4 @@ def test_query_users():
     query = UsersQuery(conn, in_group="test", in_domain="test.com", direct_only=False)
     assert query.url_params == ["test"]
     assert query.query_params == {"directOnly": False, "domain": "test.com"}
+

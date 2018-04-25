@@ -30,7 +30,7 @@ from conftest import mock_connection_params, MockResponse
 
 from umapi_client import Connection
 from umapi_client import ArgumentError, UnavailableError, ServerError, RequestError
-from umapi_client import UserAction, GroupTypes, IdentityTypes, RoleTypes
+from umapi_client import UserAction, GroupTypes, IdentityTypes, RoleTypes, UserGroupAction
 from umapi_client import __version__ as umapi_version
 from umapi_client.auth import Auth
 
@@ -451,3 +451,12 @@ def test_split_remove_all():
                                                             'G10']}},
                                        {'add': {'product': ['G11']}}],
                                 'user': 'user@example.com'}
+
+
+def test_split_group_action():
+    user_template = six.text_type("user.{}@example.com")
+    add_users = [user_template.format(n+1) for n in range(0, 25)]
+    group = UserGroupAction(group_name="Test Group")
+    group.add_users(users=add_users)
+    assert group.maybe_split_groups(10) is True
+    assert len(group.commands) == 3

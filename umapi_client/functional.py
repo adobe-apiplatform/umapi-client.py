@@ -69,20 +69,34 @@ class UserAction(Action):
     _domain_regex = re.compile(r"^" + _dns_pattern + r"$", re.UNICODE)
 
     @classmethod
-    def _validate(cls, email=None, username=None, domain=None):
+    def _validate_email(cls, email=None):
         """
-        Validates the specified user attributes against their specifications.
+        Validates user email (or username if it's assumed to be in email format)
         Input values must be strings (standard or unicode).  Throws ArgumentError if any input is invalid
         :param email: an email address
-        :param username: a username
-        :param domain: a domain
         """
         if email and not cls._email_regex.match(email):
             raise ArgumentError("'%s': Illegal email format (must be ascii, unquoted, with no comment part)" % (email,))
-        if domain and not cls._domain_regex.match(domain):
-            raise ArgumentError("'%s': Illegal domain format" % (domain,))
+
+    @classmethod
+    def _validate_username(cls, username=None):
+        """
+        Validates the specified username (assuming it should be non-email)
+        Input values must be strings (standard or unicode).  Throws ArgumentError if any input is invalid
+        :param username: a username
+        """
         if username and not cls._username_regex.match(username):
             raise ArgumentError("'%s': Illegal username format (must be unquoted email local part)" % (username,))
+
+    @classmethod
+    def _validate_domain(cls, domain=None):
+        """
+        Validates the specified domain
+        Input values must be strings (standard or unicode).  Throws ArgumentError if any input is invalid
+        :param domain: a domain
+        """
+        if domain and not cls._domain_regex.match(domain):
+            raise ArgumentError("'%s': Illegal domain format" % (domain,))
 
     def __init__(self, id_type=IdentityTypes.adobeID, email=None, username=None, domain=None, **kwargs):
         """
@@ -119,12 +133,12 @@ class UserAction(Action):
             elif id_type is not IdentityTypes.federatedID:
                 raise ArgumentError("Username must match email except for Federated ID")
             else:
-                self._validate(username=username)
+                self._validate_username(username=username)
                 if domain:
-                    self._validate(domain=domain)
+                    self._validate_domain(domain=domain)
                     self.domain = domain
         if email:
-            self._validate(email=email)
+            self._validate_email(email=email)
             self.email = email
             if not self.domain:
                 atpos = email.index('@')

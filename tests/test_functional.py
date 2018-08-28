@@ -122,43 +122,55 @@ def test_create_user_enterpriseid():
 
 
 def test_create_user_federatedid():
-    user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
-    user.create(first_name="Daniel", last_name="Brotsky", country="US")
-    assert user.wire_dict() == {"do": [{"createFederatedID": {"email": "dbrotsky@k.on-the-side.net",
-                                                              "firstname": "Daniel", "lastname": "Brotsky",
+    """
+    Test federated ID action with email address and no username
+    """
+    user = UserAction(id_type=IdentityTypes.federatedID, email="user@example.com")
+    user.create(first_name="Example", last_name="User", country="US")
+    assert user.wire_dict() == {"do": [{"createFederatedID": {"email": "user@example.com",
+                                                              "firstname": "Example", "lastname": "User",
                                                               "country": "US",
                                                               "option": "ignoreIfAlreadyExists"}}],
-                                "user": "dbrotsky@k.on-the-side.net"}
+                                "user": "user@example.com"}
 
 
-def test_create_user_federated_id_unicode():
-    user = UserAction(id_type=IdentityTypes.federatedID, email=u"lwalesa@k.on-the-side.net")
-    user.create(first_name="Lech", last_name=u"Wałęsa", country="PL")
-    assert user.wire_dict() == {"do": [{"createFederatedID": {"email": u"lwalesa@k.on-the-side.net",
-                                                              "firstname": "Lech", "lastname": u"Wałęsa",
+def test_create_user_federatedid_unicode():
+    """
+    Test federated ID action with email address and no username and unicode in at least one attribute
+    """
+    user = UserAction(id_type=IdentityTypes.federatedID, email=u"user@example.com")
+    user.create(first_name=u"Exampłę", last_name="User", country="PL")
+    assert user.wire_dict() == {"do": [{"createFederatedID": {"email": u"user@example.com",
+                                                              "firstname": u"Exampłę", "lastname": "User",
                                                               "country": "PL",
                                                               "option": "ignoreIfAlreadyExists"}}],
-                                "user": u"lwalesa@k.on-the-side.net"}
+                                "user": u"user@example.com"}
 
 
 def test_create_user_federatedid_username():
-    user = UserAction(id_type=IdentityTypes.federatedID, username="dbrotsky", domain="k.on-the-side.net")
-    user.create(first_name="Daniel", last_name="Brotsky", country="US", email="dbrotsky@k.on-the-side.net")
-    assert user.wire_dict() == {"do": [{"createFederatedID": {"email": "dbrotsky@k.on-the-side.net",
-                                                              "firstname": "Daniel", "lastname": "Brotsky",
+    """
+    Test federated ID with a username (non-email format)
+    """
+    user = UserAction(id_type=IdentityTypes.federatedID, username="user", domain="example.com")
+    user.create(first_name="Example", last_name="User", country="US", email="user@example.com")
+    assert user.wire_dict() == {"do": [{"createFederatedID": {"email": "user@example.com",
+                                                              "firstname": "Example", "lastname": "User",
                                                               "country": "US",
                                                               "option": "ignoreIfAlreadyExists"}}],
-                                "user": "dbrotsky", "domain": "k.on-the-side.net"}
+                                "user": "user", "domain": "example.com"}
 
 
 def test_create_user_federatedid_username_unicode():
-    user = UserAction(id_type=IdentityTypes.federatedID, username=u"lwalesa", domain="k.on-the-side.net")
-    user.create(first_name="Lech", last_name=u"Wałęsa", country="PL", email=u"lwalesa@k.on-the-side.net")
-    assert user.wire_dict() == {"do": [{"createFederatedID": {"email": u"lwalesa@k.on-the-side.net",
-                                                              "firstname": "Lech", "lastname": u"Wałęsa",
+    """
+    Test federated ID with a username and unicode attributes (non-email format)
+    """
+    user = UserAction(id_type=IdentityTypes.federatedID, username=u"user", domain="example.com")
+    user.create(first_name=u"Exampłę", last_name="User", country="PL", email=u"user@example.com")
+    assert user.wire_dict() == {"do": [{"createFederatedID": {"email": u"user@example.com",
+                                                              "firstname": u"Exampłę", "lastname": "User",
                                                               "country": "PL",
                                                               "option": "ignoreIfAlreadyExists"}}],
-                                "user": u"lwalesa", "domain": "k.on-the-side.net"}
+                                "user": u"user", "domain": "example.com"}
 
 
 def test_create_user_federatedid_username_email():
@@ -172,11 +184,49 @@ def test_create_user_federatedid_username_email():
                                 "user": "dbrotsky", "domain": "k.on-the-side.net"}
 
 
-def test_create_user_federatedid_username_mismatch():
+def test_create_user_federatedid_email_format_username():
+    """
+    Create federated ID with username in email format (with email address)
+    :return:
+    """
     user = UserAction(id_type=IdentityTypes.federatedID, username="dbrotsky", domain="k.on-the-side.net",
-                      email="foo@bar.net")
+                      email="dbrotsky@k.on-the-side.net")
+    user.create(first_name="Daniel", last_name="Brotsky", country="US")
+    assert user.wire_dict() == {"do": [{"createFederatedID": {"email": "dbrotsky@k.on-the-side.net",
+                                                              "firstname": "Daniel", "lastname": "Brotsky",
+                                                              "country": "US",
+                                                              "option": "ignoreIfAlreadyExists"}}],
+                                "user": "dbrotsky", "domain": "k.on-the-side.net"}
+
+
+def test_create_user_federatedid_username_mismatch():
+    """
+    Mismatched email in UserAction constructor vs create()
+    """
+    user = UserAction(id_type=IdentityTypes.federatedID, username="user", domain="example.com",
+                      email="user@example.com")
     with pytest.raises(ValueError):
-        user.create(first_name="Daniel", last_name="Brotsky", country="US", email="foo@bar.com")
+        user.create(first_name="Example", last_name="User", country="US", email="user@example.net")
+
+
+def test_different_email_username():
+    """
+    Update a user record so the email address is different than email-type username (federated only)
+    """
+    user = UserAction(id_type=IdentityTypes.federatedID, email="user@example.com")
+    user.update(email="Example.User@example.com", username="user@example.com")
+    assert user.wire_dict() == {"do": [{"update": {"email": "Example.User@example.com",
+                                                   "username": "user@example.com"}}],
+                                "user": "user@example.com"}
+
+
+def test_malformed_email_type_username():
+    """
+    Test email-type username with malformed email address
+    """
+    user = UserAction(id_type=IdentityTypes.federatedID, email="user@example.com")
+    with pytest.raises(ValueError):
+        user.update(username="@user@example.com")
 
 
 def test_update_user_adobeid():

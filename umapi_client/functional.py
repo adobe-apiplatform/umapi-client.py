@@ -176,7 +176,7 @@ class UserAction(Action):
             if not self.email:
                 raise ArgumentError("You must specify email when creating a user")
         elif self.email is None:
-            self._validate(email=email)
+            self._validate_email(email=email)
             self.email = email
         elif self.email.lower() != email.lower():
             raise ArgumentError("Specified email (%s) doesn't match user's email (%s)" % (email, self.email))
@@ -210,14 +210,18 @@ class UserAction(Action):
         :return: the User, so you can do User(...).update(...).add_to_groups(...)
         """
         if email:
-            self._validate(email=email)
-        if username:
-            self._validate(username=username)
+            self._validate_email(email=email)
+        # if username contains @ (federated only), validate as email address
+        if self.id_type == IdentityTypes.federatedID and username and '@' in username:
+            self._validate_email(email=username)
+        elif username:
+            self._validate_username(username=username)
         updates = {}
         for k, v in six.iteritems(dict(email=email, username=username,
                                        firstname=first_name, lastname=last_name,
                                        country=country)):
-            if v: updates[k] = v
+            if v:
+                updates[k] = v
         return self.append(update=updates)
 
     def add_to_groups(self, groups=None, all_groups=False, group_type=None):

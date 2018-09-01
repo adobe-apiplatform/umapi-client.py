@@ -23,7 +23,7 @@ import six
 from enum import Enum
 
 from .api import Action, QuerySingle, QueryMultiple
-from .error import ArgumentError
+from .error import ArgumentError, UnsupportedError
 
 
 class IdentityTypes(Enum):
@@ -36,6 +36,7 @@ class GroupTypes(Enum):
     product = 1
     # group = product  # deprecated!
     usergroup = 2
+    productConfiguration = 3
 
 
 class RoleTypes(Enum):
@@ -308,39 +309,6 @@ class UserAction(Action):
         self.append(removeFromDomain={})
         return None
 
-    def maybe_split_groups(self, max_groups):
-        """
-        Check if group lists in add/remove directives should be split and split them if needed
-        :param max_groups: Max group list size
-        :return: True if at least one command was split, False if none were split
-        """
-        split_commands = []
-        # return True if we split at least once
-        maybe_split = False
-        valid_step_keys = ['add', 'addRoles', 'remove']
-        for command in self.commands:
-            # commands are assumed to contain a single key
-            step_key, step_args = next(six.iteritems(command))
-            if step_key not in valid_step_keys or not isinstance(step_args, dict):
-                split_commands.append(command)
-                continue
-            new_commands = [command]
-            while True:
-                new_command = {step_key: {}}
-                for group_type, groups in six.iteritems(command[step_key]):
-                    if len(groups) > max_groups:
-                        command[step_key][group_type], new_command[step_key][group_type] = \
-                            groups[0:max_groups], groups[max_groups:]
-                if new_command[step_key]:
-                    new_commands.append(new_command)
-                    command = new_command
-                    maybe_split = True
-                else:
-                    break
-            split_commands += new_commands
-        self.commands = split_commands
-        return maybe_split
-
 
 class UsersQuery(QueryMultiple):
     """
@@ -381,6 +349,21 @@ class UserGroupAction(Action):
     A sequence of commands to perform on a single user group.
     """
 
+    _group_name_regex = re.compile(r'^[^_]')
+    _group_name_length = 255
+
+    @classmethod
+    def _validate(cls, group_name):
+        """
+        Validates the group name
+        Input values must be strings (standard or unicode).  Throws ArgumentError if any input is invalid
+        :param group_name: name of group
+        """
+        if group_name and not cls._group_name_regex.match(group_name):
+            raise ArgumentError("'%s': Illegal group name" % (group_name,))
+        if group_name and len(group_name) > 255:
+            raise ArgumentError("'%s': Group name is too long" % (group_name,))
+
     def __init__(self, group_name=None, **kwargs):
         """
         Create an Action for a user group identified either by name.
@@ -405,7 +388,7 @@ class UserGroupAction(Action):
         else:
             if not products:
                 raise ArgumentError("You must specify products to which to add the user group")
-            plist = {GroupTypes.product.name: [product for product in products]}
+            plist = {GroupTypes.productConfiguration.name: [product for product in products]}
         return self.append(add=plist)
 
     def remove_from_products(self, products=None, all_products=False):
@@ -422,7 +405,7 @@ class UserGroupAction(Action):
         else:
             if not products:
                 raise ArgumentError("You must specify products from which to remove the user group")
-            plist = {GroupTypes.product.name: [product for product in products]}
+            plist = {GroupTypes.productConfiguration.name: [product for product in products]}
         return self.append(remove=plist)
 
     def add_users(self, users=None):
@@ -449,6 +432,43 @@ class UserGroupAction(Action):
         ulist = {"user": [user for user in users]}
         return self.append(remove=ulist)
 
+    def create(self, option=IfAlreadyExistsOptions.ignoreIfAlreadyExists, description=None):
+        # only validate name on create/update so we can allow profiles and users to be managed for
+        # system groups
+        self._validate(self.frame['usergroup'])
+        create_command_exists = bool([c for c in self.commands if c.get('createUserGroup', None)])
+        if create_command_exists:
+            raise ArgumentError("Only one create() operation allowed per group command entry")
+        create_params = {'option': option.name}
+        if description:
+            create_params['description'] = description
+        return self.insert(createUserGroup=dict(**create_params))
+
+    def update(self, name=None, description=None):
+        self._validate(name)
+        update_params = {}
+        if name:
+            update_params['name'] = name
+        if description:
+            update_params['description'] = description
+        return self.append(updateUserGroup=dict(**update_params))
+
+    def delete(self):
+        delete_params = {}
+        return self.append(deleteUserGroup=dict(**delete_params))
+
+
+class UserGroupsQuery(QueryMultiple):
+    """
+    Query for just user groups
+    """
+
+    def __init__(self, connection):
+        """
+        Create a query for all groups
+        :param connection: Connection to run the query against
+        """
+        QueryMultiple.__init__(self, connection=connection, object_type="user-group")
 
 class GroupsQuery(QueryMultiple):
     """
@@ -461,3 +481,4 @@ class GroupsQuery(QueryMultiple):
         :param connection: Connection to run the query against
         """
         QueryMultiple.__init__(self, connection=connection, object_type="group")
+

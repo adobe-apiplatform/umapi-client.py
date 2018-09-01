@@ -298,3 +298,175 @@ Each entry in `errors` would then be a dictionary giving
 the command that failed, the target user it failed on,
 and server information about the reason for the failure.
 
+# Performing Operations on User Groups
+
+User group operations work similarly to user operations.  The
+UserGroupAction class has a similar interface to the UserAction class.
+Currently, the UserGroupAction interface supports the following
+operations:
+
+* `create()` - create a new user group
+* `update()` - update the name and/or description of an existing user
+  group
+* `delete()` - delete a user group
+* `add_users()` - add users to a user group
+* `remove_users()` - remove users from a user group
+* `add_to_products()` - add one or more product profiles to a user group
+* `remove_from_products()` - remove one or more product profiles from
+  a user group
+
+## Step 1: Specify the User Group
+
+The group name is required to create new UserGroupAction object.  For a
+new user group, this should be the name of the new group.  To perform
+an operation on an existing group, specify the name of that group.
+
+Group names:
+
+* Must be unique to the Adobe organization
+* May not start with an underscore ("_") - groups with names that begin
+  with an underscore are reserved for Adobe use
+* Must be no longer than 255 characters
+
+Group name is the only required parameter.  An optional `requestID` can
+be passed to make it easier to connect action requests with API
+responses.
+
+```python
+from umapi_client import UserGroupAction
+group = UserGroupAction(group_name="Employees")
+```
+
+## Step 2: Specify the Operations
+
+### Create a New Group
+
+User Groups are created with `UserGroupAction.create()`.  Two
+optional parameters can be passed:
+
+* `description` - a short description of the group
+* `option` - an option specifying how to handle existing groups with
+  the same name.  Specify one of two `IfAlreadyExistsOptions` variants:
+  * `ignoreIfAlreadyExists` - do not attempt to create the group if a
+    group with the same name already exists.  Other operations for the
+    UserGroupAction object will be performed.
+  * `updateIfAlreadyExists` - update the description if it is different
+    than the description currently applied to the user group
+  * **Default**: `ignoreIfAlreadyExists`
+
+Example:
+
+```python
+group = UserGroupAction(group_name="Employees")
+group.create(description="A user group just for employees",
+             option=IfAlreadyExistsOptions.updateIfAlreadyExists)
+```
+
+### Update a Group
+
+Updates are done using `UserGroupAction.update()`.  Two optional
+parameters can be passed:
+
+* `name` - the new name of the user group
+* `description` - the new description of the user group
+
+Both parameters default to `None`.  If either parameter is omitted,
+that field will not be updated.  If neither parameter is specified,
+`update()` will throw an `ArgumentException`.
+
+Example:
+
+```python
+group = UserGroupAction(group_name="Employees")
+group.update(name="Employees and Contractors",
+             description="Full-time Employees and Contractors")
+```
+
+### Delete a Group
+
+User groups can be deleted with `UserGroupAction.delete()`.  The
+`delete()` method takes no parameters.
+
+```python
+group = UserGroupAction(group_name="Employees and Contractors")
+group.delete()
+```
+
+### Manage Users in Group
+
+The User Management API supports the bulk management of users for a
+specific group.  This functionality is exposed in the
+`UserGroupAction` methods `add_users()` and `remove_users()`.
+
+A list of user IDs to add or remove must to provided to either method.
+
+Add users example:
+
+```python
+group = UserGroupAction(group_name="Employees and Contractors")
+add_users = ["user1@example.com", "user2@example.com"]
+group.add_users(users=add_users)
+```
+
+Remove users example:
+
+```python
+group = UserGroupAction(group_name="Employees and Contractors")
+remove_users = ["user1@example.com", "user2@example.com"]
+group.remove_users(users=remove_users)
+```
+
+### Manage Product Profiles for a Group
+
+The `UserGroupAction` interface can also be used to manage the product
+profiles associated with a user group.  Adding a product profile to a
+group will grant all members of that group access to the profile's
+associated product plan.
+
+The `add_to_products()` method adds one or more product profiles to a
+user group.  `remove_from_products()` removes one or more profiles from
+a user group.
+
+Both methods take two parameters.  These are mutually exclusive -
+either method will throw an `ArgumentError` if both parameters are
+specified (also, if neither are specified).
+
+* `products` list of product profiles to add/remove
+* `all_products` boolean that will add/remove all product profiles to a
+  user group
+
+Add profile example:
+
+```python
+group = UserGroupAction(group_name="Employees and Contractors")
+profiles_to_add = ["Default All Apps plan - 100 GB configuration",
+                   "Default Acrobat Pro DC configuration"]
+group.add_to_products(products=profiles_to_add)
+```
+
+Remove profile example:
+
+```python
+group = UserGroupAction(group_name="Employees and Contractors")
+profiles_to_remove = ["Default All Apps plan - 100 GB configuration",
+                      "Default Acrobat Pro DC configuration"]
+group.remove_from_products(products=profiles_to_add)
+```
+
+## Step 3: Submit to the UMAPI server
+
+`UserGroupAction` objects can be used with the same conn methods as
+`UserAction` objects.  See "Step 3" in the User Management section of
+this document for more information.
+
+Here is a complete example that creates a new user group and adds a
+list of users to it:
+
+```python
+group = UserGroupAction(group_name="New User Group")
+group.create(description="A new user group",
+             option=IfAlreadyExistsOptions.updateIfAlreadyExists)
+group.add_users(users=["user1@example.com", "user2@example.com"])
+
+result = conn.execute_single(group)
+```

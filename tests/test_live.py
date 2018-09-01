@@ -28,7 +28,13 @@ import six
 
 import umapi_client
 
-# this test relies on a sensitive configuraition
+# PyCharm runs tests by default in the tests directory,
+# but setup.py runs them in the umapi_client directory,
+# so make sure we can run either way
+if os.getcwd().find("tests"):
+    os.chdir("..")
+
+# this test relies on a sensitive configuration
 config_file_name = "local/live_configuration.yaml"
 pytestmark = pytest.mark.skipif(not os.access(config_file_name, os.R_OK),
                                 reason="Live config file '{}' not found.".format(config_file_name))
@@ -43,7 +49,7 @@ def config():
     with open(config_file_name, "r") as f:
         conf_dict = yaml.load(f)
     creds = conf_dict["test_org"]
-    conn = umapi_client.Connection(org_id=creds["org_id"], auth_dict=creds)
+    conn = umapi_client.Connection(ims_host='ims-na1-stg1.adobelogin.com', user_management_endpoint='https://usermanagement-stage.adobe.io/v2/usermanagement', org_id=creds["org_id"], auth_dict=creds)
     return conn, conf_dict
 
 
@@ -79,6 +85,34 @@ def test_list_users(config):
     logging.info("Found %d users.", user_count)
 
 
+def test_list_user_groups(config):
+    conn, params = config
+    groups = umapi_client.UserGroupsQuery(connection=conn)
+    group_count = 0
+    for group in groups:
+        name = group.get("name")
+        admin_name = group.get("adminGroupName")
+        member_count = group.get("userCount", 0)
+        admin_count = int(group.get("adminCount", "-1"))
+        logging.info("Group %s has %d members.", name, member_count)
+        if admin_name:
+            logging.info("Group %s has admin group %s with %d members.", name, admin_name, admin_count)
+            # logging.info("Adding test user as admin.")
+            # user = umapi_client.UserAction(id_type=params["test_user"]["type"],
+            #                                email=params["test_user"]["email"],
+            #                                username=params["test_user"]["username"])
+            # user.add_to_groups([admin_name])
+            # assert (0, 1, 1) == conn.execute_single(user, immediate=True)
+            users = umapi_client.UsersQuery(connection=conn, in_group=admin_name)
+            logging.info("Admin group %s has: %s", admin_name, users.all_results())
+        assert member_count >= 0
+        group_count += 1
+    logging.info("Found %d groups.", group_count)
+    groups.reload()
+    group_count_2 = len(groups.all_results())
+    assert group_count == group_count_2
+
+
 def test_list_groups(config):
     conn, params = config
     groups = umapi_client.GroupsQuery(connection=conn)
@@ -86,7 +120,7 @@ def test_list_groups(config):
     for group in groups:
         name = group.get("groupName")
         member_count = group.get("memberCount", -1)
-        logging.info("Group %s has %d members.", name, member_count)
+        logging.info("Group %s has %d members: %s", name, member_count, group)
         assert member_count >= 0
         group_count += 1
     logging.info("Found %d groups.", group_count)
@@ -112,3 +146,24 @@ def test_rename_user(config):
     user.update(first_name="Rodney", last_name="Danger")
     user.update(first_name=params["test_user"]["firstname"], last_name=params["test_user"]["lastname"])
     assert (0, 1, 1) == conn.execute_single(user, immediate=True)
+
+def test_create_user_group(config):
+    conn, params = config
+    usergroups = umapi_client.UserGroups(conn)
+    groupName = "Test-Dummy-Group"
+    groupID = usergroups.getGroupIDByName(groupName)
+    if groupID:
+        usergroups.delete(groupName)
+    result = usergroups.create("Test-Dummy-Group")
+    assert result.name == "Test-Dummy-Group"
+
+def test_remove_user_group(config):
+    conn, params = config
+    usergroups = umapi_client.UserGroups(conn)
+    groupName = "Test-Dummy-Group"
+    groupID = usergroups.getGroupIDByName(groupName)
+    if not groupID:
+        result = usergroups.create(groupName)
+        groupID = result.groupid
+    usergroups.delete(groupID)
+    assert usergroups.getGroupIDByName(groupName) == None

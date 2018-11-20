@@ -34,6 +34,9 @@ mock_connection_params = {
     "retry_max_attempts": 3,
     "retry_first_delay": 1,
     "retry_random_delay": 2,
+    "connection_pooling": True,
+    "retry_cooldown": 5,
+    "session_max_age": 1000
 }
 
 

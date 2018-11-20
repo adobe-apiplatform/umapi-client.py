@@ -427,13 +427,13 @@ class Connection:
 
     def log_ip_request(self, rsp):
         try:
-            self.logger.debug("*** IP TRACE *** Request made: " + str(rsp.request.method) + " / "
+            if self.logger: self.logger.debug("*** IP TRACE *** Request made: " + str(rsp.request.method) + " / "
                               + str(rsp.status_code) + " @ "
                               + str(rsp.raw._connection.sock.getpeername()[0]) + ":"
                               + str(rsp.raw._connection.sock.getpeername()[1]) + " - "
                               + str(rsp.url))
         except Exception as e:
-            self.logger.debug("IP capture failed with message: " + str(e))
+            if self.logger: self.logger.debug("IP capture failed with message: " + str(e))
 
     def make_call(self, path, body=None, delete=False):
         """
@@ -501,7 +501,7 @@ class Connection:
             except Exception as e:
                 if num_attempts == self.retry_max_attempts:
                     raise e
-                self.logger.warning("Unexpected failure, retry " + str(num_attempts) + "/"
+                if self.logger: self.logger.warning("Unexpected failure, retry " + str(num_attempts) + "/"
                                     + str(self.retry_max_attempts) + " in "
                                     + str(self.retry_cooldown) + " seconds... "
                                     + "Exception message: " + str(e))
@@ -569,7 +569,7 @@ class SessionManager:
         self.session_id = random.randint(1, 2147483646)
         self.session_initialized = datetime.now()
 
-        self.logger.debug("Session created with id #" + str(self.session_id) + " @ " + str(self.session_initialized))
+        if self.logger: self.logger.debug("Session created with id #" + str(self.session_id) + " @ " + str(self.session_initialized))
         self.session = self.request_handler = session
 
     def validate_session(self):
@@ -577,8 +577,8 @@ class SessionManager:
         if self.connection_pooling:
 
             session_age = (datetime.now() - self.session_initialized).seconds
-            self.logger.debug("Session age: " + str(session_age))
+            if self.logger: self.logger.debug("Session age: " + str(session_age))
 
             if session_age > self.session_max_age:
-                self.logger.debug("Session expired after " + str(session_age) + " seconds... starting new session")
+                if self.logger: self.logger.debug("Session expired after " + str(session_age) + " seconds... starting new session")
                 self.update_session()

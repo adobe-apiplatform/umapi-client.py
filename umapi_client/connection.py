@@ -154,14 +154,9 @@ class Connection:
         ua_string = "umapi-client/" + umapi_version + " Python/" + python_version() + " (" + platform_version() + ")"
         if user_agent and user_agent.strip():
             ua_string = user_agent.strip() + " " + ua_string
-        self.headers = {'User-Agent': ua_string}
 
-        if self.connection_pooling:
-            self.session = self.new_session()
-            self.request_handler = getattr(self, 'session')
-        else:
-            self.request_handler = requests
 
+        self.session_manager = SessionManager(self.logger,ua_string,self.connection_pooling,self.session_max_age)
 
     def _get_auth(self, ims_host, ims_endpoint_jwt,
                   tech_acct_id=None, api_key=None, client_secret=None,
@@ -200,7 +195,8 @@ class Connection:
         if remote:
             components = urlparse.urlparse(self.endpoint)
             try:
-                result = self.request_handler.get(url=components[0] + "://" + components[1] + "/status", timeout=self.timeout)
+                result = self.session_manager.get(url=components[0] + "://" + components[1] + "/status",
+                                                  timeout=self.timeout)
             except Exception as e:
                 if self.logger: self.logger.debug("Failed to connect to server for status: %s", e)
                 result = None
@@ -274,7 +270,7 @@ class Connection:
         elif object_type == "user-group":
             query_path = "/{}/user-groups".format(self.org_id)
             if url_params: query_path += "/" + "/".join([urlparse.quote(c) for c in url_params])
-            query_path += "?page={:d}".format(page+1)
+            query_path += "?page={:d}".format(page + 1)
             if query_params: query_path += "&" + urlparse.urlencode(query_params)
         else:
             raise ArgumentError("Unknown query object type ({}): must be 'user' or 'group'".format(object_type))
@@ -350,7 +346,7 @@ class Connection:
 
         NOTE: This is where we throttle the number of commands per action.  So the number
         of actions we were given may not be the same as the number we queue or send to the server.
-        
+
         NOTE: If the server gives us a response we don't understand, we note that and continue
         processing as usual.  Then, at the end of the batch, we throw in order to warn the client
         that we had a problem understanding the server.
@@ -432,36 +428,12 @@ class Connection:
     def log_ip_request(self, rsp):
         try:
             self.logger.debug("*** IP TRACE *** Request made: " + str(rsp.request.method) + " / "
-                         + str(rsp.status_code) + " @ "
-                         + str(rsp.raw._connection.sock.getpeername()[0]) + ":"
-                         + str(rsp.raw._connection.sock.getpeername()[1]) + " - "
-                         + str(rsp.url))
+                              + str(rsp.status_code) + " @ "
+                              + str(rsp.raw._connection.sock.getpeername()[0]) + ":"
+                              + str(rsp.raw._connection.sock.getpeername()[1]) + " - "
+                              + str(rsp.url))
         except Exception as e:
             self.logger.debug("IP capture failed with message: " + str(e))
-
-
-    def new_session(self):
-
-        if self.session:
-            self.session.close()
-
-        session = requests.Session()
-        session.headers.update(self.headers.copy())
-        session.headers['id'] = str(random.randint(1, 2147483646))
-        session.headers['timestamp'] = datetime.now()
-
-        self.logger.debug("Session created with id #" + session.headers['id'] + " " + str(session))
-        return session
-
-    def validate_session(self):
-
-        session_age = (datetime.now() - self.session.headers['timestamp']).seconds
-
-        self.logger.debug("Session age: " + str(session_age))
-        if session_age > self.session_max_age:
-            self.logger.debug("Session expired after " + str(session_age) + " seconds... starting new session")
-            self.session = self.new_session()
-
 
     def make_call(self, path, body=None, delete=False):
         """
@@ -471,24 +443,21 @@ class Connection:
         :return: the requests.result object (on 200 response), raise error otherwise
         """
 
-        if self.connection_pooling:
-            self.validate_session()
-
         request_params = {'url': self.endpoint + path, 'auth': self.auth, 'timeout': self.timeout, 'stream': True}
 
         if body:
             request_params['data'] = json.dumps(body)
 
             def call():
-                return self.request_handler.post(**request_params)
+                return self.session_manager.post(**request_params)
         else:
             if not delete:
                 def call():
-                    return self.request_handler.get(**request_params)
+                    return self.session_manager.get(**request_params)
 
             else:
                 def call():
-                    return self.request_handler.delete(**request_params)
+                    return self.session_manager.delete(**request_params)
 
         start_time = time()
         result = None
@@ -533,18 +502,17 @@ class Connection:
                 if num_attempts == self.retry_max_attempts:
                     raise e
                 self.logger.warning("Unexpected failure, retry " + str(num_attempts) + "/"
-                                         + str(self.retry_max_attempts) + " in "
-                                         + str(self.retry_cooldown) + " seconds... "
-                                         + "Exception message: " + str(e))
+                                    + str(self.retry_max_attempts) + " in "
+                                    + str(self.retry_cooldown) + " seconds... "
+                                    + "Exception message: " + str(e))
                 sleep(self.retry_cooldown)
 
                 # Request a new session for the next try
                 if self.connection_pooling:
-                    self.session = self.new_session()
+                       self.session_manager.update_session()
 
                 # Skip remainder and continue the loop after cooldown
                 continue
-
 
             if num_attempts < self.retry_max_attempts:
                 if retry_wait > 0:
@@ -558,6 +526,59 @@ class Connection:
         raise UnavailableError(self.retry_max_attempts, total_time, result)
 
 
-# class SessionManager:
-#
-#     def __init__(self):
+class SessionManager:
+
+    def __init__(self,
+                 logger,
+                 user_agent,
+                 connection_pooling,
+                 session_max_age):
+
+        self.session = None
+        self.logger = logging.getLogger("umapi - SessionManager")
+        self.connection_pooling = connection_pooling
+        self.session_max_age = session_max_age
+        self.headers = {'User-Agent': user_agent}
+
+        if self.connection_pooling:
+            self.update_session()
+        else:
+            self.request_handler = requests
+
+    def get(self, **kwargs):
+        self.validate_session()
+        return self.request_handler.get(**kwargs)
+
+    def post(self, **kwargs):
+        self.validate_session()
+        return self.request_handler.post(**kwargs)
+
+    def delete(self, **kwargs):
+        self.validate_session()
+        return self.request_handler.delete(**kwargs)
+
+
+    def update_session(self):
+
+        if self.session:
+            self.session.close()
+
+        session = requests.Session()
+        session.headers.update(self.headers.copy())
+
+        self.session_id = random.randint(1, 2147483646)
+        self.session_initialized = datetime.now()
+
+        self.logger.debug("Session created with id #" + str(self.session_id) + " @ " + str(self.session_initialized))
+        self.session = self.request_handler = session
+
+    def validate_session(self):
+
+        if self.connection_pooling:
+
+            session_age = (datetime.now() - self.session_initialized).seconds
+            self.logger.debug("Session age: " + str(session_age))
+
+            if session_age > self.session_max_age:
+                self.logger.debug("Session expired after " + str(session_age) + " seconds... starting new session")
+                self.update_session()

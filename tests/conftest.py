@@ -37,7 +37,7 @@ mock_connection_params = {
     "connection_pooling": True,
     "retry_cooldown": 5,
     "session_max_age": 1000,
-    "log_endpoint_ip": False,
+    "log_endpoint_ip": False
 
 }
 

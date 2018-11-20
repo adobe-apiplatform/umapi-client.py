@@ -507,6 +507,10 @@ class Connection:
                 retry_wait = 0
                 result = None
 
+            # Request error handled downstream
+            except RequestError as e:
+                raise e
+
             # Catch exception not accounted for and allow to retry with a cooldown period (different from timeout)
             except Exception as e:
                 if num_attempts == self.retry_max_attempts:

@@ -19,7 +19,6 @@
 # SOFTWARE.
 
 
-
 import random
 import json
 import logging
@@ -65,6 +64,7 @@ class Connection:
                  connection_pooling=True,
                  retry_cooldown=5,
                  session_max_age=1000,
+                 log_endpoint_ip=False,
                  **kwargs):
         """
         Open a connection for the given parameters that has the given options.
@@ -121,6 +121,7 @@ class Connection:
             if mock_spec == "playback":
                 auth = Auth("mock", "mock")
 
+        self.log_endpoint_ip = log_endpoint_ip
         self.session = None
         self.session_max_age = session_max_age
         self.org_id = str(org_id)
@@ -137,13 +138,15 @@ class Connection:
         self.throttle_commands = max(int(throttle_commands), 1)
         self.throttle_groups = max(int(throttle_groups), 1)
         self.action_queue = []
-        self.local_status = {"multiple-query-count": 0,
-                             "single-query-count": 0,
-                             "actions-sent": 0,
-                             "actions-completed": 0,
-                             "actions-queued": 0}
-        self.server_status = {"status": "Never contacted",
-                              "endpoint": self.endpoint}
+        self.local_status = {
+            "multiple-query-count": 0,
+            "single-query-count": 0,
+            "actions-sent": 0,
+            "actions-completed": 0,
+            "actions-queued": 0}
+        self.server_status = {
+            "status": "Never contacted",
+            "endpoint": self.endpoint}
         if auth:
             self.auth = auth
         elif auth_dict:
@@ -155,8 +158,7 @@ class Connection:
         if user_agent and user_agent.strip():
             ua_string = user_agent.strip() + " " + ua_string
 
-
-        self.session_manager = SessionManager(self.logger,ua_string,self.connection_pooling,self.session_max_age)
+        self.session_manager = SessionManager(self.logger, ua_string, self.connection_pooling, self.session_max_age)
 
     def _get_auth(self, ims_host, ims_endpoint_jwt,
                   tech_acct_id=None, api_key=None, client_secret=None,
@@ -206,12 +208,14 @@ class Connection:
             elif result:
                 if self.logger: self.logger.debug("Server status response not understandable: Status: %d, Body: %s",
                                                   result.status_code, result.text)
-                self.server_status = {"endpoint": self.endpoint,
-                                      "status": ("Unexpected HTTP status " + str(result.status_code) + " at: " +
-                                                 strftime("%d %b %Y %H:%M:%S +0000", gmtime()))}
+                self.server_status = {
+                    "endpoint": self.endpoint,
+                    "status": ("Unexpected HTTP status " + str(result.status_code) + " at: " +
+                               strftime("%d %b %Y %H:%M:%S +0000", gmtime()))}
             else:
-                self.server_status = {"endpoint": self.endpoint,
-                                      "status": "Unreachable at: " + strftime("%d %b %Y %H:%M:%S +0000", gmtime())}
+                self.server_status = {
+                    "endpoint": self.endpoint,
+                    "status": "Unreachable at: " + strftime("%d %b %Y %H:%M:%S +0000", gmtime())}
         return self.local_status, self.server_status
 
     def query_single(self, object_type, url_params, query_params=None):
@@ -425,13 +429,13 @@ class Connection:
             raise ClientError(str(body), result)
         return body.get("completed", 0)
 
-    def log_ip_request(self, rsp):
+    def log_ip_from_response(self, rsp):
         try:
             if self.logger: self.logger.debug("*** IP TRACE *** Request made: " + str(rsp.request.method) + " / "
-                              + str(rsp.status_code) + " @ "
-                              + str(rsp.raw._connection.sock.getpeername()[0]) + ":"
-                              + str(rsp.raw._connection.sock.getpeername()[1]) + " - "
-                              + str(rsp.url))
+                                              + str(rsp.status_code) + " @ "
+                                              + str(rsp.raw._connection.sock.getpeername()[0]) + ":"
+                                              + str(rsp.raw._connection.sock.getpeername()[1]) + " - "
+                                              + str(rsp.url))
         except Exception as e:
             if self.logger: self.logger.debug("IP capture failed with message: " + str(e))
 
@@ -443,21 +447,26 @@ class Connection:
         :return: the requests.result object (on 200 response), raise error otherwise
         """
 
-        request_params = {'url': self.endpoint + path, 'auth': self.auth, 'timeout': self.timeout, 'stream': True}
+        request_params = {
+            'auth': self.auth,
+            'timeout': self.timeout}
+
+        if self.log_endpoint_ip:
+            request_params['stream'] = True
 
         if body:
             request_params['data'] = json.dumps(body)
 
             def call():
-                return self.session_manager.post(**request_params)
+                return self.session_manager.post(self.endpoint + path, **request_params)
         else:
             if not delete:
                 def call():
-                    return self.session_manager.get(**request_params)
+                    return self.session_manager.get(self.endpoint + path, **request_params)
 
             else:
                 def call():
-                    return self.session_manager.delete(**request_params)
+                    return self.session_manager.delete(self.endpoint + path, **request_params)
 
         start_time = time()
         result = None
@@ -465,7 +474,8 @@ class Connection:
             try:
 
                 result = call()
-                self.log_ip_request(result)
+                if self.log_endpoint_ip:
+                    self.log_ip_from_response(result)
                 if result.status_code in [200, 201, 204]:
                     return result
                 elif result.status_code in [429, 502, 503, 504]:
@@ -502,14 +512,14 @@ class Connection:
                 if num_attempts == self.retry_max_attempts:
                     raise e
                 if self.logger: self.logger.warning("Unexpected failure, retry " + str(num_attempts) + "/"
-                                    + str(self.retry_max_attempts) + " in "
-                                    + str(self.retry_cooldown) + " seconds... "
-                                    + "Exception message: " + str(e))
+                                                    + str(self.retry_max_attempts) + " in "
+                                                    + str(self.retry_cooldown) + " seconds... "
+                                                    + "Exception message: " + str(e))
                 sleep(self.retry_cooldown)
 
                 # Request a new session for the next try
                 if self.connection_pooling:
-                       self.session_manager.update_session()
+                    self.session_manager.update_session()
 
                 # Skip remainder and continue the loop after cooldown
                 continue
@@ -538,25 +548,25 @@ class SessionManager:
         self.logger = logging.getLogger("umapi - SessionManager")
         self.connection_pooling = connection_pooling
         self.session_max_age = session_max_age
-        self.headers = {'User-Agent': user_agent}
+        self.headers = {
+            'User-Agent': user_agent}
 
         if self.connection_pooling:
             self.update_session()
         else:
             self.request_handler = requests
 
-    def get(self, **kwargs):
+    def get(self, url, **kwargs):
         self.validate_session()
-        return self.request_handler.get(**kwargs)
+        return self.request_handler.get(url, **kwargs)
 
-    def post(self, **kwargs):
+    def post(self, url, **kwargs):
         self.validate_session()
-        return self.request_handler.post(**kwargs)
+        return self.request_handler.post(url, **kwargs)
 
-    def delete(self, **kwargs):
+    def delete(self, url, **kwargs):
         self.validate_session()
-        return self.request_handler.delete(**kwargs)
-
+        return self.request_handler.delete(url, **kwargs)
 
     def update_session(self):
 
@@ -569,7 +579,8 @@ class SessionManager:
         self.session_id = random.randint(1, 2147483646)
         self.session_initialized = datetime.now()
 
-        if self.logger: self.logger.debug("Session created with id #" + str(self.session_id) + " @ " + str(self.session_initialized))
+        if self.logger: self.logger.debug(
+            "Session created with id #" + str(self.session_id) + " @ " + str(self.session_initialized))
         self.session = self.request_handler = session
 
     def validate_session(self):
@@ -580,5 +591,6 @@ class SessionManager:
             if self.logger: self.logger.debug("Session age: " + str(session_age))
 
             if session_age > self.session_max_age:
-                if self.logger: self.logger.debug("Session expired after " + str(session_age) + " seconds... starting new session")
+                if self.logger: self.logger.debug(
+                    "Session expired after " + str(session_age) + " seconds... starting new session")
                 self.update_session()

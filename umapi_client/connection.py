@@ -19,6 +19,7 @@
 # SOFTWARE.
 
 
+
 import random
 import json
 import logging
@@ -27,6 +28,7 @@ from email.utils import parsedate_tz, mktime_tz
 from platform import python_version, version as platform_version
 from random import randint
 from time import time, sleep, gmtime, strftime
+from datetime import datetime
 import requests
 import six
 import six.moves.urllib.parse as urlparse
@@ -62,6 +64,7 @@ class Connection:
                  user_agent=None,
                  connection_pooling=True,
                  retry_cooldown=5,
+                 session_max_age=1000,
                  **kwargs):
         """
         Open a connection for the given parameters that has the given options.
@@ -118,8 +121,8 @@ class Connection:
             if mock_spec == "playback":
                 auth = Auth("mock", "mock")
 
-
         self.session = None
+        self.session_max_age = session_max_age
         self.org_id = str(org_id)
         self.endpoint = user_management_endpoint
         self.test_mode = test_mode
@@ -445,10 +448,19 @@ class Connection:
         session = requests.Session()
         session.headers.update(self.headers.copy())
         session.headers['id'] = str(random.randint(1, 2147483646))
+        session.headers['timestamp'] = datetime.now()
 
         self.logger.debug("Session created with id #" + session.headers['id'] + " " + str(session))
         return session
 
+    def validate_session(self):
+
+        session_age = (datetime.now() - self.session.headers['timestamp']).seconds
+
+        self.logger.debug("Session age: " + str(session_age))
+        if session_age > self.session_max_age:
+            self.logger.debug("Session expired after " + str(session_age) + " seconds... starting new session")
+            self.session = self.new_session()
 
 
     def make_call(self, path, body=None, delete=False):
@@ -459,13 +471,16 @@ class Connection:
         :return: the requests.result object (on 200 response), raise error otherwise
         """
 
+        if self.connection_pooling:
+            self.validate_session()
+
         request_params = {'url': self.endpoint + path, 'auth': self.auth, 'timeout': self.timeout, 'stream': True}
 
         if body:
             request_params['data'] = json.dumps(body)
 
             def call():
-                    return self.request_handler.post(**request_params)
+                return self.request_handler.post(**request_params)
         else:
             if not delete:
                 def call():
@@ -541,3 +556,8 @@ class Connection:
         if self.logger: self.logger.error("UMAPI timeout...giving up after %d attempts (%d seconds).",
                                           self.retry_max_attempts, total_time)
         raise UnavailableError(self.retry_max_attempts, total_time, result)
+
+
+# class SessionManager:
+#
+#     def __init__(self):

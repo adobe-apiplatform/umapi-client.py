@@ -61,11 +61,11 @@ def test_remote_status_timeout():
 
 def test_ua_string():
     conn = Connection(**mock_connection_params)
-    req = conn.session.prepare_request(requests.Request('GET', "http://test.com/"))
+    req = conn.session_manager.session.prepare_request(requests.Request('GET', "http://test.com/"))
     ua_header = req.headers.get("User-Agent")
     assert ua_header.startswith("umapi-client/" + umapi_version)
     assert " Python" in ua_header
-    req = conn.session.prepare_request(requests.Request('POST', "http://test.com/", data="This is a test"))
+    req = conn.session_manager.session.prepare_request(requests.Request('POST', "http://test.com/", data="This is a test"))
     ua_header = req.headers.get("User-Agent")
     assert ua_header.startswith("umapi-client/" + umapi_version)
     assert " Python" in ua_header
@@ -73,10 +73,10 @@ def test_ua_string():
 
 def test_ua_string_additional():
     conn = Connection(user_agent="additional/1.0", **mock_connection_params)
-    req = conn.session.prepare_request(requests.Request('GET', "http://test.com/"))
+    req = conn.session_manager.session.prepare_request(requests.Request('GET', "http://test.com/"))
     ua_header = req.headers.get("User-Agent")
     assert ua_header.startswith("additional/1.0 umapi-client/" + umapi_version)
-    req = conn.session.prepare_request(requests.Request('POST', "http://test.com/", data="This is a test"))
+    req = conn.session_manager.session.prepare_request(requests.Request('POST', "http://test.com/", data="This is a test"))
     ua_header = req.headers.get("User-Agent")
     assert ua_header.startswith("additional/1.0 umapi-client/" + umapi_version)
 

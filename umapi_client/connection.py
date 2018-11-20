@@ -1,4 +1,4 @@
-# Copyright (c) 2016-2017 Adobe Inc.  All rights reserved.
+# Copyright (c) 2016-2017 Adobe Systems Incorporated.  All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+
+import random
 import json
 import logging
 import os
@@ -58,6 +60,8 @@ class Connection:
                  throttle_commands=10,
                  throttle_groups=10,
                  user_agent=None,
+                 connection_pooling=True,
+                 retry_cooldown=5,
                  **kwargs):
         """
         Open a connection for the given parameters that has the given options.
@@ -114,10 +118,14 @@ class Connection:
             if mock_spec == "playback":
                 auth = Auth("mock", "mock")
 
+
+        self.session = None
         self.org_id = str(org_id)
         self.endpoint = user_management_endpoint
         self.test_mode = test_mode
         self.logger = logger
+        self.connection_pooling = connection_pooling
+        self.retry_cooldown = retry_cooldown
         self.retry_max_attempts = retry_max_attempts
         self.retry_first_delay = retry_first_delay
         self.retry_random_delay = retry_random_delay
@@ -139,11 +147,18 @@ class Connection:
             self.auth = self._get_auth(ims_host=ims_host, ims_endpoint_jwt=ims_endpoint_jwt, **auth_dict)
         else:
             raise ArgumentError("Connector create: either auth (an Auth object) or auth_dict (a dict) is required")
-        self.session = requests.Session()
+
         ua_string = "umapi-client/" + umapi_version + " Python/" + python_version() + " (" + platform_version() + ")"
         if user_agent and user_agent.strip():
             ua_string = user_agent.strip() + " " + ua_string
-        self.session.headers["User-Agent"] = ua_string
+        self.headers = {'User-Agent': ua_string}
+
+        if self.connection_pooling:
+            self.session = self.new_session()
+            self.request_handler = getattr(self, 'session')
+        else:
+            self.request_handler = requests
+
 
     def _get_auth(self, ims_host, ims_endpoint_jwt,
                   tech_acct_id=None, api_key=None, client_secret=None,
@@ -182,7 +197,7 @@ class Connection:
         if remote:
             components = urlparse.urlparse(self.endpoint)
             try:
-                result = self.session.get(components[0] + "://" + components[1] + "/status", timeout=self.timeout)
+                result = self.request_handler.get(url=components[0] + "://" + components[1] + "/status", timeout=self.timeout)
             except Exception as e:
                 if self.logger: self.logger.debug("Failed to connect to server for status: %s", e)
                 result = None
@@ -411,6 +426,31 @@ class Connection:
             raise ClientError(str(body), result)
         return body.get("completed", 0)
 
+    def log_ip_request(self, rsp):
+        try:
+            self.logger.debug("*** IP TRACE *** Request made: " + str(rsp.request.method) + " / "
+                         + str(rsp.status_code) + " @ "
+                         + str(rsp.raw._connection.sock.getpeername()[0]) + ":"
+                         + str(rsp.raw._connection.sock.getpeername()[1]) + " - "
+                         + str(rsp.url))
+        except Exception as e:
+            self.logger.debug("IP capture failed with message: " + str(e))
+
+
+    def new_session(self):
+
+        if self.session:
+            self.session.close()
+
+        session = requests.Session()
+        session.headers.update(self.headers.copy())
+        session.headers['id'] = str(random.randint(1, 2147483646))
+
+        self.logger.debug("Session created with id #" + session.headers['id'] + " " + str(session))
+        return session
+
+
+
     def make_call(self, path, body=None, delete=False):
         """
         Make a single UMAPI call with error handling and retry on temporary failure.
@@ -418,24 +458,31 @@ class Connection:
         :param body: (optional) list of dictionaries to be serialized into the request body
         :return: the requests.result object (on 200 response), raise error otherwise
         """
+
+        request_params = {'url': self.endpoint + path, 'auth': self.auth, 'timeout': self.timeout, 'stream': True}
+
         if body:
-            request_body = json.dumps(body)
+            request_params['data'] = json.dumps(body)
+
             def call():
-                return self.session.post(self.endpoint + path, auth=self.auth, data=request_body, timeout=self.timeout)
+                    return self.request_handler.post(**request_params)
         else:
             if not delete:
                 def call():
-                    return self.session.get(self.endpoint + path, auth=self.auth, timeout=self.timeout)
+                    return self.request_handler.get(**request_params)
+
             else:
                 def call():
-                    return self.session.delete(self.endpoint + path, auth=self.auth, timeout=self.timeout)
+                    return self.request_handler.delete(**request_params)
 
         start_time = time()
         result = None
         for num_attempts in range(1, self.retry_max_attempts + 1):
             try:
+
                 result = call()
-                if result.status_code in [200,201,204]:
+                self.log_ip_request(result)
+                if result.status_code in [200, 201, 204]:
                     return result
                 elif result.status_code in [429, 502, 503, 504]:
                     if self.logger: self.logger.warning("UMAPI timeout...service unavailable (code %d on try %d)",
@@ -465,6 +512,25 @@ class Connection:
                                                     self.timeout, num_attempts)
                 retry_wait = 0
                 result = None
+
+            # Catch exception not accounted for and allow to retry with a cooldown period (different from timeout)
+            except Exception as e:
+                if num_attempts == self.retry_max_attempts:
+                    raise e
+                self.logger.warning("Unexpected failure, retry " + str(num_attempts) + "/"
+                                         + str(self.retry_max_attempts) + " in "
+                                         + str(self.retry_cooldown) + " seconds... "
+                                         + "Exception message: " + str(e))
+                sleep(self.retry_cooldown)
+
+                # Request a new session for the next try
+                if self.connection_pooling:
+                    self.session = self.new_session()
+
+                # Skip remainder and continue the loop after cooldown
+                continue
+
+
             if num_attempts < self.retry_max_attempts:
                 if retry_wait > 0:
                     if self.logger: self.logger.warning("Next retry in %d seconds...", retry_wait)

@@ -102,7 +102,7 @@ def test_mock_playback_get():
             assert isinstance(mock_get.call_args[1]['auth'], Auth)
 
 
-def test_mock_proxy_get():
+def test_mock_proxy_get_raise():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200, body=["test", "body"])
         with mock.patch("umapi_client.connection.os.getenv") as mock_getenv:

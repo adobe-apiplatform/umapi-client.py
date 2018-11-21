@@ -460,3 +460,34 @@ def test_split_group_action():
     group.add_users(users=add_users)
     assert group.maybe_split_groups(10) is True
     assert len(group.commands) == 3
+
+
+def test_raise_unhandled(log_stream):
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.return_value = MockResponse(200, body=["test", "body"])
+        mock_get.side_effect = Exception('Arbitrary Unhandled!')
+
+        stream, logger = log_stream
+        params = dict(mock_connection_params)
+        params["logger"] = logger
+
+        conn = Connection(**params)
+
+        try:
+            conn.make_call("")
+        except:
+            pass
+
+        stream.flush()
+        log = stream.getvalue()  # save as a local so can do pytest -l to see exact log
+        assert log == """Unexpected failure, try 2/3 in 5 seconds... Exception message: Arbitrary Unhandled!
+Unexpected failure, try 3/3 in 5 seconds... Exception message: Arbitrary Unhandled!
+"""
+
+def test_raise_requesterror():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.return_value = MockResponse(200, body=["test", "body"])
+        mock_get.side_effect = RequestError(MockResponse(404))
+        params = dict(mock_connection_params)
+        conn = Connection(**params)
+        pytest.raises(RequestError, conn.make_call, "")

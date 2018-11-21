@@ -19,7 +19,6 @@
 # SOFTWARE.
 
 
-import random
 import json
 import logging
 import os
@@ -122,7 +121,6 @@ class Connection:
                 auth = Auth("mock", "mock")
 
         self.log_endpoint_ip = log_endpoint_ip
-        self.session = None
         self.session_max_age = session_max_age
         self.org_id = str(org_id)
         self.endpoint = user_management_endpoint
@@ -158,7 +156,7 @@ class Connection:
         if user_agent and user_agent.strip():
             ua_string = user_agent.strip() + " " + ua_string
 
-        self.session_manager = SessionManager(self.logger, ua_string, self.connection_pooling, self.session_max_age)
+        self.session_manager = SessionManager(ua_string, self.connection_pooling, self.session_max_age)
 
     def _get_auth(self, ims_host, ims_endpoint_jwt,
                   tech_acct_id=None, api_key=None, client_secret=None,
@@ -430,6 +428,11 @@ class Connection:
         return body.get("completed", 0)
 
     def log_ip_from_response(self, rsp):
+        """
+        Resolve and log the IP of the UMAPI endpoint.  Helpful in cases when IP-caching is a potential issue
+        as the UMAPI rotates IP addresses.  This is enabled specifically by the log_endpoint_ip parameter
+        :param rsp: the HTTP response from the target endpoint
+        """
         try:
             if self.logger: self.logger.debug("*** IP TRACE *** Request made: " + str(rsp.request.method) + " / "
                                               + str(rsp.status_code) + " @ "
@@ -474,6 +477,8 @@ class Connection:
             try:
 
                 result = call()
+
+                # log ip address of UMAPI endpoint
                 if self.log_endpoint_ip:
                     self.log_ip_from_response(result)
                 if result.status_code in [200, 201, 204]:
@@ -512,20 +517,23 @@ class Connection:
                 raise e
 
             # Catch exception not accounted for and allow to retry with a cooldown period (different from timeout)
+            # This is helpful in the case of connection issues which may throw unhandled exceptions despite resolving
+            # themselves in a short time.  Catching general exception several times gives some leeway in such cases
             except Exception as e:
                 if num_attempts == self.retry_max_attempts:
                     raise e
-                if self.logger: self.logger.warning("Unexpected failure, retry " + str(num_attempts) + "/"
+                if self.logger: self.logger.warning("Unexpected failure, try " + str(num_attempts + 1) + "/"
                                                     + str(self.retry_max_attempts) + " in "
                                                     + str(self.retry_cooldown) + " seconds... "
                                                     + "Exception message: " + str(e))
+                # Sleep for specified time to wait for network
                 sleep(self.retry_cooldown)
 
-                # Request a new session for the next try
+                # Request a new session for the next try in case issue tied to session
                 if self.connection_pooling:
                     self.session_manager.update_session()
 
-                # Skip remainder and continue the loop after cooldown
+                # Skip remainder of loop and continue after cooldown
                 continue
 
             if num_attempts < self.retry_max_attempts:
@@ -541,12 +549,20 @@ class Connection:
 
 
 class SessionManager:
-
+    """
+    Handles the session state for the connector.  Allows for variable session life, session
+    regeneration, and the option to disable sessions (connection pooling)
+    """
     def __init__(self,
-                 logger,
                  user_agent,
                  connection_pooling,
                  session_max_age):
+
+        """
+        :param user_agent: [string] the user agent to be set in the request headers
+        :param connection_pooling: [bool] determines whether sessions will be reused
+        :param session_max_age: [int] age in seconds before session is scrapped and replaced
+        """
 
         self.session = None
         self.logger = logging.getLogger("umapi - SessionManager")
@@ -555,11 +571,15 @@ class SessionManager:
         self.headers = {
             'User-Agent': user_agent}
 
+        # Set the kind of requests made with the request_handler (request or session)
         if self.connection_pooling:
             self.update_session()
         else:
             self.request_handler = requests
 
+    # get, post and delete are pass through methods which make the desired call using the
+    # request_handler.  Allows to abstract the kind of call and reduces the needed methods
+    # from 6 to 3.  Each call includes session validation as a first step.
     def get(self, url, **kwargs):
         self.validate_session()
         return self.request_handler.get(url, **kwargs)
@@ -573,14 +593,20 @@ class SessionManager:
         return self.request_handler.delete(url, **kwargs)
 
     def update_session(self):
+        """
+        Closes and removes the existing session from memory
+        Creates a fresh session object and adds the UA headers
+        """
 
         if self.session:
             self.session.close()
+            del self.session
 
         session = requests.Session()
-        session.headers.update(self.headers.copy())
+        session.headers.update(self.headers)
 
-        self.session_id = random.randint(1, 2147483646)
+        # Session ID is the memory address of the session
+        self.session_id = id(session)
         self.session_initialized = datetime.now()
 
         if self.logger: self.logger.debug(
@@ -588,9 +614,12 @@ class SessionManager:
         self.session = self.request_handler = session
 
     def validate_session(self):
+        """
+         When connection pooling is enabled, validate_session will rebuild the session if expired.
+         For cases where pooling is disabled, this method does nothing.
+        """
 
         if self.connection_pooling:
-
             session_age = (datetime.now() - self.session_initialized).seconds
             if self.logger: self.logger.debug("Session age: " + str(session_age))
 

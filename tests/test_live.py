@@ -148,3 +148,24 @@ def test_rename_user(config):
     user.update(first_name=params["test_user"]["firstname"], last_name=params["test_user"]["lastname"])
     assert (0, 1, 1) == conn.execute_single(user, immediate=True)
 
+# Commenting because associatited obkects (UserGroups) do not exist.  Tests should be updated.
+# def test_create_user_group(config):
+#     conn, params = config
+#     usergroups = umapi_client.UserGroups(conn)
+#     groupName = "Test-Dummy-Group"
+#     groupID = usergroups.getGroupIDByName(groupName)
+#     if groupID:
+#         usergroups.delete(groupName)
+#     result = usergroups.create("Test-Dummy-Group")
+#     assert result.name == "Test-Dummy-Group"
+#
+# def test_remove_user_group(config):
+#     conn, params = config
+#     usergroups = umapi_client.UserGroups(conn)
+#     groupName = "Test-Dummy-Group"
+#     groupID = usergroups.getGroupIDByName(groupName)
+#     if not groupID:
+#         result = usergroups.create(groupName)
+#         groupID = result.groupid
+#     usergroups.delete(groupID)
+#     assert usergroups.getGroupIDByName(groupName) == None

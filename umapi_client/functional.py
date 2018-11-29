@@ -55,49 +55,6 @@ class UserAction(Action):
     A sequence of commands to perform on a single user.
     """
 
-    # regex patterns to be compiled once and used in _validate
-    # The RFC6531 extended syntax for email addresses allows Unicode alphanumerics in the local part,
-    # but the Adobe identity system doesn't support that extended syntax for user account emails.
-    # This is the RFC-allowed pattern:
-    # _atext_pattern = r"(\w|[!#$%&'*+/=?^_`{|}~;-])+"
-    # This is the one allowed by Adobe:
-    _atext_pattern = r"[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+"
-    _local_pattern = _atext_pattern + r"([.]" + _atext_pattern + ")*"
-    _dns_pattern = r"[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+"
-    _email_regex = re.compile(r"\A" + _local_pattern + r"@" + _dns_pattern + r"\Z", re.UNICODE)
-    _username_regex = re.compile(r"^" + _local_pattern + r"$", re.UNICODE)
-    _domain_regex = re.compile(r"^" + _dns_pattern + r"$", re.UNICODE)
-
-    @classmethod
-    def _validate_email(cls, email=None):
-        """
-        Validates user email (or username if it's assumed to be in email format)
-        Input values must be strings (standard or unicode).  Throws ArgumentError if any input is invalid
-        :param email: an email address
-        """
-        if email and not cls._email_regex.match(email):
-            raise ArgumentError("'%s': Illegal email format (must be ascii, unquoted, with no comment part)" % (email,))
-
-    @classmethod
-    def _validate_username(cls, username=None):
-        """
-        Validates the specified username (assuming it should be non-email)
-        Input values must be strings (standard or unicode).  Throws ArgumentError if any input is invalid
-        :param username: a username
-        """
-        if username and not cls._username_regex.match(username):
-            raise ArgumentError("'%s': Illegal username format (must be unquoted email local part)" % (username,))
-
-    @classmethod
-    def _validate_domain(cls, domain=None):
-        """
-        Validates the specified domain
-        Input values must be strings (standard or unicode).  Throws ArgumentError if any input is invalid
-        :param domain: a domain
-        """
-        if domain and not cls._domain_regex.match(domain):
-            raise ArgumentError("'%s': Illegal domain format" % (domain,))
-
     def __init__(self, id_type=IdentityTypes.adobeID, email=None, username=None, domain=None, **kwargs):
         """
         Create an Action for a user identified either by email or by username and domain.
@@ -125,31 +82,13 @@ class UserAction(Action):
             raise ArgumentError("Identity type (%s) must be one of %s" % (id_type, [i.name for i in IdentityTypes]))
         self.id_type = id_type
         self.email = None
-        self.domain = None
-        if username:
-            if email and username.lower() == email.lower():
-                # ignore the username if it's the same as the email (policy default)
-                username = None
-            elif id_type is not IdentityTypes.federatedID:
-                raise ArgumentError("Username must match email except for Federated ID")
-            else:
-                self._validate_username(username=username)
-                if domain:
-                    self._validate_domain(domain=domain)
-                    self.domain = domain
-        if email:
-            self._validate_email(email=email)
+        self.domain = domain
+        if email is not None:
             self.email = email
-            if not self.domain:
+            if self.domain is None:
                 atpos = email.index('@')
                 self.domain = email[atpos + 1:]
-        elif not username:
-            raise ArgumentError("No user identity specified.")
-        elif not domain:
-            raise ArgumentError("Both username and domain must be specified")
-        if username:
-            Action.__init__(self, user=username, domain=self.domain, **kwargs)
-        elif id_type == IdentityTypes.adobeID:
+        if id_type == IdentityTypes.adobeID:
             # by default if two users have the same email address, the UMAPI server will prefer the matching
             # Federated or Enterprise ID user; so we use the undocumented option to prefer the AdobeID match
             Action.__init__(self, user=email, useAdobeID=True, **kwargs)
@@ -176,10 +115,7 @@ class UserAction(Action):
             if not self.email:
                 raise ArgumentError("You must specify email when creating a user")
         elif self.email is None:
-            self._validate_email(email=email)
             self.email = email
-        elif self.email.lower() != email.lower():
-            raise ArgumentError("Specified email (%s) doesn't match user's email (%s)" % (email, self.email))
         create_params["email"] = self.email
         if on_conflict in IfAlreadyExistsOptions.__members__:
             on_conflict = IfAlreadyExistsOptions[on_conflict]
@@ -209,13 +145,6 @@ class UserAction(Action):
         :param country: new country for this user
         :return: the User, so you can do User(...).update(...).add_to_groups(...)
         """
-        if email:
-            self._validate_email(email=email)
-        # if username contains @ (federated only), validate as email address
-        if self.id_type == IdentityTypes.federatedID and username and '@' in username:
-            self._validate_email(email=username)
-        elif username:
-            self._validate_username(username=username)
         updates = {}
         for k, v in six.iteritems(dict(email=email, username=username,
                                        firstname=first_name, lastname=last_name,

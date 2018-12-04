@@ -148,7 +148,7 @@ def test_rename_user(config):
     user.update(first_name=params["test_user"]["firstname"], last_name=params["test_user"]["lastname"])
     assert (0, 1, 1) == conn.execute_single(user, immediate=True)
 
-# Commenting because associatited obkects (UserGroups) do not exist.  Tests should be updated.
+# Commenting because associated objects (UserGroups) do not exist.  Tests should be updated.
 # def test_create_user_group(config):
 #     conn, params = config
 #     usergroups = umapi_client.UserGroups(conn)

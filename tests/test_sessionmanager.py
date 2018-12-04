@@ -32,19 +32,24 @@ from conftest import mock_connection_params, MockResponse
 
 from umapi_client import Connection
 
-def test_set_request_handler():
-    
-    params = dict(mock_connection_params)
-    params['connection_pooling'] = True
+def test_set_connection_pooling():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.return_value = MockResponse(200, body=["test", "body"])
 
-    conn = Connection(**params)
-    assert isinstance(conn.session_manager.request_handler, Session)
+        params = dict(mock_connection_params)
+        params['connection_pooling'] = True
 
-    params['connection_pooling'] = False
-    conn = Connection(**params)
-    assert not isinstance(conn.session_manager.request_handler, Session)
-    assert conn.session_manager.request_handler == requests
-    assert  conn.session_manager.session == None
+        conn = Connection(**params)
+        initial_session = conn.session_manager.session_count
+        conn.session_manager.get("")
+        assert initial_session == conn.session_manager.session_count
+
+        params['connection_pooling'] = False
+        conn = Connection(**params)
+        initial_session = conn.session_manager.session_count
+        conn.session_manager.get("")
+        assert initial_session != conn.session_manager.session_count
+
 
 def test_get_success():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
@@ -54,17 +59,8 @@ def test_get_success():
         params['connection_pooling'] = True
 
         conn = Connection(**params)
-
         resp_session_manager = conn.session_manager.get("")
         response_session = requests.session().get("")
-        assert resp_session_manager == response_session
-
-    with mock.patch("umapi_client.connection.requests.get") as mock_get:
-        params['connection_pooling'] = False
-        conn = Connection(**params)
-
-        resp_session_manager = conn.session_manager.get("")
-        response_session = requests.get("")
         assert resp_session_manager == response_session
 
 def test_post_success():
@@ -75,16 +71,8 @@ def test_post_success():
         params['connection_pooling'] = True
         conn = Connection(**params)
 
-        resp_session_manager = conn.session_manager.post("")
-        response_session = requests.session().post("")
-        assert resp_session_manager == response_session
-
-    with mock.patch("umapi_client.connection.requests.post") as mock_post:
-        params['connection_pooling'] = False
-        conn = Connection(**params)
-
-        resp_session_manager = conn.session_manager.post("")
-        response_session = requests.post("")
+        resp_session_manager = conn.session_manager.post("","data")
+        response_session = requests.session().post("",data="data")
         assert resp_session_manager == response_session
 
 def test_delete_success():
@@ -99,27 +87,19 @@ def test_delete_success():
         response_session = requests.session().delete("")
         assert resp_session_manager == response_session
 
-    with mock.patch("umapi_client.connection.requests.delete") as mock_delete:
-        params['connection_pooling'] = False
-        conn = Connection(**params)
-
-        resp_session_manager = conn.session_manager.delete("")
-        response_session = requests.delete("")
-        assert resp_session_manager == response_session
-
 def test_update_session():
 
     params = dict(mock_connection_params)
     params['connection_pooling'] = True
     conn = Connection(**params)
 
-    session_id = conn.session_manager.session_id
+    session_count = conn.session_manager.session_count
     age = conn.session_manager.session_initialized
 
     time.sleep(1)
-    conn.session_manager.update_session()
+    conn.session_manager.renew_session()
 
-    assert session_id != conn.session_manager.session_id
+    assert session_count != conn.session_manager.session_count
     assert age != conn.session_manager.session_initialized
 
 def test_validate_session():
@@ -128,14 +108,14 @@ def test_validate_session():
     params['connection_pooling'] = True
     conn = Connection(**params)
 
-    original_session = conn.session_manager.session_id
+    original_session = conn.session_manager.session_count
     conn.session_manager.validate_session()
-    assert original_session == conn.session_manager.session_id
+    assert original_session == conn.session_manager.session_count
 
     conn.session_manager.session_max_age = 4
     time.sleep(5)
     conn.session_manager.validate_session()
-    assert  original_session != conn.session_manager.session_id
+    assert  original_session != conn.session_manager.session_count
 
 
 

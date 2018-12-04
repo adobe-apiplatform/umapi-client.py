@@ -465,7 +465,7 @@ def test_split_group_action():
 def test_raise_unhandled(log_stream):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200, body=["test", "body"])
-        mock_get.side_effect = Exception('Arbitrary Unhandled!')
+        mock_get.side_effect = ConnectionRefusedError('Arbitrary Unhandled!')
 
         stream, logger = log_stream
         params = dict(mock_connection_params)

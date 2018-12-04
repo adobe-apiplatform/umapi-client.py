@@ -63,8 +63,7 @@ class Connection:
                  connection_pooling=True,
                  retry_cooldown=5,
                  session_max_age=1000,
-                 log_endpoint_ip=False,
-                 **kwargs):
+                 log_endpoint_ip=False,):
         """
         Open a connection for the given parameters that has the given options.
         The connection is authorized and the auth token reused on all calls.
@@ -156,7 +155,7 @@ class Connection:
         if user_agent and user_agent.strip():
             ua_string = user_agent.strip() + " " + ua_string
 
-        self.session_manager = SessionManager(ua_string, self.connection_pooling, self.session_max_age)
+        self.session_manager = SessionManager(ua_string, self.connection_pooling, self.session_max_age, self.log_endpoint_ip, self.auth, self.timeout)
 
     def _get_auth(self, ims_host, ims_endpoint_jwt,
                   tech_acct_id=None, api_key=None, client_secret=None,
@@ -195,8 +194,7 @@ class Connection:
         if remote:
             components = urlparse.urlparse(self.endpoint)
             try:
-                result = self.session_manager.get(url=components[0] + "://" + components[1] + "/status",
-                                                  timeout=self.timeout)
+                result = self.session_manager.get(url=components[0] + "://" + components[1] + "/status")
             except Exception as e:
                 if self.logger: self.logger.debug("Failed to connect to server for status: %s", e)
                 result = None
@@ -427,21 +425,6 @@ class Connection:
             raise ClientError(str(body), result)
         return body.get("completed", 0)
 
-    def log_ip_from_response(self, rsp):
-        """
-        Resolve and log the IP of the UMAPI endpoint.  Helpful in cases when IP-caching is a potential issue
-        as the UMAPI rotates IP addresses.  This is enabled specifically by the log_endpoint_ip parameter
-        :param rsp: the HTTP response from the target endpoint
-        """
-        try:
-            if self.logger: self.logger.debug("*** IP TRACE *** Request made: " + str(rsp.request.method) + " / "
-                                              + str(rsp.status_code) + " @ "
-                                              + str(rsp.raw._connection.sock.getpeername()[0]) + ":"
-                                              + str(rsp.raw._connection.sock.getpeername()[1]) + " - "
-                                              + str(rsp.url))
-        except Exception as e:
-            if self.logger: self.logger.debug("IP capture failed with message: " + str(e))
-
     def make_call(self, path, body=None, delete=False):
         """
         Make a single UMAPI call with error handling and retry on temporary failure.
@@ -449,27 +432,17 @@ class Connection:
         :param body: (optional) list of dictionaries to be serialized into the request body
         :return: the requests.result object (on 200 response), raise error otherwise
         """
-
-        request_params = {
-            'auth': self.auth,
-            'timeout': self.timeout}
-
-        if self.log_endpoint_ip:
-            request_params['stream'] = True
-
         if body:
-            request_params['data'] = json.dumps(body)
-
             def call():
-                return self.session_manager.post(self.endpoint + path, **request_params)
+                return self.session_manager.post(self.endpoint + path, json.dumps(body))
         else:
             if not delete:
                 def call():
-                    return self.session_manager.get(self.endpoint + path, **request_params)
+                    return self.session_manager.get(self.endpoint + path)
 
             else:
                 def call():
-                    return self.session_manager.delete(self.endpoint + path, **request_params)
+                    return self.session_manager.delete(self.endpoint + path)
 
         start_time = time()
         result = None
@@ -478,9 +451,6 @@ class Connection:
 
                 result = call()
 
-                # log ip address of UMAPI endpoint
-                if self.log_endpoint_ip:
-                    self.log_ip_from_response(result)
                 if result.status_code in [200, 201, 204]:
                     return result
                 elif result.status_code in [429, 502, 503, 504]:
@@ -519,7 +489,7 @@ class Connection:
             # Catch exception not accounted for and allow to retry with a cooldown period (different from timeout)
             # This is helpful in the case of connection issues which may throw unhandled exceptions despite resolving
             # themselves in a short time.  Catching general exception several times gives some leeway in such cases
-            except Exception as e:
+            except (ConnectionError, ConnectionResetError, ConnectionAbortedError, ConnectionRefusedError) as e:
                 if num_attempts == self.retry_max_attempts:
                     raise e
                 if self.logger: self.logger.warning("Unexpected failure, try " + str(num_attempts + 1) + "/"
@@ -531,7 +501,7 @@ class Connection:
 
                 # Request a new session for the next try in case issue tied to session
                 if self.connection_pooling:
-                    self.session_manager.update_session()
+                    self.session_manager.renew_session()
 
                 # Skip remainder of loop and continue after cooldown
                 continue
@@ -556,69 +526,74 @@ class SessionManager:
     def __init__(self,
                  user_agent,
                  connection_pooling,
-                 session_max_age):
-
+                 session_max_age,
+                 log_endpoint_ip,
+                 auth,
+                 timeout,):
         """
         :param user_agent: [string] the user agent to be set in the request headers
         :param connection_pooling: [bool] determines whether sessions will be reused
         :param session_max_age: [int] age in seconds before session is scrapped and replaced
         """
-
-        self.session = None
+        self.session_count = 0
+        self.log_endpoint_ip = log_endpoint_ip
+        self.user_agent = user_agent
         self.logger = logging.getLogger("umapi - SessionManager")
         self.connection_pooling = connection_pooling
         self.session_max_age = session_max_age
-        self.headers = {
-            'User-Agent': user_agent}
+        self.renew_session()
+        self.request_params = {
+            'timeout': timeout,
+            'auth': auth,
+        }
 
-        # Set the kind of requests made with the request_handler (request or session)
-        if self.connection_pooling:
-            self.update_session()
-        else:
-            self.request_handler = requests
+        if self.log_endpoint_ip: self.request_params['stream'] = True
 
     # get, post and delete are pass through methods which make the desired call using the
     # request_handler.  Allows to abstract the kind of call and reduces the needed methods
     # from 6 to 3.  Each call includes session validation as a first step.
-    def get(self, url, **kwargs):
+    def get(self, url):
         self.validate_session()
-        return self.request_handler.get(url, **kwargs)
+        return self.log_ip_from_response(self.session.get(url, **self.request_params))
 
-    def post(self, url, **kwargs):
+    def post(self, url, data):
         self.validate_session()
-        return self.request_handler.post(url, **kwargs)
+        return self.log_ip_from_response(self.session.post(url, data=data, **self.request_params))
 
-    def delete(self, url, **kwargs):
+    def delete(self, url):
         self.validate_session()
-        return self.request_handler.delete(url, **kwargs)
+        return self.log_ip_from_response(self.session.delete(url, **self.request_params))
 
-    def update_session(self):
+    def renew_session(self):
         """
         Closes and removes the existing session from memory
         Creates a fresh session object and adds the UA headers
         """
-
-        if self.session:
-            self.session.close()
-            del self.session
-
         session = requests.Session()
-        session.headers.update(self.headers)
-
-        # Session ID is the memory address of the session
-        self.session_id = id(session)
+        session.headers.update({'User-Agent': self.user_agent})
         self.session_initialized = datetime.now()
+        self.session_count += 1
 
         if self.logger: self.logger.debug(
-            "Session created with id #" + str(self.session_id) + " @ " + str(self.session_initialized))
-        self.session = self.request_handler = session
+            "Session #" + str(self.session_count) + " created @ " + str(self.session_initialized))
+
+        try:
+            self.session.close()
+            if self.logger: self.logger.debug("Closed session #" + str(self.session_count - 1))
+        except Exception as e:
+            if self.logger: self.logger.debug("Failed to close session #"
+                                              + str(self.session_count -1)
+                                              + " - reason: "
+                                              + str(e))
+
+        self.session = session
+
 
     def validate_session(self):
         """
          When connection pooling is enabled, validate_session will rebuild the session if expired.
          For cases where pooling is disabled, this method does nothing.
         """
-
         if self.connection_pooling:
             session_age = (datetime.now() - self.session_initialized).seconds
             if self.logger: self.logger.debug("Session age: " + str(session_age))
@@ -626,4 +601,27 @@ class SessionManager:
             if session_age > self.session_max_age:
                 if self.logger: self.logger.debug(
                     "Session expired after " + str(session_age) + " seconds... starting new session")
-                self.update_session()
+                self.renew_session()
+        # Create a new session every request
+        else:
+            self.renew_session()
+
+
+    def log_ip_from_response(self, rsp):
+        """
+        Resolve and log the IP of the UMAPI endpoint.  Helpful in cases when IP-caching is a potential issue
+        as the UMAPI rotates IP addresses.  This is enabled specifically by the log_endpoint_ip parameter
+        :param rsp: the HTTP response from the target endpoint
+        """
+        try:
+            if self.logger and self.log_endpoint_ip: self.logger.debug("*** IP TRACE *** Request made: "
+                                              + str(rsp.request.method) + " / "
+                                              + str(rsp.status_code) + " @ "
+                                              + str(rsp.raw._connection.sock.getpeername()[0]) + ":"
+                                              + str(rsp.raw._connection.sock.getpeername()[1]) + " - "
+                                              + str(rsp.url))
+        except Exception as e:
+            if self.logger: self.logger.debug("IP capture failed with message: " + str(e))
+
+        return rsp
+

@@ -51,23 +51,6 @@ def test_user_adobeid_unicode():
                                 "useAdobeID": True}
 
 
-def test_user_adobeid_unicode_error_unicode_dot_above():
-    with pytest.raises(ValueError) as excinfo:
-        UserAction(email=u"lwałęsa@adobe.com")
-    assert excinfo.type == ArgumentError
-    if six.PY2:
-        assert excinfo.match(u"lwałęsa@adobe.com".encode('utf8'))
-        with pytest.raises(ValueError) as excinfo:
-            UserAction(email=u"lwałęsa@adobe.com".encode('utf8'))
-        assert excinfo.type == ArgumentError
-        assert excinfo.match(u"lwałęsa@adobe.com".encode('utf8'))
-
-
-def test_user_adobeid_unicode_error_trailing_dot():
-    with pytest.raises(ValueError):
-        UserAction(email=u"lwalesa.@adobe.com")
-
-
 def test_user_enterpriseid():
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="dbrotsky@o.on-the-side.net")
     assert user.wire_dict() == {"do": [], "user": "dbrotsky@o.on-the-side.net"}
@@ -86,11 +69,6 @@ def test_user_federatedid():
 def test_user_federatedid_username():
     user = UserAction(id_type=IdentityTypes.federatedID, username="dbrotsky", domain="k.on-the-side.net")
     assert user.wire_dict() == {"do": [], "user": "dbrotsky", "domain": "k.on-the-side.net"}
-
-
-def test_user_federatedid_username_unicode_error():
-    with pytest.raises(ValueError):
-        UserAction(id_type=IdentityTypes.federatedID, username=u"lwałęsa", domain="k.on-the-side.net")
 
 
 def test_create_user_adobeid():
@@ -218,15 +196,6 @@ def test_different_email_username():
     assert user.wire_dict() == {"do": [{"update": {"email": "Example.User@example.com",
                                                    "username": "user@example.com"}}],
                                 "user": "user@example.com"}
-
-
-def test_malformed_email_type_username():
-    """
-    Test email-type username with malformed email address
-    """
-    user = UserAction(id_type=IdentityTypes.federatedID, email="user@example.com")
-    with pytest.raises(ValueError):
-        user.update(username="@user@example.com")
 
 
 def test_update_user_adobeid():

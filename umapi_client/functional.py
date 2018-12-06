@@ -83,12 +83,29 @@ class UserAction(Action):
         self.id_type = id_type
         self.email = None
         self.domain = domain
+        if username is not None:
+            if email and username.lower() == email.lower():
+                # ignore the username if it's the same as the email (policy default)
+                username = None
+                if domain:
+                    self.domain = domain
+            elif id_type is not IdentityTypes.federatedID:
+                raise ArgumentError("Username must match email except for Federated ID")
         if email is not None:
+            if '@' not in email:
+                raise ArgumentError("Invalid email address: %s" % email)
             self.email = email
-            if self.domain is None:
+            if not self.domain:
                 atpos = email.index('@')
                 self.domain = email[atpos + 1:]
-        if id_type == IdentityTypes.adobeID:
+        elif not username:
+                raise ArgumentError("No user identity specified.")
+        elif not domain:
+            raise ArgumentError("Both username and domain must be specified")
+
+        if username:
+            Action.__init__(self, user=username, domain=self.domain, **kwargs)
+        elif id_type == IdentityTypes.adobeID:
             # by default if two users have the same email address, the UMAPI server will prefer the matching
             # Federated or Enterprise ID user; so we use the undocumented option to prefer the AdobeID match
             Action.__init__(self, user=email, useAdobeID=True, **kwargs)
@@ -116,6 +133,8 @@ class UserAction(Action):
                 raise ArgumentError("You must specify email when creating a user")
         elif self.email is None:
             self.email = email
+        elif self.email.lower() != email.lower():
+            raise ArgumentError("Specified email (%s) doesn't match user's email (%s)" % (email, self.email))
         create_params["email"] = self.email
         if on_conflict in IfAlreadyExistsOptions.__members__:
             on_conflict = IfAlreadyExistsOptions[on_conflict]
@@ -145,6 +164,8 @@ class UserAction(Action):
         :param country: new country for this user
         :return: the User, so you can do User(...).update(...).add_to_groups(...)
         """
+        if self.id_type != IdentityTypes.federatedID and email != username:
+            raise ArgumentError("Username and email address must match except for Federated ID types")
         updates = {}
         for k, v in six.iteritems(dict(email=email, username=username,
                                        firstname=first_name, lastname=last_name,

@@ -82,15 +82,16 @@ class UserAction(Action):
             raise ArgumentError("Identity type (%s) must be one of %s" % (id_type, [i.name for i in IdentityTypes]))
         self.id_type = id_type
         self.email = None
-        self.domain = domain
+        self.domain = None
         if username is not None:
             if email and username.lower() == email.lower():
                 # ignore the username if it's the same as the email (policy default)
                 username = None
-                if domain:
-                    self.domain = domain
             elif id_type is not IdentityTypes.federatedID:
                 raise ArgumentError("Username must match email except for Federated ID")
+            else:
+                if domain:
+                    self.domain = domain
         if email is not None:
             if '@' not in email:
                 raise ArgumentError("Invalid email address: %s" % email)
@@ -164,8 +165,12 @@ class UserAction(Action):
         :param country: new country for this user
         :return: the User, so you can do User(...).update(...).add_to_groups(...)
         """
-        if self.id_type != IdentityTypes.federatedID and email != username:
-            raise ArgumentError("Username and email address must match except for Federated ID types")
+        if username and self.id_type != IdentityTypes.federatedID:
+            raise ArgumentError("You cannot set username except for a federated ID")
+        if username and not email:
+            raise ArgumentError("Cannot update username when email is not specified")
+        if email and username and email.lower() == username.lower():
+            raise ArgumentError("Specify just email to set both email and username for a federated ID")
         updates = {}
         for k, v in six.iteritems(dict(email=email, username=username,
                                        firstname=first_name, lastname=last_name,

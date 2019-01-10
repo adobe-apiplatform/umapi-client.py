@@ -55,35 +55,6 @@ class UserAction(Action):
     A sequence of commands to perform on a single user.
     """
 
-    # regex patterns to be compiled once and used in _validate
-    # The RFC6531 extended syntax for email addresses allows Unicode alphanumerics in the local part,
-    # but the Adobe identity system doesn't support that extended syntax for user account emails.
-    # This is the RFC-allowed pattern:
-    # _atext_pattern = r"(\w|[!#$%&'*+/=?^_`{|}~;-])+"
-    # This is the one allowed by Adobe:
-    _atext_pattern = r"[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+"
-    _local_pattern = _atext_pattern + r"([.]" + _atext_pattern + ")*"
-    _dns_pattern = r"[a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)+"
-    _email_regex = re.compile(r"\A" + _local_pattern + r"@" + _dns_pattern + r"\Z", re.UNICODE)
-    _username_regex = re.compile(r"^" + _local_pattern + r"$", re.UNICODE)
-    _domain_regex = re.compile(r"^" + _dns_pattern + r"$", re.UNICODE)
-
-    @classmethod
-    def _validate(cls, email=None, username=None, domain=None):
-        """
-        Validates the specified user attributes against their specifications.
-        Input values must be strings (standard or unicode).  Throws ArgumentError if any input is invalid
-        :param email: an email address
-        :param username: a username
-        :param domain: a domain
-        """
-        if email and not cls._email_regex.match(email):
-            raise ArgumentError("'%s': Illegal email format (must be ascii, unquoted, with no comment part)" % (email,))
-        if domain and not cls._domain_regex.match(domain):
-            raise ArgumentError("'%s': Illegal domain format" % (domain,))
-        if username and not cls._username_regex.match(username):
-            raise ArgumentError("'%s': Illegal username format (must be unquoted email local part)" % (username,))
-
     def __init__(self, id_type=IdentityTypes.adobeID, email=None, username=None, domain=None, **kwargs):
         """
         Create an Action for a user identified either by email or by username and domain.
@@ -112,27 +83,27 @@ class UserAction(Action):
         self.id_type = id_type
         self.email = None
         self.domain = None
-        if username:
+        if username is not None:
             if email and username.lower() == email.lower():
                 # ignore the username if it's the same as the email (policy default)
                 username = None
             elif id_type is not IdentityTypes.federatedID:
                 raise ArgumentError("Username must match email except for Federated ID")
             else:
-                self._validate(username=username)
                 if domain:
-                    self._validate(domain=domain)
                     self.domain = domain
-        if email:
-            self._validate(email=email)
+        if email is not None:
+            if '@' not in email:
+                raise ArgumentError("Invalid email address: %s" % email)
             self.email = email
             if not self.domain:
                 atpos = email.index('@')
                 self.domain = email[atpos + 1:]
         elif not username:
-            raise ArgumentError("No user identity specified.")
+                raise ArgumentError("No user identity specified.")
         elif not domain:
             raise ArgumentError("Both username and domain must be specified")
+
         if username:
             Action.__init__(self, user=username, domain=self.domain, **kwargs)
         elif id_type == IdentityTypes.adobeID:
@@ -162,7 +133,6 @@ class UserAction(Action):
             if not self.email:
                 raise ArgumentError("You must specify email when creating a user")
         elif self.email is None:
-            self._validate(email=email)
             self.email = email
         elif self.email.lower() != email.lower():
             raise ArgumentError("Specified email (%s) doesn't match user's email (%s)" % (email, self.email))
@@ -195,15 +165,18 @@ class UserAction(Action):
         :param country: new country for this user
         :return: the User, so you can do User(...).update(...).add_to_groups(...)
         """
-        if email:
-            self._validate(email=email)
-        if username:
-            self._validate(username=username)
+        if username and self.id_type != IdentityTypes.federatedID:
+            raise ArgumentError("You cannot set username except for a federated ID")
+        if username and '@' in username and not email:
+            raise ArgumentError("Cannot update email-type username when email is not specified")
+        if email and username and email.lower() == username.lower():
+            raise ArgumentError("Specify just email to set both email and username for a federated ID")
         updates = {}
         for k, v in six.iteritems(dict(email=email, username=username,
                                        firstname=first_name, lastname=last_name,
                                        country=country)):
-            if v: updates[k] = v
+            if v:
+                updates[k] = v
         return self.append(update=updates)
 
     def add_to_groups(self, groups=None, all_groups=False, group_type=None):

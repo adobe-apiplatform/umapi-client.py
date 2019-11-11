@@ -33,8 +33,8 @@ class IdentityTypes(Enum):
 
 
 class GroupTypes(Enum):
-    product = 1
-    # group = product  # deprecated!
+    group = 1
+    # product use is deprecated!
     usergroup = 2
     productConfiguration = 3
 
@@ -185,7 +185,7 @@ class UserAction(Action):
         is simply to do an "add to organization Everybody group", so we let that be done.
         :param groups: list of group names the user should be added to
         :param all_groups: a boolean meaning add to all (don't specify groups or group_type in this case)
-        :param group_type: the type of group (defaults to "product")
+        :param group_type: the type of group (defaults to "group")
         :return: the User, so you can do User(...).add_to_groups(...).add_role(...)
         """
         if all_groups:
@@ -196,7 +196,7 @@ class UserAction(Action):
             if not groups:
                 groups = []
             if not group_type:
-                group_type = GroupTypes.product
+                group_type = GroupTypes.group
             elif group_type in GroupTypes.__members__:
                 group_type = GroupTypes[group_type]
             if group_type not in GroupTypes:
@@ -209,7 +209,7 @@ class UserAction(Action):
         Remove user from some PLC groups, or all of them.
         :param groups: list of group names the user should be removed from
         :param all_groups: a boolean meaning remove from all (don't specify groups or group_type in this case)
-        :param group_type: the type of group (defaults to "product")
+        :param group_type: the type of group (defaults to "group")
         :return: the User, so you can do User(...).remove_from_groups(...).add_role(...)
         """
         if all_groups:
@@ -220,7 +220,7 @@ class UserAction(Action):
             if not groups:
                 raise ArgumentError("You must specify groups from which to remove the user")
             if not group_type:
-                group_type = GroupTypes.product
+                group_type = GroupTypes.group
             elif group_type in GroupTypes.__members__:
                 group_type = GroupTypes[group_type]
             if group_type not in GroupTypes:

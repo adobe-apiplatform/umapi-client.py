@@ -283,7 +283,7 @@ def test_add_to_usergroups_federatedid_unicode():
 
 def test_remove_from_products_federatedid():
     user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
-    user.remove_from_groups(groups=["Photoshop", "Illustrator"], group_type="product")
+    user.remove_from_groups(groups=["Photoshop", "Illustrator"], group_type="group")
     assert user.wire_dict() == {"do": [{"remove": {"group": ["Photoshop", "Illustrator"]}}],
                                 "user": "dbrotsky@k.on-the-side.net"}
 

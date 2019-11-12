@@ -416,13 +416,13 @@ def test_complex_group_split():
     user.commands = [{
         "add": {
             GroupTypes.usergroup.name: add_groups,
-            GroupTypes.product.name: add_products,
+            GroupTypes.group.name: add_products,
         },
     }]
     assert user.maybe_split_groups(10) is True
     assert len(user.commands) == 15
-    assert len([c for c in user.commands if 'product' in c['add']]) == 3
-    assert GroupTypes.product.name not in user.commands[3]['add']
+    assert len([c for c in user.commands if 'group' in c['add']]) == 3
+    assert GroupTypes.group.name not in user.commands[3]['add']
 
 
 def test_split_remove_all():
@@ -439,7 +439,7 @@ def test_split_remove_all():
     user.add_to_groups(groups=add_groups)
     assert user.maybe_split_groups(10) is True
     assert user.wire_dict() == {'do': [{'remove': 'all'},
-                                       {'add': {'product': ['G1',
+                                       {'add': {'group': ['G1',
                                                             'G2',
                                                             'G3',
                                                             'G4',
@@ -449,7 +449,7 @@ def test_split_remove_all():
                                                             'G8',
                                                             'G9',
                                                             'G10']}},
-                                       {'add': {'product': ['G11']}}],
+                                       {'add': {'group': ['G11']}}],
                                 'user': 'user@example.com'}
 
 

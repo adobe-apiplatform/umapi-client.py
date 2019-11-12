@@ -236,21 +236,21 @@ def test_update_user_federatedid_username():
 def test_add_org_federatedid():
     user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
     user.add_to_groups()
-    assert user.wire_dict() == {"do": [{"add": {"product": []}}],
+    assert user.wire_dict() == {"do": [{"add": {"group": []}}],
                                 "user": "dbrotsky@k.on-the-side.net"}
 
 
 def test_add_products_federatedid():
     user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
     user.add_to_groups(groups=["Photoshop", "Illustrator"])
-    assert user.wire_dict() == {"do": [{"add": {"product": ["Photoshop", "Illustrator"]}}],
+    assert user.wire_dict() == {"do": [{"add": {"group": ["Photoshop", "Illustrator"]}}],
                                 "user": "dbrotsky@k.on-the-side.net"}
 
 
 def test_add_products_federatedid_unicode():
     user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
     user.add_to_groups(groups=["Photoshop", u"Người vẽ minh hoạ"])
-    assert user.wire_dict() == {"do": [{"add": {"product": ["Photoshop", u"Người vẽ minh hoạ"]}}],
+    assert user.wire_dict() == {"do": [{"add": {"group": ["Photoshop", u"Người vẽ minh hoạ"]}}],
                                 "user": "dbrotsky@k.on-the-side.net"}
 
 
@@ -283,8 +283,8 @@ def test_add_to_usergroups_federatedid_unicode():
 
 def test_remove_from_products_federatedid():
     user = UserAction(id_type=IdentityTypes.federatedID, email="dbrotsky@k.on-the-side.net")
-    user.remove_from_groups(groups=["Photoshop", "Illustrator"], group_type="product")
-    assert user.wire_dict() == {"do": [{"remove": {"product": ["Photoshop", "Illustrator"]}}],
+    user.remove_from_groups(groups=["Photoshop", "Illustrator"], group_type="group")
+    assert user.wire_dict() == {"do": [{"remove": {"group": ["Photoshop", "Illustrator"]}}],
                                 "user": "dbrotsky@k.on-the-side.net"}
 
 

@@ -33,10 +33,11 @@ class IdentityTypes(Enum):
 
 
 class GroupTypes(Enum):
-    group = 1
     # product use is deprecated!
+    product = 1
     usergroup = 2
     productConfiguration = 3
+    group = 4
 
 
 class RoleTypes(Enum):

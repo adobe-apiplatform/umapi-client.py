@@ -421,8 +421,8 @@ def test_complex_group_split():
     }]
     assert user.maybe_split_groups(10) is True
     assert len(user.commands) == 15
-    assert len([c for c in user.commands if 'product' in c['add']]) == 3
-    assert GroupTypes.product.name not in user.commands[3]['add']
+    assert len([c for c in user.commands if 'group' in c['add']]) == 3
+    assert GroupTypes.group.name not in user.commands[3]['add']
 
 
 def test_split_remove_all():

@@ -270,21 +270,25 @@ class Connection:
                 return [], True
             else:
                 raise re
+
+        total_count = result.headers.get("X-Total-Count", "0")
+        page_size = result.headers.get("X-Page-Size", "1")
+        page_count = result.headers.get("X-Page-Count", "1")
         if object_type in ("user", "group"):
             if body.get("result") == "success":
                 values = body.get(object_type + "s", [])
                 last_page = body.get("lastPage", False)
+
                 if self.logger: self.logger.debug("Ran multi-%s query: %s %s (page %d: %d found)",
                                                   object_type, url_params, query_params, page, len(values))
-                return values, last_page
+                return values, last_page, int(total_count), int(page_size), int(page_count)
             else:
                 raise ClientError("OK status but no 'success' result", result)
         elif object_type == "user-group":
             page_number = result.headers.get("X-Current-Page", "1")
-            page_count = result.headers.get("X-Page-Count", "1")
             if self.logger: self.logger.debug("Ran multi-group query: %s %s (page %d: %d found)",
                                               url_params, query_params, page, len(body))
-            return body, int(page_number) >= int(page_count)
+            return body, int(page_number) >= int(page_count), int(total_count), int(page_size), int(page_count)
         else:
             # this would actually be caught above, but we use a parallel construction in both places
             # to make it easy to add query object types

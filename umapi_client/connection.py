@@ -292,7 +292,6 @@ class Connection:
                                               url_params, query_params, page, len(body))
             return body, int(page_number) >= int(page_count), int(total_count), int(page_count), \
                    int(page_number), int(page_size)
-
         else:
             # this would actually be caught above, but we use a parallel construction in both places
             # to make it easy to add query object types

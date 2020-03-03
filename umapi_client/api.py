@@ -211,7 +211,6 @@ class QueryMultiple:
             raise StopIteration
         new, self._last_page_seen, self._total_count, self._page_count, self._page_number, self._page_size = \
             self.conn.query_multiple(self.object_type, self._next_page_index, self.url_params, self.query_params)
-
         self._next_page_index += 1
         if len(new) == 0:
             self._last_page_seen = True  # don't bother with next page if nothing was returned

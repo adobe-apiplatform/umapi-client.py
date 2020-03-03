@@ -88,7 +88,7 @@ def test_query_multiple_user_success():
         conn = Connection(**mock_connection_params)
         assert conn.query_multiple("user") == ([{"name": "n1", "type": "user"},
                                                 {"name": "n2", "type": "user"}],
-                                               False)
+                                               False, 0, 0, 1, 0)
 
 
 def test_query_multiple_user_empty():
@@ -97,7 +97,7 @@ def test_query_multiple_user_empty():
                                                    "lastPage": True,
                                                    "users": []})
         conn = Connection(**mock_connection_params)
-        assert conn.query_multiple("user") == ([], True)
+        assert conn.query_multiple("user") == ([], True, 0, 0, 1, 0)
 
 
 def test_query_multiple_user_not_found():
@@ -120,10 +120,10 @@ def test_query_multiple_user_paged():
         conn = Connection(**mock_connection_params)
         assert conn.query_multiple("user", 0) == ([{"name": "n1", "type": "user"},
                                                    {"name": "n2", "type": "user"}],
-                                                  False)
+                                                  False, 0, 0, 1, 0)
         assert conn.query_multiple("user", 1) == ([{"name": "n3", "type": "user"},
                                                    {"name": "n4", "type": "user"}],
-                                                  True)
+                                                  True, 0, 0, 1, 0)
 
 
 def test_qm_user_iterate_complete():
@@ -199,7 +199,6 @@ def test_qm_user_reload():
                                     {"name": "n7", "type": "user"},
                                     {"name": "n8", "type": "user"}]
 
-
 def test_query_multiple_usergroup_success():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200,
@@ -208,11 +207,11 @@ def test_query_multiple_usergroup_success():
                                              {"X-Total-Count": "4",
                                               "X-Page-Count": "2",
                                               "X-Current-Page": "1",
-                                              "X-Page-Size:": "2"})
+                                              "X-Page-Size": "2"})
         conn = Connection(**mock_connection_params)
         assert conn.query_multiple("user-group") == ([{"name": "n1", "type": "user-group"},
                                                       {"name": "n2", "type": "user-group"}],
-                                                     False)
+                                                     False, 4, 2, 1, 2)
 
 
 def test_query_multiple_usergroup_empty():
@@ -222,9 +221,9 @@ def test_query_multiple_usergroup_empty():
                                              {"X-Total-Count": "0",
                                               "X-Page-Count": "1",
                                               "X-Current-Page": "1",
-                                              "X-Page-Size:": "0"})
+                                              "X-Page-Size": "0"})
         conn = Connection(**mock_connection_params)
-        assert conn.query_multiple("user-group") == ([], True)
+        assert conn.query_multiple("user-group") == ([], True, 0, 1, 1, 0)
 
 
 def test_query_multiple_usergroup_not_found():
@@ -242,21 +241,21 @@ def test_query_multiple_usergroup_paged():
                                              {"X-Total-Count": "4",
                                               "X-Page-Count": "2",
                                               "X-Current-Page": "1",
-                                              "X-Page-Size:": "2"}),
+                                              "X-Page-Size": "2"}),
                                 MockResponse(200,
                                              [{"name": "n3", "type": "user-group"},
                                               {"name": "n4", "type": "user-group"}],
                                              {"X-Total-Count": "4",
                                               "X-Page-Count": "2",
                                               "X-Current-Page": "2",
-                                              "X-Page-Size:": "2"})]
+                                              "X-Page-Size": "2"})]
         conn = Connection(**mock_connection_params)
         assert conn.query_multiple("user-group", 0) == ([{"name": "n1", "type": "user-group"},
                                                          {"name": "n2", "type": "user-group"}],
-                                                        False)
+                                                        False, 4, 2, 1, 2)
         assert conn.query_multiple("user-group", 1) == ([{"name": "n3", "type": "user-group"},
                                                          {"name": "n4", "type": "user-group"}],
-                                                        True)
+                                                        True, 4, 2, 2, 2)
 
 
 def test_qm_usergroup_iterate_complete():
@@ -267,14 +266,14 @@ def test_qm_usergroup_iterate_complete():
                                              {"X-Total-Count": "4",
                                               "X-Page-Count": "2",
                                               "X-Current-Page": "1",
-                                              "X-Page-Size:": "2"}),
+                                              "X-Page-Size": "2"}),
                                 MockResponse(200,
                                              [{"name": "n3", "type": "user-group"},
                                               {"name": "n4", "type": "user-group"}],
                                              {"X-Total-Count": "4",
                                               "X-Page-Count": "2",
                                               "X-Current-Page": "2",
-                                              "X-Page-Size:": "2"})]
+                                              "X-Page-Size": "2"})]
         conn = Connection(**mock_connection_params)
         qm = QueryMultiple(conn, "user-group")
         for obj in qm:
@@ -294,14 +293,14 @@ def test_qm_usergroup_iterate_partial():
                                              {"X-Total-Count": "6",
                                               "X-Page-Count": "3",
                                               "X-Current-Page": "1",
-                                              "X-Page-Size:": "2"}),
+                                              "X-Page-Size": "2"}),
                                 MockResponse(200,
                                              [{"name": "n1", "type": "user-group"},
                                               {"name": "n2", "type": "user-group"}],
                                              {"X-Total-Count": "6",
                                               "X-Page-Count": "3",
                                               "X-Current-Page": "2",
-                                              "X-Page-Size:": "2"}),
+                                              "X-Page-Size": "2"}),
                                 MockResponse(400, text="400 bad request")]
         conn = Connection(**mock_connection_params)
         qm = QueryMultiple(conn, "user-group")
@@ -322,28 +321,28 @@ def test_qm_usergroup_reload():
                                              {"X-Total-Count": "4",
                                               "X-Page-Count": "2",
                                               "X-Current-Page": "1",
-                                              "X-Page-Size:": "2"}),
+                                              "X-Page-Size": "2"}),
                                 MockResponse(200,
                                              [{"name": "n3", "type": "user-group"},
                                               {"name": "n4", "type": "user-group"}],
                                              {"X-Total-Count": "4",
                                               "X-Page-Count": "2",
                                               "X-Current-Page": "2",
-                                              "X-Page-Size:": "2"}),
+                                              "X-Page-Size": "2"}),
                                 MockResponse(200,
                                              [{"name": "n5", "type": "user-group"},
                                               {"name": "n6", "type": "user-group"}],
                                              {"X-Total-Count": "4",
                                               "X-Page-Count": "2",
                                               "X-Current-Page": "1",
-                                              "X-Page-Size:": "2"}),
+                                              "X-Page-Size": "2"}),
                                 MockResponse(200,
                                              [{"name": "n7", "type": "user-group"},
                                               {"name": "n8", "type": "user-group"}],
                                              {"X-Total-Count": "4",
                                               "X-Page-Count": "2",
                                               "X-Current-Page": "2",
-                                              "X-Page-Size:": "2"})]
+                                              "X-Page-Size": "2"})]
         conn = Connection(**mock_connection_params)
         qm = QueryMultiple(conn, "user-group")
         assert list(qm) == [{"name": "n1", "type": "user-group"},

@@ -185,6 +185,7 @@ class QueryMultiple:
         self._total_count = 0
         self._page_size = 1
         self._page_count = 0
+        self._page_number = 1
         self._last_page_seen = False
 
     def reload(self):
@@ -198,7 +199,8 @@ class QueryMultiple:
         self._next_page_index = 0
         self._total_count = 0
         self._page_count = 0
-        self._page_size = 1
+        self._page_size = 0
+        self._page_number = 1
         self._last_page_seen = False
 
     def _next_page(self):
@@ -207,8 +209,8 @@ class QueryMultiple:
         """
         if self._last_page_seen:
             raise StopIteration
-        new, self._last_page_seen, self._total_count, self._page_size, self._page_count = self.conn.query_multiple(
-            self.object_type, self._next_page_index, self.url_params, self.query_params)
+        new, self._last_page_seen, self._total_count, self._page_count, self._page_number, self._page_size = \
+            self.conn.query_multiple(self.object_type, self._next_page_index, self.url_params, self.query_params)
 
         self._next_page_index += 1
         if len(new) == 0:

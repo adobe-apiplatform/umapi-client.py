@@ -122,6 +122,7 @@ class Connection:
         self.retry_max_attempts = retry_max_attempts
         self.retry_first_delay = retry_first_delay
         self.retry_random_delay = retry_random_delay
+        self.ssl_verify = ssl_verify
         self.timeout = float(timeout_seconds) if timeout_seconds and float(timeout_seconds) > 0.0 else None
         self.throttle_actions = max(int(throttle_actions), 1)
         self.throttle_commands = max(int(throttle_commands), 1)

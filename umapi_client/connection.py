@@ -53,6 +53,7 @@ class Connection:
                  retry_max_attempts=4,
                  retry_first_delay=15,
                  retry_random_delay=5,
+                 ssl_verify=True,
                  timeout_seconds=120.0,
                  throttle_actions=10,
                  throttle_commands=10,
@@ -182,7 +183,8 @@ class Connection:
         if remote:
             components = urlparse.urlparse(self.endpoint)
             try:
-                result = self.session.get(components[0] + "://" + components[1] + "/status", timeout=self.timeout)
+                result = self.session.get(components[0] + "://" + components[1] + "/status", timeout=self.timeout,
+                                          verify=self.ssl_verify)
             except Exception as e:
                 if self.logger: self.logger.debug("Failed to connect to server for status: %s", e)
                 result = None
@@ -421,14 +423,17 @@ class Connection:
         if body:
             request_body = json.dumps(body)
             def call():
-                return self.session.post(self.endpoint + path, auth=self.auth, data=request_body, timeout=self.timeout)
+                return self.session.post(self.endpoint + path, auth=self.auth, data=request_body, timeout=self.timeout,
+                                         verify=self.ssl_verify)
         else:
             if not delete:
                 def call():
-                    return self.session.get(self.endpoint + path, auth=self.auth, timeout=self.timeout)
+                    return self.session.get(self.endpoint + path, auth=self.auth, timeout=self.timeout,
+                                            verify=self.ssl_verify)
             else:
                 def call():
-                    return self.session.delete(self.endpoint + path, auth=self.auth, timeout=self.timeout)
+                    return self.session.delete(self.endpoint + path, auth=self.auth, timeout=self.timeout,
+                                               verify=self.ssl_verify)
 
         start_time = time()
         result = None

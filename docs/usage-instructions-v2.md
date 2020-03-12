@@ -145,11 +145,14 @@ This is because the requests module is not aware of the middle-man certificate r
 
 Disabling the verification is unsafe, and leaves the umapi client vulnerable to middle man attacks, so it is recommended to  avoid disabling it if at all possible.  The umapi client only ever targets two URLs - the usermanagement endpoint and the ims endpoint - both of which are secure Adobe URL's.  In addition, since this option is only recommended for use in a secure network environment, any potential risk is further mitigated.
 
-To bypass the ssl verification, update the umapi config as follows:
+To bypass the SSL verification, construct the Connection object using `ssl_verify=False` argument (set the True by default).  Borrowing from the initial example,
 
-```yaml
-server:
-  ssl_verify: False
+```python
+conn = umapi_client.Connection(
+                               org_id=config["org_id"],
+                               auth_dict=config,
+                               ssl_verify=False
+                               )
 ```
 
 During the calls, you will also see  a warning from requests:

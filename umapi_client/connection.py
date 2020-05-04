@@ -53,6 +53,7 @@ class Connection:
                  retry_max_attempts=4,
                  retry_first_delay=15,
                  retry_random_delay=5,
+                 ssl_verify=True,
                  timeout_seconds=120.0,
                  throttle_actions=10,
                  throttle_commands=10,
@@ -121,6 +122,7 @@ class Connection:
         self.retry_max_attempts = retry_max_attempts
         self.retry_first_delay = retry_first_delay
         self.retry_random_delay = retry_random_delay
+        self.ssl_verify = ssl_verify
         self.timeout = float(timeout_seconds) if timeout_seconds and float(timeout_seconds) > 0.0 else None
         self.throttle_actions = max(int(throttle_actions), 1)
         self.throttle_commands = max(int(throttle_commands), 1)
@@ -182,7 +184,8 @@ class Connection:
         if remote:
             components = urlparse.urlparse(self.endpoint)
             try:
-                result = self.session.get(components[0] + "://" + components[1] + "/status", timeout=self.timeout)
+                result = self.session.get(components[0] + "://" + components[1] + "/status", timeout=self.timeout,
+                                          verify=self.ssl_verify)
             except Exception as e:
                 if self.logger: self.logger.debug("Failed to connect to server for status: %s", e)
                 result = None
@@ -256,7 +259,7 @@ class Connection:
         elif object_type == "user-group":
             query_path = "/{}/user-groups".format(self.org_id)
             if url_params: query_path += "/" + "/".join([urlparse.quote(c) for c in url_params])
-            query_path += "?page={:d}".format(page + 1)
+            query_path += "?page={:d}".format(page+1)
             if query_params: query_path += "&" + urlparse.urlencode(query_params)
         else:
             raise ArgumentError("Unknown query object type ({}): must be 'user' or 'group'".format(object_type))
@@ -332,7 +335,7 @@ class Connection:
 
         NOTE: This is where we throttle the number of commands per action.  So the number
         of actions we were given may not be the same as the number we queue or send to the server.
-
+        
         NOTE: If the server gives us a response we don't understand, we note that and continue
         processing as usual.  Then, at the end of the batch, we throw in order to warn the client
         that we had a problem understanding the server.
@@ -420,26 +423,25 @@ class Connection:
         """
         if body:
             request_body = json.dumps(body)
-
             def call():
-                return self.session.post(self.endpoint + path, auth=self.auth, data=request_body, timeout=self.timeout)
+                return self.session.post(self.endpoint + path, auth=self.auth, data=request_body, timeout=self.timeout,
+                                         verify=self.ssl_verify)
         else:
             if not delete:
                 def call():
-                    return self.session.get(self.endpoint + path, auth=self.auth, timeout=self.timeout)
+                    return self.session.get(self.endpoint + path, auth=self.auth, timeout=self.timeout,
+                                            verify=self.ssl_verify)
             else:
                 def call():
-                    return self.session.delete(self.endpoint + path, auth=self.auth, timeout=self.timeout)
+                    return self.session.delete(self.endpoint + path, auth=self.auth, timeout=self.timeout,
+                                               verify=self.ssl_verify)
 
         start_time = time()
         result = None
         for num_attempts in range(1, self.retry_max_attempts + 1):
             try:
                 result = call()
-                if self.logger:
-                    self.logger.debug("Status code: %d ", result.status_code)
-                    self.logger.debug(result.headers)
-                if result.status_code in [200, 201, 204]:
+                if result.status_code in [200,201,204]:
                     return result
                 elif result.status_code in [429, 502, 503, 504]:
                     if self.logger: self.logger.warning("UMAPI timeout...service unavailable (code %d on try %d)",

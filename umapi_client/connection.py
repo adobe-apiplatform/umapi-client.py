@@ -441,6 +441,9 @@ class Connection:
         for num_attempts in range(1, self.retry_max_attempts + 1):
             try:
                 result = call()
+                if self.logger:
+                    self.logger.debug("Status code: %d ", result.status_code)
+                    self.logger.debug(result.headers)
                 if result.status_code in [200,201,204]:
                     return result
                 elif result.status_code in [429, 502, 503, 504]:

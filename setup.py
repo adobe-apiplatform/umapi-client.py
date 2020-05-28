@@ -24,6 +24,9 @@ version_namespace = {}
 with open('umapi_client/version.py') as f:
     exec(f.read(), version_namespace)
 
+test_deps = ['mock', 'pytest>=3.0.5', 'PyYAML']
+setup_deps = ['pytest-runner']
+
 setup(name='umapi-client',
       version=version_namespace['__version__'],
       description='Client for the User Management API (UMAPI) from Adobe - see https://adobe.ly/2h1pHgV',
@@ -54,12 +57,10 @@ setup(name='umapi-client',
           'six',
           'enum34;python_version<"3.4"',
       ],
-      setup_requires=[
-          'pytest-runner',
-      ],
-      tests_require=[
-          'pytest>=3.0.5',
-          'mock',
-          'PyYAML',
-      ],
+      extras_require={
+          'test': test_deps,
+          'setup': setup_deps,
+      },
+      setup_requires=setup_deps,
+      tests_require=test_deps,
       zip_safe=False)

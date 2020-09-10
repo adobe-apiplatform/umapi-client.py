@@ -19,6 +19,7 @@
 # SOFTWARE.
 
 import datetime as dt
+import logging
 import time
 
 import jwt  # package name is PyJWT in setup
@@ -54,12 +55,13 @@ class JWT(object):
 
 
 class AccessRequest(object):
-    def __init__(self, endpoint, api_key, client_secret, jwt_token):
+    def __init__(self, endpoint, api_key, client_secret, jwt_token, ssl_verify):
         self.endpoint = endpoint
         self.api_key = api_key
         self.client_secret = client_secret
         self.jwt_token = jwt_token
         self.expiry = None
+        self.ssl_verify = ssl_verify
 
     def __call__(self):
         headers = {
@@ -72,7 +74,7 @@ class AccessRequest(object):
             "jwt_token": self.jwt_token
         })
 
-        r = requests.post(self.endpoint, headers=headers, data=body)
+        r = requests.post(self.endpoint, headers=headers, data=body, verify=self.ssl_verify)
         if r.status_code != 200:
             raise RuntimeError("Unable to authorize against {}:\n"
                                "Response Code: {:d}, Response Text: {}\n"

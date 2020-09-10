@@ -160,7 +160,7 @@ class Connection:
         else:
             with open(private_key_file, 'r') as private_key_stream:
                 jwt = JWT(self.org_id, tech_acct_id, ims_host, api_key, private_key_stream)
-        token = AccessRequest("https://" + ims_host + ims_endpoint_jwt, api_key, client_secret, jwt())
+        token = AccessRequest("https://" + ims_host + ims_endpoint_jwt, api_key, client_secret, jwt(), self.ssl_verify)
         return Auth(api_key, token())
 
     def status(self, remote=False):

@@ -14,3 +14,5 @@ build/
 *.pyc
 *.tar.gz
 *.zip
+
+venv

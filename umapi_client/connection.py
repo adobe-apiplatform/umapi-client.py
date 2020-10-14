@@ -44,6 +44,7 @@ class APIResult:
         self.result = result
         self.success = success
         self.timeout = timeout
+        self.status_code = result.status_code if hasattr(result, 'status_code') else 'Error'
 
     def check_result(self):
         if self.result.status_code in self.success_codes:
@@ -53,7 +54,6 @@ class APIResult:
             self.success = False
             self.timeout = self.get_timeout()
             return self
-        print("STATUS", self.result.status_code)
         if self.client_error(self.result.status_code):
             raise ClientError("Unexpected HTTP Status {:d}: {}".format(self.result.status_code, self.result.text), self.result)
         if self.request_error(self.result.status_code):
@@ -485,12 +485,16 @@ class Connection:
                 if self.logger: self.logger.warning("UMAPI connection timeout...(%d seconds on try %d)",
                                                     self.timeout, num_attempts)
                 checked_result = APIResult(success=False, timeout=0)
+            except requests.ConnectionError:
+                if self.logger: self.logger.warning("UMAPI connection error...(%d seconds on try %d)",
+                                                    self.timeout, num_attempts)
+                checked_result = APIResult(success=False, timeout=0)
             
             if checked_result.success:
                 return result
 
-            if self.logger: self.logger.warning("UMAPI timeout...service unavailable (code %d on try %d)",
-                                                result.status_code, num_attempts)
+            if self.logger: self.logger.warning("UMAPI timeout...service unavailable (code %s on try %d)",
+                                                checked_result.status_code, num_attempts)
 
             retry_wait = checked_result.timeout
             if retry_wait <= 0:
@@ -507,4 +511,4 @@ class Connection:
         total_time = int(time() - start_time)
         if self.logger: self.logger.error("UMAPI timeout...giving up after %d attempts (%d seconds).",
                                           self.retry_max_attempts, total_time)
-        raise UnavailableError(self.retry_max_attempts, total_time, result)
+        raise UnavailableError(self.retry_max_attempts, total_time, checked_result.result)

@@ -258,6 +258,9 @@ class QueryMultiple:
         self._next_item_index = len(self._results)
         return list(self._results)
 
+    def stats(self):
+        return self._total_count, self._page_count, self._page_size, self._page_number
+
 
 class QuerySingle:
     """

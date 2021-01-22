@@ -59,6 +59,31 @@ def test_remote_status_timeout():
         assert remote_status["status"].startswith("Unreachable")
 
 
+def test_remote_status_error():
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.side_effect = requests.ConnectionError
+        conn = Connection(**mock_connection_params)
+        _, remote_status = conn.status(remote=True)
+        assert remote_status["status"].startswith("Unreachable")
+
+
+# log_stream fixture defined in conftest.py
+def test_remote_status_error_logging(log_stream):
+    with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
+        mock_get.side_effect = requests.ConnectionError
+        stream, logger = log_stream
+        params = dict(mock_connection_params)
+        params["logger"] = logger
+        conn = Connection(**params)
+        pytest.raises(UnavailableError, conn.make_call, "")
+        stream.flush()
+        log = stream.getvalue()  # save as a local so can do pytest -l to see exact log
+        assert "code Error on try 1" in log
+        assert "code Error on try 2" in log
+        assert "code Error on try 3" in log
+        assert "code Error on try 4" not in log
+
+
 def test_ua_string():
     conn = Connection(**mock_connection_params)
     req = conn.session.prepare_request(requests.Request('GET', "http://test.com/"))

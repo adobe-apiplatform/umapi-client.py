@@ -19,7 +19,6 @@
 # SOFTWARE.
 
 import datetime as dt
-import logging
 import time
 
 import jwt  # package name is PyJWT in setup

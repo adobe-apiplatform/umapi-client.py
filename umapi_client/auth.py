@@ -48,9 +48,7 @@ class JWT(object):
 
         # create JSON Web Token
         # noinspection PyUnresolvedReferences
-        jwt_token = jwt.encode(payload, self.key, algorithm='RS256')
-        # decode bytes into string
-        return jwt_token.decode("utf-8")
+        return jwt.encode(payload, self.key, algorithm='RS256')
 
 
 class AccessRequest(object):

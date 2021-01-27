@@ -33,6 +33,7 @@ from umapi_client import ArgumentError, UnavailableError, ServerError, RequestEr
 from umapi_client import UserAction, GroupTypes, IdentityTypes, RoleTypes, UserGroupAction
 from umapi_client import __version__ as umapi_version
 from umapi_client.auth import Auth
+from umapi_client.auth import JWT
 
 
 def test_remote_status_success():
@@ -485,3 +486,10 @@ def test_split_group_action():
     group.add_users(users=add_users)
     assert group.maybe_split_groups(10) is True
     assert len(group.commands) == 3
+
+def test_jwt():
+    # make sure we get no errors when constructing a JWT
+    from pathlib import Path
+    with open(Path(__file__).parents[0] / 'fixture/private.key') as keyfile:
+        jwt = JWT('xxxxxx', 'xxxxx', 'example.com', 'xxxxx', keyfile)
+        jwt()

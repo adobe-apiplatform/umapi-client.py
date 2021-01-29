@@ -1,5 +1,95 @@
 | tag | date | title |
 |---|---|---|
+| v2.16 | 2021-01-22 | umapi-client v2.16 |
+
+\#83 - Implement `ssl_verify` for authentication endpoint
+
+---
+
+| tag | date | title |
+|---|---|---|
+| v2.15 | 2020-10-28 | umapi-client v2.15 |
+
+\#75 Add statistics from response headers for query_multiple
+\#79 Treat connection error like a timeout
+\#80 & \#81 Switch CI platforms
+
+---
+
+| tag | date | title |
+|---|---|---|
+| v2.14 | 2020-04-30 | umapi-client v2.14 |
+
+\#76 Option to disable SSL validation for UMAPI calls
+
+---
+
+| tag | date | title |
+|---|---|---|
+| v2.13 | 2019-11-14 | umapi-client v2.13 |
+
+* Make `group` the default key for group operations
+* Only install `enum34` if Python version < 3.4
+
+---
+
+| tag | date | title |
+|---|---|---|
+| v2.12 | 2019-01-09 | umapi-client v2.12 |
+
+Modify validation behavior to facilitate the creation of users that may have different email addresses and email-type usernames.
+
+---
+
+| tag | date | title |
+|---|---|---|
+| v2.11 | 2018-08-31 | umapi-client v2.11 |
+
+Supports the creation, deletion, and updating of Adobe groups.  Supports the assignment of large lists of groups that will be split into lists no larger than 10 apiece, according to the UMAPI spec.
+
+---
+
+| tag | date | title |
+|---|---|---|
+| v2.10 | 2017-12-08 | Enhancement: UMAPI_MOCK environment variable |
+
+The new environment variable `UMAPI_MOCK` controls whether the umapi_client can be used with a mock server: either a `proxy` server which accepts http and relays requests to the actual server via https, recording requests and responses; or a `playback` server which accepts http, doesn't require auth, and simply plays back the server answers from a prior run.  Both these modes are used by the user_sync test_framework.
+
+---
+
+| tag | date | title |
+|---|---|---|
+| v2.9 | 2017-11-14 | Bug fix: Better UMAPI limits checking |
+
+The UMAPI limits the number of groups (or roles) that can be added or removed to a user in a single action step to 10, but the umapi-client was not checking for that limit and splitting action steps as necessary to stay within it.  Now it does.
+
+---
+
+| tag | date | title |
+|---|---|---|
+| v2.8 | 2017-10-18 | Compatibility fixes for UMAPI changes |
+
+Because the UMAPI functionality around Adobe IDs is now different for migrated organizations, the client no longer does a lot of redundant validation of server-side checks.  This makes it more tolerant of clients who use it against both migrated and non-migrated orgs.
+
+**NOTE**: Clients that were relying on the umapi-client to default Enterprise ID country code to "UD" now need to specify it themselves.
+
+* [Issue 54](https://github.com/adobe-apiplatform/umapi-client.py/issues/54)
+    * Allow setting attributes on Adobe ID users as long as the server allows it.
+* [Issue 55](https://github.com/adobe-apiplatform/umapi-client.py/issues/55)
+    * Don't default the country code when creating new Enterprise ID users.
+
+---
+
+| tag | date | title |
+|---|---|---|
+| v2.7 | 2017-08-26 | Better unicode fixes! |
+
+The fix for #50 used in v2.6 had problems, so this fixes it better.  (See #50 for details.)  Because we have introduced a new error `ArgumentError` which is a subclass of `ValueError`, this release gets a full dot rather than a double dot.
+
+---
+
+| tag | date | title |
+|---|---|---|
 | v2.6 | 2017-08-05 | Unicode fixes |
 
 This is a bug fix release aimed at fixing error messages related to invalid Unicode input.  Without these fixes, clients cannot handle the error strings being returned.  (See #50 for details.)

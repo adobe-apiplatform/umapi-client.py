@@ -1,5 +1,72 @@
 | tag | date | title |
 |---|---|---|
+| v2.0.2 | 2017-02-02 | User-Agent header enhancements |
+
+Add a User-Agent header with version information to all server requests, and make it possible for clients to add their User-Agent info to the header.
+
+---
+
+| tag | date | title |
+|---|---|---|
+| v2.0.1 | 2017-01-17 | Release 2.0.1 with fixes for #27, #28. |
+
+This release fixes issues discovered by user-sync development, optimizes via connection reuse, and improves the documentation around creating UserAction objects.
+
+---
+
+| tag | date | title |
+|---|---|---|
+| v2.0 | 2017-01-13 | umapi-client 2.0GM |
+
+Public release of v2 of the umapi-client.  This release contains a functional layer and connection enhancements that completely shield the application writer from protocol issues.
+
+You can install the release from [PyPI/umapi-client](https://pypi.python.org/pypi?:action=display&name=umapi-client&version=2.0) with `pip install --upgrade umapi-client`.
+
+---
+
+| tag | date | title |
+|---|---|---|
+| v2.0rc1 | 2017-01-05 | First release candidate for 2.0 |
+
+Now with support for python 2.7, 3.4, 3.5, and Travis CI support/posting to PyPI.
+
+---
+
+| tag | date | title |
+|---|---|---|
+| v2.0b2 | 2016-12-27 | Release beta 2 |
+
+With better legacy support and a brand new documentation wiki,
+we are getting close to a release candidate for v2.  There's a bit
+more work to do on the v2 usage docs first.
+
+---
+
+| tag | date | title |
+|---|---|---|
+| v2.0b1 | 2016-12-25 | Release 2.0b1 |
+
+This is a massive overhaul of the v1 code.  It includes:
+- better connection management.
+- umapi_client automated throttling and batching of all calls, with app-level controls.
+- functional wrappers for all the server API calls.
+- queries that iterate
+- preservation of legacy compatibility in the umap_client.legacy module.
+
+---
+
+| tag | date | title |
+|---|---|---|
+| v1.0.1 | 2016-12-17 | Release the fix of #12 |
+
+OMG!  That has to be the shortest-lived 1.0 release ever!
+
+This pushes the fix of #12 to PyPI.  I have also removed the older postings.
+
+---
+
+| tag | date | title |
+|---|---|---|
 | v1.0.0 | 2016-12-17 | Finally, a v1 production release! |
 
 After many renames and typo fixes, we are finally at our v1 release.  Yay!

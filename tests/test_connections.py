@@ -24,7 +24,6 @@ from email.utils import formatdate
 import mock
 import pytest
 import requests
-import six
 
 from conftest import mock_connection_params, MockResponse
 
@@ -310,7 +309,7 @@ def test_large_group_assignment_split():
     :return:
     """
     group_prefix = "G"
-    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 15)]
+    add_groups = [group_prefix+str(n+1) for n in range(0, 15)]
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
     user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
     assert user.maybe_split_groups(10) is True
@@ -325,7 +324,7 @@ def test_large_group_assignment_split_recursive():
     :return:
     """
     group_prefix = "G"
-    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 100)]
+    add_groups = [group_prefix+str(n+1) for n in range(0, 100)]
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
     user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
     assert user.maybe_split_groups(10) is True
@@ -339,8 +338,8 @@ def test_large_group_mix_split():
     :return:
     """
     group_prefix = "G"
-    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 15)]
-    remove_groups = [group_prefix+six.text_type(n+1) for n in range(15, 30)]
+    add_groups = [group_prefix+str(n+1) for n in range(0, 15)]
+    remove_groups = [group_prefix+str(n+1) for n in range(15, 30)]
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
     user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup) \
         .remove_from_groups(groups=remove_groups, group_type=GroupTypes.usergroup)
@@ -364,7 +363,7 @@ def test_large_group_action_split():
         conn = Connection(**mock_connection_params)
 
         group_prefix = "G"
-        add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 150)]
+        add_groups = [group_prefix+str(n+1) for n in range(0, 150)]
         user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
         user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
         assert conn.execute_single(user, immediate=True) == (0, 2, 2)
@@ -382,7 +381,7 @@ def test_group_size_limit():
         conn = Connection(**params)
 
         group_prefix = "G"
-        add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 150)]
+        add_groups = [group_prefix+str(n+1) for n in range(0, 150)]
         user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
         user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
         assert conn.execute_single(user, immediate=True) == (0, 3, 3)
@@ -409,7 +408,7 @@ def test_split_add_user():
 
 def test_split_role_assignment():
     group_prefix = "G"
-    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 25)]
+    add_groups = [group_prefix+str(n+1) for n in range(0, 25)]
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
     user.add_role(groups=add_groups, role_type=RoleTypes.admin)
     assert user.maybe_split_groups(10) is True
@@ -422,7 +421,7 @@ def test_no_group_split():
     :return:
     """
     group_prefix = "G"
-    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 5)]
+    add_groups = [group_prefix+str(n+1) for n in range(0, 5)]
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
     user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
     assert user.maybe_split_groups(10) is False
@@ -436,8 +435,8 @@ def test_complex_group_split():
     :return:
     """
     group_prefix = "G"
-    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 150)]
-    add_products = [group_prefix+six.text_type(n+1) for n in range(0, 26)]
+    add_groups = [group_prefix+str(n+1) for n in range(0, 150)]
+    add_products = [group_prefix+str(n+1) for n in range(0, 26)]
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
     user.commands = [{
         "add": {
@@ -457,7 +456,7 @@ def test_split_remove_all():
     :return:
     """
     group_prefix = "G"
-    add_groups = [group_prefix+six.text_type(n+1) for n in range(0, 11)]
+    add_groups = [group_prefix+str(n+1) for n in range(0, 11)]
     user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
     user.remove_from_groups(all_groups=True)
     assert user.maybe_split_groups(1) is False
@@ -480,7 +479,7 @@ def test_split_remove_all():
 
 
 def test_split_group_action():
-    user_template = six.text_type("user.{}@example.com")
+    user_template = "user.{}@example.com"
     add_users = [user_template.format(n+1) for n in range(0, 25)]
     group = UserGroupAction(group_name="Test Group")
     group.add_users(users=add_users)

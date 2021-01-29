@@ -19,7 +19,6 @@
 # SOFTWARE.
 
 import re
-import six
 from enum import Enum
 
 from .api import Action, QuerySingle, QueryMultiple
@@ -173,9 +172,9 @@ class UserAction(Action):
         if email and username and email.lower() == username.lower():
             raise ArgumentError("Specify just email to set both email and username for a federated ID")
         updates = {}
-        for k, v in six.iteritems(dict(email=email, username=username,
-                                       firstname=first_name, lastname=last_name,
-                                       country=country)):
+        for k, v in dict(email=email, username=username,
+                         firstname=first_name, lastname=last_name,
+                         country=country).items():
             if v:
                 updates[k] = v
         return self.append(update=updates)

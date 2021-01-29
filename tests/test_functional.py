@@ -21,8 +21,6 @@
 # SOFTWARE.
 
 import pytest
-import six
-import mock
 
 from conftest import mock_connection_params, MockResponse
 from umapi_client import ArgumentError, RequestError

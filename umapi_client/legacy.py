@@ -31,7 +31,6 @@ from sys import maxsize
 from time import time, sleep
 
 import requests
-import six
 
 from .api import Action as NewAction
 from .connection import Connection
@@ -69,13 +68,13 @@ class Action(NewAction):
         :return: the Action, so you can do Action(...).do(...).do(...)
         """
         # add "create" / "add" / "removeFrom" first
-        for k, v in list(six.iteritems(kwargs)):
+        for k, v in list(kwargs.items()):
             if k.startswith("create") or k.startswith("addAdobe") or k.startswith("removeFrom"):
                 self.commands.append({k: v})
                 del kwargs[k]
 
         # now do the other actions, in a canonical order (to avoid py2/py3 variations)
-        for k, v in sorted(six.iteritems(kwargs)):
+        for k, v in sorted(kwargs.items()):
             if k in ['add', 'remove']:
                 self.commands.append({k: {"product": v}})
             else:

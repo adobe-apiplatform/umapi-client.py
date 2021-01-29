@@ -26,8 +26,8 @@ from platform import python_version, version as platform_version
 from random import randint
 from time import time, sleep, gmtime, strftime
 import requests
-import six
-import six.moves.urllib.parse as urlparse
+import io
+import urllib.parse as urlparse
 
 from .auth import JWT, Auth, AccessRequest
 from .error import BatchError, UnavailableError, ClientError, RequestError, ServerError, ArgumentError
@@ -194,7 +194,7 @@ class Connection:
         if not (tech_acct_id and api_key and client_secret and (private_key_data or private_key_file)):
             raise ArgumentError("Connector create: not all required auth parameters were supplied; please see docs")
         if private_key_data:
-            jwt = JWT(self.org_id, tech_acct_id, ims_host, api_key, six.StringIO(private_key_data))
+            jwt = JWT(self.org_id, tech_acct_id, ims_host, api_key, io.StringIO(private_key_data))
         else:
             with open(private_key_file, 'r') as private_key_stream:
                 jwt = JWT(self.org_id, tech_acct_id, ims_host, api_key, private_key_stream)

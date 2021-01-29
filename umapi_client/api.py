@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import six
-
 from .connection import Connection
 
 
@@ -76,7 +74,7 @@ class Action:
         :param kwargs: the key/value pairs to add
         :return: the action
         """
-        for k, v in six.iteritems(kwargs):
+        for k, v in kwargs.items():
             self.commands.append({k: v})
         return self
 
@@ -95,7 +93,7 @@ class Action:
         :param kwargs: the key/value pair to append first
         :return: the action, so you can append Action(...).insert(...).append(...)
         """
-        for k, v in six.iteritems(kwargs):
+        for k, v in kwargs.items():
             self.commands.insert(0, {k: v})
         return self
 
@@ -139,14 +137,14 @@ class Action:
         valid_step_keys = ['add', 'addRoles', 'remove']
         for command in self.commands:
             # commands are assumed to contain a single key
-            step_key, step_args = next(six.iteritems(command))
+            step_key, step_args = next(iter(command.items()))
             if step_key not in valid_step_keys or not isinstance(step_args, dict):
                 split_commands.append(command)
                 continue
             new_commands = [command]
             while True:
                 new_command = {step_key: {}}
-                for group_type, groups in six.iteritems(command[step_key]):
+                for group_type, groups in command[step_key].items():
                     if len(groups) > max_groups:
                         command[step_key][group_type], new_command[step_key][group_type] = \
                             groups[0:max_groups], groups[max_groups:]

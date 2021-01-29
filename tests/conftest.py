@@ -24,7 +24,7 @@ Set up for testing
 import logging
 
 import pytest
-from six import StringIO
+from io import StringIO
 
 mock_connection_params = {
     "org_id": "N/A",

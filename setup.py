@@ -54,8 +54,6 @@ setup(name='umapi-client',
           'requests>=2.4.2',
           'cryptography==3.3.1',
           'PyJWT==2.0.1',
-          'six',
-          'enum34;python_version<"3.4"',
       ],
       extras_require={
           'test': test_deps,

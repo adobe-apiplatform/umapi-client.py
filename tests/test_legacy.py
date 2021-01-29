@@ -26,7 +26,7 @@ from email.utils import formatdate
 import mock
 import pytest
 from conftest import MockResponse
-from six import StringIO
+from io import StringIO
 
 import umapi_client.legacy as v1
 

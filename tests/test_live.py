@@ -24,7 +24,6 @@ import os
 
 import pytest
 import yaml
-import six
 
 import umapi_client
 
@@ -134,7 +133,7 @@ def test_get_user(config):
     user_query = umapi_client.UserQuery(conn, params["test_user"]["email"])
     user = user_query.result()
     logging.info("User: %s", user)
-    for k, v in six.iteritems(params["test_user"]):
+    for k, v in params["test_user"].items():
         assert user[k].lower() == v.lower()
 
 

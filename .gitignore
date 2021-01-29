@@ -2,6 +2,7 @@
 .*
 !.travis.yml
 !.gitignore
+!.changelog
 
 # build and scratch areas
 local/

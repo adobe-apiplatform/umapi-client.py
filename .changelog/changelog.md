@@ -1,5 +1,14 @@
 | tag | date | title |
 |---|---|---|
+| v2.17 | 2021-01-29 | umapi-client v2.17 |
+
+* \#84 Pin dependencies and fix jwt issue
+* \#85 create changelog
+* \#86 CI config updates
+
+---
+| tag | date | title |
+|---|---|---|
 | v2.16 | 2021-01-22 | umapi-client v2.16 |
 
 \#83 - Implement `ssl_verify` for authentication endpoint

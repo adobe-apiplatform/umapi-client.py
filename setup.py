@@ -52,7 +52,7 @@ setup(name='umapi-client',
       packages=find_packages(),
       install_requires=[
           'requests>=2.4.2',
-          'cryptography==3.3.1',
+          'cryptography==3.3.2',
           'PyJWT==2.0.1',
       ],
       extras_require={

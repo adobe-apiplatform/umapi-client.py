@@ -500,7 +500,7 @@ class Connection:
             if checked_result.success:
                 return result
 
-            if self.logger: self.logger.warning("UMAPI timeout...service unavailable (code %s on try %d)",
+            if self.logger: self.logger.warning("UMAPI request limit reached (code %s on try %d)",
                                                 checked_result.status_code, num_attempts)
 
             retry_wait = checked_result.timeout
@@ -511,7 +511,7 @@ class Connection:
 
             if num_attempts < self.retry_max_attempts:
                 if retry_wait > 0:
-                    if self.logger: self.logger.warning("Next retry in %d seconds...", retry_wait)
+                    if self.logger: self.logger.warning(" waiting %d seconds to continue..", retry_wait)
                     sleep(retry_wait)
                 else:
                     if self.logger: self.logger.warning("Immediate retry...")

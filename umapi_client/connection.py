@@ -511,7 +511,7 @@ class Connection:
 
             if num_attempts < self.retry_max_attempts:
                 if retry_wait > 0:
-                    if self.logger: self.logger.warning(" waiting %d seconds to continue..", retry_wait)
+                    if self.logger: self.logger.warning("waiting %d seconds to continue...", retry_wait)
                     sleep(retry_wait)
                 else:
                     if self.logger: self.logger.warning("Immediate retry...")

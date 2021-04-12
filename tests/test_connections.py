@@ -246,14 +246,13 @@ def test_get_retry_logging(log_stream):
         pytest.raises(UnavailableError, conn.make_call, "")
         stream.flush()
         log = stream.getvalue()  # save as a local so can do pytest -l to see exact log
-        assert log == """UMAPI timeout...service unavailable (code 429 on try 1)
-Next retry in 3 seconds...
-UMAPI timeout...service unavailable (code 429 on try 2)
-Next retry in 3 seconds...
-UMAPI timeout...service unavailable (code 429 on try 3)
+        assert log == """UMAPI request limit reached (code 429 on try 1)
+waiting 3 seconds to continue...
+UMAPI request limit reached (code 429 on try 2)
+waiting 3 seconds to continue...
+UMAPI request limit reached (code 429 on try 3)
 UMAPI timeout...giving up after 3 attempts (6 seconds).
 """
-
 
 # log_stream fixture defined in conftest.py
 def test_post_retry_logging(log_stream):
@@ -266,14 +265,13 @@ def test_post_retry_logging(log_stream):
         pytest.raises(UnavailableError, conn.make_call, "", [3, 5])
         stream.flush()
         log = stream.getvalue()  # save as a local so can do pytest -l to see exact log
-        assert log == """UMAPI timeout...service unavailable (code 429 on try 1)
-Next retry in 3 seconds...
-UMAPI timeout...service unavailable (code 429 on try 2)
-Next retry in 3 seconds...
-UMAPI timeout...service unavailable (code 429 on try 3)
+        assert log == """UMAPI request limit reached (code 429 on try 1)
+waiting 3 seconds to continue...
+UMAPI request limit reached (code 429 on try 2)
+waiting 3 seconds to continue...
+UMAPI request limit reached (code 429 on try 3)
 UMAPI timeout...giving up after 3 attempts (6 seconds).
 """
-
 
 def test_get_server_fail():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:

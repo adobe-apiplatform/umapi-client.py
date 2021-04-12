@@ -19,7 +19,9 @@ jobs:
       with:
         poetry-version: 1.1.5
     - name: Build
-      run: poetry build
+      run: |
+        poetry install
+        poetry build
     - name: Create release
       uses: actions/create-release@v1
       env:

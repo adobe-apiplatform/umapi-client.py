@@ -40,3 +40,6 @@ credentials for use of the UMAPI, can be found on the
 [umapi-client wiki](https://adobe-apiplatform.github.io/umapi-client.py/),
 whose sources are in the `docs` directory of this repository.
 
+# License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for more information.

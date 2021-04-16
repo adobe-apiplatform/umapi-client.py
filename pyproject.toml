@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "umapi-client.py"
+name = "umapi-client"
 version = "2.17.1"
 description = "Client for the User Management API (UMAPI) from Adobe - see https://adobe.ly/2h1pHgV"
 readme = "README.md"

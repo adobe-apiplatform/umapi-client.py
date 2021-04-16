@@ -1,5 +1,15 @@
 | tag | date | title |
 |---|---|---|
+| v2.17.1 | 2021-04-16 | umapi-client v2.17.1 |
+
+No updates to functionality, just changes to the build system.
+
+* \#90 Switch from setup.py to Poetry
+
+---
+
+| tag | date | title |
+|---|---|---|
 | v2.17 | 2021-01-29 | umapi-client v2.17 |
 
 * \#84 Pin dependencies and fix jwt issue
@@ -7,6 +17,7 @@
 * \#86 CI config updates
 
 ---
+
 | tag | date | title |
 |---|---|---|
 | v2.16 | 2021-01-22 | umapi-client v2.16 |

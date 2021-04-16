@@ -1,3 +1,3 @@
-* \#84 Pin dependencies and fix jwt issue
-* \#85 create changelog
-* \#86 CI config updates
+No updates to functionality, just changes to the build system.
+
+* \#90 Switch from setup.py to Poetry

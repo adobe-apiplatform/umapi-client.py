@@ -12,32 +12,60 @@ of the OSI-approved MIT license.  Copyright (c) 2016-2021 Adobe Inc.
 
 # Installation
 
-You can get this package from PyPI: `pip install umapi-client`.
-Or you can download the posted package from GitHub and use pip
-to install from the download.
+`umapi-client.py` is published to the Python Packaging Index.
+
+https://pypi.org/project/umapi-client/
+
+It can be installed with pip:
+
+```
+$ pip install umapi-client
+```
+
+Or a dependency manager such as Poetry:
+
+```
+$ poetry add umapi-client
+```
 
 # Building
 
-1. Clone this repository or download one of the posted releases.
-2. From the command line, change to the `umapi-client.py` directory.
-3. To install, run the command `python setup.py install`.
-[**NOTE**: To avoid needing admin/root privileges for the installation
-of needed dependencies,
-it is recommended that you use `virtualenv` (or equivalent)
-to make a virtual python environment.  See the
-[virtualenvwrapper documentation](http://virtualenvwrapper.readthedocs.io/en/latest/index.html)
-for more information.
+[Poetry](https://python-poetry.org/) is required to build the package. Follow the instructions documented on
+Poetry's website to install it on your system.
+
+1. Clone this repository
+   ```
+   $ git clone https://github.com/adobe-apiplatform/umapi-client.py
+   $ cd umapi-client.py
+   ```
+
+2. Install dependencies to virtual environment.
+   ```
+   $ poetry install
+   ```
+
+3. The `build` command will create a source package (`.tar.gz`) and a wheel file (`.whl`) in the `dist` directory.
+   ```
+   $ poetry build
+   $ ls dist
+   umapi-client-2.17.1.tar.gz  umapi_client-2.17.1-py3-none-any.whl
+   ```
+
 4. Some of the packages required by this module use encryption, and so may
-require you to do local builds of modules that use SSL.  Typically, this
-will require you to have a python installed that supports compiling
-extensions.
-5. To run tests, use the command `python setup.py test`.
+   require you to do local builds of modules that use SSL.  Typically, this
+   will require you to have a python installed that supports compiling
+   extensions.
+
+5. Run tests with `pytest`.
+   ```
+   $ poetry run pytest
+   ```
 
 # Usage
 
 Usage documentation, as well as information about how to get client
-credentials for use of the UMAPI, can be found on the
-[umapi-client wiki](https://adobe-apiplatform.github.io/umapi-client.py/),
+credentials for use of the UMAPI, can be found in the
+[user guide](https://adobe-apiplatform.github.io/umapi-client.py/),
 whose sources are in the `docs` directory of this repository.
 
 # License

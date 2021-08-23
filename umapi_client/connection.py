@@ -308,7 +308,7 @@ class Connection:
             if re.result.status_code == 404:
                 if self.logger: self.logger.debug("Ran %s query: %s %s (0 found)",
                                                   object_type, url_params, query_params)
-                return [], True
+                return [], True, 0, 0, 0, 0
             else:
                 raise re
 

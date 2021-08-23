@@ -104,7 +104,7 @@ def test_query_multiple_user_not_found():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(404, text="404 Object not found")
         conn = Connection(**mock_connection_params)
-        assert conn.query_multiple("user") == ([], True)
+        assert conn.query_multiple("user") == ([], True, 0, 0, 0, 0)
 
 
 def test_query_multiple_user_paged():
@@ -230,7 +230,7 @@ def test_query_multiple_usergroup_not_found():
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(404, text="404 Object not found")
         conn = Connection(**mock_connection_params)
-        assert conn.query_multiple("user-group") == ([], True)
+        assert conn.query_multiple("user-group") == ([], True, 0, 0, 0, 0)
 
 
 def test_query_multiple_usergroup_paged():

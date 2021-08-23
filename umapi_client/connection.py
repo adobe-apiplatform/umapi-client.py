@@ -173,6 +173,8 @@ class Connection:
                              "actions-queued": 0}
         self.server_status = {"status": "Never contacted",
                               "endpoint": self.endpoint}
+        self.sync_started = False
+        self.sync_ended = False
         if auth:
             self.auth = auth
         elif auth_dict:
@@ -369,7 +371,7 @@ class Connection:
         Execute multiple Actions (each containing commands on a single object).
         Normally, the actions are sent for execution immediately (possibly preceded
         by earlier queued commands), but if you are going for maximum efficiency
-        you can set immeediate=False which will cause the connection to wait
+        you can set immediate=False which will cause the connection to wait
         and batch as many actions as allowed in each server call.
 
         Since any command can fill the current batch, one or more of your commands may be submitted
@@ -431,6 +433,16 @@ class Connection:
             raise BatchError(exceptions, queued, sent, completed)
         return queued, sent, completed
 
+    def start_sync(self):
+        """Signal the beginning of a sync operation
+        Sends a header with the first batch of UMAPI actions"""
+        self.sync_started = True
+
+    def end_sync(self):
+        """Signal the end of a sync operation
+        Sends a header with the next batch of UMAPI actions"""
+        self.sync_ended = True
+
     def _execute_batch(self, actions):
         """
         Execute a single batch of Actions.
@@ -467,10 +479,20 @@ class Connection:
         :return: the requests.result object (on 200 response), raise error otherwise
         """
         if body:
+            extra_headers = {}
+            # if the sync_started or sync_ended flags are set, send a header on this POST
+            if self.sync_started:
+                self.logger.info("Sending start_sync signal")
+                extra_headers['Pragma'] = 'umapi-sync-start'
+                self.sync_started = False
+            elif self.sync_ended:
+                self.logger.info("Sending end_sync signal")
+                extra_headers['Pragma'] = 'umapi-sync-end'
+                self.sync_ended = False
             request_body = json.dumps(body)
             def call():
                 return self.session.post(self.endpoint + path, auth=self.auth, data=request_body, timeout=self.timeout,
-                                         verify=self.ssl_verify)
+                                         verify=self.ssl_verify, headers=extra_headers)
         else:
             if not delete:
                 def call():

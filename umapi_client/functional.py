@@ -113,6 +113,12 @@ class UserAction(Action):
         else:
             Action.__init__(self, user=email, **kwargs)
 
+    def __str__(self):
+        return "UserAction "+str(self.__dict__)
+
+    def __repr__(self):
+        return "UserAction "+str(self.__dict__)
+
     def create(self, first_name=None, last_name=None, country=None, email=None,
                on_conflict=IfAlreadyExistsOptions.ignoreIfAlreadyExists):
         """

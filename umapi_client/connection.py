@@ -490,7 +490,6 @@ class Connection:
                 self.logger.info("Sending end_sync signal")
                 extra_headers['Pragma'] = 'umapi-sync-end'
                 self.sync_ended = False
-            self.uuid = str(uuid.uuid4())
             request_body = json.dumps(body)
             def call():
                 return self.session.post(self.endpoint + path, auth=self.auth, data=request_body, timeout=self.timeout,
@@ -499,7 +498,7 @@ class Connection:
             if not delete:
                 def call():
                     return self.session.get(self.endpoint + path, auth=self.auth, timeout=self.timeout,
-                                            verify=self.ssl_verify, headers=self.uuid)
+                                            verify=self.ssl_verify, headers={"X-Request-Id": uuid.uuid4()})
             else:
                 def call():
                     return self.session.delete(self.endpoint + path, auth=self.auth, timeout=self.timeout,

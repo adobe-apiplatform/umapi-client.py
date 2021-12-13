@@ -498,7 +498,7 @@ class Connection:
             if not delete:
                 def call():
                     return self.session.get(self.endpoint + path, auth=self.auth, timeout=self.timeout,
-                                            verify=self.ssl_verify, headers={"X-Request-Id": uuid.uuid4()})
+                                            verify=self.ssl_verify, headers={"X-Request-Id": str(uuid.uuid4())})
             else:
                 def call():
                     return self.session.delete(self.endpoint + path, auth=self.auth, timeout=self.timeout,

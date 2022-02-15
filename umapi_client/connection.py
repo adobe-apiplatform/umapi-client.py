@@ -21,6 +21,7 @@
 import json
 import logging
 import os
+import uuid
 from email.utils import parsedate_tz, mktime_tz
 from platform import python_version, version as platform_version
 from random import randint
@@ -497,7 +498,7 @@ class Connection:
             if not delete:
                 def call():
                     return self.session.get(self.endpoint + path, auth=self.auth, timeout=self.timeout,
-                                            verify=self.ssl_verify)
+                                            verify=self.ssl_verify, headers={"X-Request-Id": str(uuid.uuid4())})
             else:
                 def call():
                     return self.session.delete(self.endpoint + path, auth=self.auth, timeout=self.timeout,

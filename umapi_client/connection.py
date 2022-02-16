@@ -481,17 +481,17 @@ class Connection:
         :param body: (optional) list of dictionaries to be serialized into the request body
         :return: the requests.result object (on 200 response), raise error otherwise
         """
+        extra_headers = {"X-Request-Id": f"{self.uuid} {int(datetime.now().timestamp()*1000)}"}
+        # if the sync_started or sync_ended flags are set, send a header for any type of call
+        if self.sync_started:
+            self.logger.info("Sending start_sync signal")
+            extra_headers['Pragma'] = 'umapi-sync-start'
+            self.sync_started = False
+        elif self.sync_ended:
+            self.logger.info("Sending end_sync signal")
+            extra_headers['Pragma'] = 'umapi-sync-end'
+            self.sync_ended = False
         if body:
-            extra_headers = {"X-Request-Id": f"{self.uuid} {int(datetime.now().timestamp()*1000)}"}
-            # if the sync_started or sync_ended flags are set, send a header on this POST
-            if self.sync_started:
-                self.logger.info("Sending start_sync signal")
-                extra_headers['Pragma'] = 'umapi-sync-start'
-                self.sync_started = False
-            elif self.sync_ended:
-                self.logger.info("Sending end_sync signal")
-                extra_headers['Pragma'] = 'umapi-sync-end'
-                self.sync_ended = False
             request_body = json.dumps(body)
             def call():
                 return self.session.post(self.endpoint + path, auth=self.auth, data=request_body, timeout=self.timeout,

@@ -1,5 +1,14 @@
 | tag | date | title |
 |---|---|---|
+| v2.19 | 2022-03-08 | umapi-client v2.19 |
+
+* \#98 Add X-Request-Id header to all calls
+* \#100 Send start/end headers on any type of call
+
+---
+
+| tag | date | title |
+|---|---|---|
 | v2.18 | 2021-08-23 | umapi-client v2.18 |
 
 Bug fixes and new start/end sync signals

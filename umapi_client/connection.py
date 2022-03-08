@@ -21,11 +21,12 @@
 import json
 import logging
 import os
-import uuid
 from email.utils import parsedate_tz, mktime_tz
 from platform import python_version, version as platform_version
 from random import randint
 from time import time, sleep, gmtime, strftime
+from uuid import uuid4
+from datetime import datetime
 import requests
 import io
 import urllib.parse as urlparse
@@ -187,6 +188,7 @@ class Connection:
         if user_agent and user_agent.strip():
             ua_string = user_agent.strip() + " " + ua_string
         self.session.headers["User-Agent"] = ua_string
+        self.uuid = str(uuid4())
 
     def _get_auth(self, ims_host, ims_endpoint_jwt,
                   tech_acct_id=None, api_key=None, client_secret=None,
@@ -479,17 +481,17 @@ class Connection:
         :param body: (optional) list of dictionaries to be serialized into the request body
         :return: the requests.result object (on 200 response), raise error otherwise
         """
+        extra_headers = {"X-Request-Id": f"{self.uuid}_{int(datetime.now().timestamp()*1000)}"}
+        # if the sync_started or sync_ended flags are set, send a header for any type of call
+        if self.sync_started:
+            self.logger.info("Sending start_sync signal")
+            extra_headers['Pragma'] = 'umapi-sync-start'
+            self.sync_started = False
+        elif self.sync_ended:
+            self.logger.info("Sending end_sync signal")
+            extra_headers['Pragma'] = 'umapi-sync-end'
+            self.sync_ended = False
         if body:
-            extra_headers = {}
-            # if the sync_started or sync_ended flags are set, send a header on this POST
-            if self.sync_started:
-                self.logger.info("Sending start_sync signal")
-                extra_headers['Pragma'] = 'umapi-sync-start'
-                self.sync_started = False
-            elif self.sync_ended:
-                self.logger.info("Sending end_sync signal")
-                extra_headers['Pragma'] = 'umapi-sync-end'
-                self.sync_ended = False
             request_body = json.dumps(body)
             def call():
                 return self.session.post(self.endpoint + path, auth=self.auth, data=request_body, timeout=self.timeout,
@@ -498,11 +500,11 @@ class Connection:
             if not delete:
                 def call():
                     return self.session.get(self.endpoint + path, auth=self.auth, timeout=self.timeout,
-                                            verify=self.ssl_verify, headers={"X-Request-Id": str(uuid.uuid4())})
+                                            verify=self.ssl_verify, headers=extra_headers)
             else:
                 def call():
                     return self.session.delete(self.endpoint + path, auth=self.auth, timeout=self.timeout,
-                                               verify=self.ssl_verify)
+                                               verify=self.ssl_verify, headers=extra_headers)
 
         start_time = time()
         result = None

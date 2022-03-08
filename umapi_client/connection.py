@@ -481,7 +481,7 @@ class Connection:
         :param body: (optional) list of dictionaries to be serialized into the request body
         :return: the requests.result object (on 200 response), raise error otherwise
         """
-        extra_headers = {"X-Request-Id": f"{self.uuid} {int(datetime.now().timestamp()*1000)}"}
+        extra_headers = {"X-Request-Id": f"{self.uuid}_{int(datetime.now().timestamp()*1000)}"}
         # if the sync_started or sync_ended flags are set, send a header for any type of call
         if self.sync_started:
             self.logger.info("Sending start_sync signal")

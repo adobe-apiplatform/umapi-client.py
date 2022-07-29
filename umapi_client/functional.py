@@ -103,13 +103,15 @@ class UserAction(Action):
                 raise ArgumentError("No user identity specified.")
         elif not domain:
             raise ArgumentError("Both username and domain must be specified")
-
-        if username:
-            Action.__init__(self, user=username, domain=self.domain, **kwargs)
-        elif id_type == IdentityTypes.adobeID:
+        
+        if id_type == IdentityTypes.adobeID:
             # by default if two users have the same email address, the UMAPI server will prefer the matching
             # Federated or Enterprise ID user; so we use the undocumented option to prefer the AdobeID match
             Action.__init__(self, user=email, useAdobeID=True, **kwargs)
+        elif username and '@' in username:
+            Action.__init__(self, user=username, **kwargs)
+        elif username and '@' not in username::
+            Action.__init__(self, user=username, domain=self.domain, **kwargs)
         else:
             Action.__init__(self, user=email, **kwargs)
 

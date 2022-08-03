@@ -110,7 +110,7 @@ class UserAction(Action):
             Action.__init__(self, user=email, useAdobeID=True, **kwargs)
         elif username and '@' in username:
             Action.__init__(self, user=username, **kwargs)
-        elif username and '@' not in username::
+        elif username and '@' not in username:
             Action.__init__(self, user=username, domain=self.domain, **kwargs)
         else:
             Action.__init__(self, user=email, **kwargs)

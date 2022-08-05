@@ -1,5 +1,13 @@
 | tag | date | title |
 |---|---|---|
+| v2.20 | 2022-08-05 | umapi-client v2.20 |
+
+* \#103 Create users with email-type usernames that differ from email address in a single call
+
+---
+
+| tag | date | title |
+|---|---|---|
 | v2.19 | 2022-03-08 | umapi-client v2.19 |
 
 * \#98 Add X-Request-Id header to all calls

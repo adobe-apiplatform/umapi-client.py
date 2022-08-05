@@ -1,2 +1,1 @@
-* \#98 Add X-Request-Id header to all calls
-* \#100 Send start/end headers on any type of call
+* \#103 Create users with email-type usernames that differ from email address in a single call

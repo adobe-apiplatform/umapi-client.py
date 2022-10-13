@@ -355,26 +355,11 @@ def test_remove_from_organization_delete_adobeid():
                                 "user": "dbrotsky@adobe.com",
                                 "useAdobeID": True}
 
-
-def test_delete_account_enterpriseid():
-    user = UserAction(id_type=IdentityTypes.enterpriseID, email="dbrotsky@o.on-the-side.net")
-    user.delete_account()
-    assert user.wire_dict() == {"do": [{"removeFromDomain": {}}],
-                                "user": "dbrotsky@o.on-the-side.net"}
-
-
-def test_delete_account_adobeid():
-    user = UserAction(id_type=IdentityTypes.adobeID, email="dbrotsky@adobe.com")
-    with pytest.raises(ValueError):
-        user.delete_account()
-
-
 def test_add_to_products():
     group = UserGroupAction(group_name="SampleUsers")
     group.add_to_products(products=["Photoshop", "Illustrator"])
     assert group.wire_dict() == {"do": [{"add": {"productConfiguration": ["Photoshop", "Illustrator"]}}],
                                  "usergroup": "SampleUsers"}
-
 
 def test_add_to_products_all():
     group = UserGroupAction(group_name="SampleUsers")

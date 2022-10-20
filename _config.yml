@@ -8,4 +8,5 @@ github_username:  adobe-apiplatform
 
 markdown: kramdown
 # theme: jekyll-theme-cayman
-theme: just-the-docs
+# theme: just-the-docs
+remote_theme: "pmarsceill/just-the-docs"

@@ -1,0 +1,11 @@
+title: umapi-client.py
+email: 
+description: > # this means to ignore newlines until "baseurl:"
+  A python client library for the Adobe User Management API.
+baseurl: "/umapi-client.py" # the subpath of your site, e.g. /blog
+url: "" # the base hostname & protocol for your site, e.g. http://example.com
+github_username:  adobe-apiplatform
+
+markdown: kramdown
+# theme: jekyll-theme-cayman
+theme: just-the-docs

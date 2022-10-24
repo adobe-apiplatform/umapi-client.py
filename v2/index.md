@@ -80,16 +80,3 @@ The last one you should have on your local disk, and keep secret.
 
 Once these initial steps are taken, and configuration items are identified,
 then you will be able to use this library to make API calls.
-
-# Usage Documentation
-
-All new users of the library are highly recommended
-to pick up version 2, and follow the
-[version 2 usage documentation](usage-instructions-v2.html).
-
-Users who have applications running against version 1
-of the library can still use the version 2 implementation,
-but they will need to do some package renames to get access
-to the version 1 library classes.  This is
-outlined in the
-[version 1 usage documentation](usage-instructions-v1.html).

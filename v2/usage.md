@@ -269,10 +269,23 @@ user4.create(first_name="John", last_name="User", country="US",
 
 There are many other operations you can perform, such as adding and removing
 users from user groups and product configuration groups.  Because each
-operation specifier returns the user, it's easy to chain the together:
+operation specifier returns the user, it's easy to chain them together:
 
 ```python
 user2.add_to_groups(groups=["Photoshop", "Illustrator"]).remove_from_groups(groups=["CC All Apps"])
+```
+
+Removing users from Org can be done:  
+ * as a soft delete, with later reinstatement possibility
+
+```python
+user3.remove_from_organization(delete_account=False)  
+```
+
+ * or hard delete, with loss of all cloud data (for managed accounts only)
+ 
+```python
+user3.remove_from_organization(delete_account=True)
 ```
 
 The details of all the possible commands are specified in the code,

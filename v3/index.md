@@ -53,9 +53,13 @@ $ pip install umapi_client-x.xx-py3-none-any.whl
 
 # Getting Started
 
-The UMAPI Client requires valid credentials. Setting up credentials is easy:
+The UMAPI Client requires valid credentials. UMAPI credentials can be set up easily on the
+Adobe Developer Console.
 
-1. Log into [the developer console](https://developer.adobe.com/console)
+> **Note**: You must have system administrator access to your organization's Admin Console in
+> order to create UMAPI credentials.
+
+1. Log into the [Adobe Developer Console](https://developer.adobe.com/console)
 2. Make sure the correct organization is selected - there is a picker in the upper-right corner of the page
 3. Click “Create New Project”
 4. Click “Edit Project”, give it a descriptive name

@@ -268,8 +268,90 @@ advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-w
   >>> remote
   {"status": "Never contacted", "endpoint": "https://usermanagement.adobe.io/v2/usermanagement"}
   ```
+
 ## `execute_single`
 
+Queue and/or execute a single user action. Queuing occurs when the `Connection`
+object's action queue contains fewer than 10 pending actions. If a call to
+`execute_single()` gets the pending queue size to 10, or if `immediate=True`
+is passed then the pending action queue will be executed.
+
+**Parameters**
+
+* `action` (required)
+
+  A `UserAction` object defining an action to take for a specific user.
+
+* `immediate` (default: `False`)
+
+  Execute the pending action queue immediately. If there are any actions already
+  in the queue, they will be executed along with the action passed to
+  `execute_single()`.
+
+```python
+action = UserAction(email="user@example.com").create(first_name="Test", last_name="User")
+
+# immediate is "False" by default so here the action will be queued
+# and executed when batch limit is reached
+conn.execute_single(action)
+
+# when immediate=True, API call is dispatched immediately
+conn.execute_single(action, immediate=True)
+# ... API call happens ...
+```
 
 ## `execute_multiple`
+
+Queue and/or execute a single user action. Queuing occurs when the `Connection`
+object's action queue contains fewer than 10 pending actions. If a call to
+`execute_multiple()` gets the pending queue size to 10, or if `immediate=True`
+is passed then the pending action queue will be executed.
+
+For example, if a list of 5 `UserAction` objects are passed to
+`execute_multiple()` followed by a list of 10 `UserAction`s, no API call will be
+made in the first call to `execute_multiple()`. On the second call, the original
+5 actions plus the first 5 of the second group will be `POST`ed to the UMAPI
+action endpoint. The `Connection`'s pending queue will contain the remaining
+5 actions left from the second call to `execute_multiple()`.
+
+Passing `immediate=True` when calling `execute_multiple()` will execute all
+UMAPI actions regardless of how many are in the queue.
+
+**Parameters**
+
+* `actions` (required)
+
+  List of `UserAction` objects defining an action to take for a specific user.
+
+* `immediate` (default: `False`)
+
+  Execute the pending action queue immediately. If there are any actions already
+  in the queue, they will be executed along with the actions passed to
+  `execute_multiple()`.
+
+```python
+actions = [
+    UserAction(email="user1@example.com").create(first_name="Test", last_name="User 1"),
+    UserAction(email="user2@example.com").create(first_name="Test", last_name="User 2"),
+    UserAction(email="user3@example.com").create(first_name="Test", last_name="User 3"),
+]
+
+# immediate is "False" by default so here the actions will be queued
+# and executed when batch limit is reached
+conn.execute_multiple(actions)
+
+# when immediate=True, API call is dispatched immediately
+conn.execute_multiple(actions, immediate=True)
+# ... API call happens ...
+```
+
 ## `execute_queued`
+
+Execute all pending actions immediately. Equivalent of
+`execute_multiple([], immediate=True)`.
+
+---
+
+**Previous**: [Getting Started](index.md)
+
+**Next**: [User and Group Queries](queries.md)

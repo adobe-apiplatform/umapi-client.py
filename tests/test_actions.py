@@ -22,7 +22,7 @@ import json
 
 import mock
 import pytest
-from conftest import mock_connection_params, MockResponse
+from conftest import MockResponse
 
 from umapi_client import Connection, Action, BatchError
 
@@ -57,7 +57,7 @@ def test_action_create_two_dofirst():
            '{"a1": "a1 text", "do": [{"com2": {"com2k": "com2v"}}, {"com1": {"com1k": "com1v"}}], "z1": "z1 text"}'
 
 
-def test_execute_single_success_immediate():
+def test_execute_single_success_immediate(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "success"})
         conn = Connection(**mock_connection_params)
@@ -65,16 +65,17 @@ def test_execute_single_success_immediate():
         assert conn.execute_single(action, immediate=True) == (0, 1, 1)
 
 
-def test_execute_single_success_queued():
+def test_execute_single_success_queued(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "success"})
-        conn = Connection(throttle_actions=2, **mock_connection_params)
+        conn = Connection(**mock_connection_params)
+        conn.throttle_actions = 2
         action = Action(top="top").append(a="a")
         assert conn.execute_single(action) == (1, 0, 0)
         assert conn.execute_single(action) == (0, 2, 2)
 
 
-def test_execute_single_error_queued_throttled():
+def test_execute_single_error_queued_throttled(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.side_effect = [MockResponse(200, {"result": "success"}),
                                  MockResponse(200, {"result": "partial",
@@ -83,7 +84,9 @@ def test_execute_single_error_queued_throttled():
                                                     "errors": [{"index": 1, "step": 0,
                                                                 "errorCode": "test.error",
                                                                 "message": "Test error message"}]})]
-        conn = Connection(throttle_actions=2, throttle_commands=1, **mock_connection_params)
+        conn = Connection(**mock_connection_params)
+        conn.throttle_commands = 1
+        conn.throttle_actions = 2
         action = Action(top="top").append(a="a").append(b="b").append(c="c").append(d="d")
         assert conn.execute_single(action) == (0, 4, 3)
         assert action.execution_errors() == [{"command": {"d": "d"},
@@ -92,19 +95,20 @@ def test_execute_single_error_queued_throttled():
                                               "message": "Test error message"}]
 
 
-def test_execute_single_error_immediate_throttled():
+def test_execute_single_error_immediate_throttled(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "partial",
                                                     "completed": 1,
                                                     "notCompleted": 1,
                                                     "errors": [{"index": 1, "step": 0, "errorCode": "test"}]})
-        conn = Connection(throttle_commands=2, **mock_connection_params)
+        conn = Connection(**mock_connection_params)
+        conn.throttle_commands = 2
         action = Action(top="top0").append(a="a0").append(a="a1").append(a="a2")
         assert conn.execute_single(action, immediate=True) == (0, 2, 1)
         assert action.execution_errors() == [{"command": {"a": "a2"}, "target": {"top": "top0"}, "errorCode": "test"}]
 
 
-def test_execute_single_dofirst_success_immediate():
+def test_execute_single_dofirst_success_immediate(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "success"})
         conn = Connection(**mock_connection_params)
@@ -112,7 +116,7 @@ def test_execute_single_dofirst_success_immediate():
         assert conn.execute_single(action, immediate=True) == (0, 1, 1)
 
 
-def test_execute_single_error_immediate():
+def test_execute_single_error_immediate(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "error",
                                                     "errors": [{"index": 0, "step": 0,
@@ -127,7 +131,7 @@ def test_execute_single_error_immediate():
                                               "message": "Test error message"}]
 
 
-def test_execute_single_multi_error_immediate():
+def test_execute_single_multi_error_immediate(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "error",
                                                     "errors": [{"index": 0, "step": 0,
@@ -149,7 +153,7 @@ def test_execute_single_multi_error_immediate():
                                               "message": "message2"}]
 
 
-def test_execute_single_dofirst_error_immediate():
+def test_execute_single_dofirst_error_immediate(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "error",
                                                     "errors": [{"index": 0, "step": 0,
@@ -164,7 +168,7 @@ def test_execute_single_dofirst_error_immediate():
                                               "message": "Test error message"}]
 
 
-def test_execute_multiple_success():
+def test_execute_multiple_success(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "success"})
         conn = Connection(**mock_connection_params)
@@ -173,7 +177,7 @@ def test_execute_multiple_success():
         assert conn.execute_multiple([action0, action1]) == (0, 2, 2)
 
 
-def test_execute_multiple_success_queued():
+def test_execute_multiple_success_queued(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "success"})
         conn = Connection(**mock_connection_params)
@@ -183,7 +187,7 @@ def test_execute_multiple_success_queued():
         assert conn.execute_queued() == (0, 2, 2)
 
 
-def test_execute_multiple_dofirst_success():
+def test_execute_multiple_dofirst_success(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "success"})
         conn = Connection(**mock_connection_params)
@@ -192,7 +196,7 @@ def test_execute_multiple_dofirst_success():
         assert conn.execute_multiple([action0, action1]) == (0, 2, 2)
 
 
-def test_execute_multiple_error():
+def test_execute_multiple_error(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "partial",
                                                     "completed": 1,
@@ -211,7 +215,7 @@ def test_execute_multiple_error():
                                                "message": "Test error message"}]
 
 
-def test_execute_multiple_multi_error():
+def test_execute_multiple_multi_error(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "error",
                                                     "completed": 1,
@@ -237,7 +241,7 @@ def test_execute_multiple_multi_error():
                                                "message": "message2"}]
 
 
-def test_execute_multiple_dofirst_error():
+def test_execute_multiple_dofirst_error(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.return_value = MockResponse(200, {"result": "error",
                                                     "completed": 1,
@@ -256,14 +260,15 @@ def test_execute_multiple_dofirst_error():
                                                "message": "Test error message"}]
 
 
-def test_execute_multiple_single_queued_throttle_actions():
+def test_execute_multiple_single_queued_throttle_actions(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.side_effect = [MockResponse(200, {"result": "success"}),
                                  MockResponse(200, {"result": "partial",
                                                     "completed": 1,
                                                     "notCompleted": 1,
                                                     "errors": [{"index": 0, "step": 0, "errorCode": "test"}]})]
-        conn = Connection(throttle_actions=2, **mock_connection_params)
+        conn = Connection(**mock_connection_params)
+        conn.throttle_actions = 2
         action0 = Action(top="top0").append(a="a0")
         action1 = Action(top="top1").append(a="a1")
         action2 = Action(top="top2").append(a="a2")
@@ -290,12 +295,13 @@ def test_execute_multiple_single_queued_throttle_actions():
         assert action3.execution_errors() == []
 
 
-def test_execute_multiple_queued_throttle_actions_error():
+def test_execute_multiple_queued_throttle_actions_error(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.post") as mock_post:
         mock_post.side_effect = [MockResponse(500),
                                  MockResponse(200, {"result": "success"}),
                                  MockResponse(200, {"result": "success"})]
-        conn = Connection(throttle_actions=2, **mock_connection_params)
+        conn = Connection(**mock_connection_params)
+        conn.throttle_actions = 2
         action0 = Action(top="top0").append(a="a0")
         action1 = Action(top="top1").append(a="a1")
         action2 = Action(top="top2").append(a="a2")

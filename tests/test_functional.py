@@ -22,7 +22,7 @@
 
 import pytest
 
-from conftest import mock_connection_params, MockResponse
+from conftest import MockResponse
 from umapi_client import ArgumentError, RequestError
 from umapi_client import Connection
 from umapi_client import IdentityTypes, GroupTypes, RoleTypes
@@ -478,7 +478,7 @@ def test_delete_user_group():
                                  'usergroup': 'Test Group'}
 
 
-def test_query_users():
+def test_query_users(mock_connection_params):
     conn = Connection(**mock_connection_params)
     query = UsersQuery(conn)
     assert query.url_params == []

@@ -21,80 +21,71 @@
 import datetime as dt
 import time
 
-import jwt  # package name is PyJWT in setup
+import jwt
 import requests
 import urllib.parse as urlparse
 
 
-class JWT(object):
-    def __init__(self, org_id, tech_acct, ims_host, api_key, key_file):
-        self.expiry_time = int(time.time()) + 60*60*24
+class JWTAuth(requests.auth.AuthBase):
+    def __init__(self, org_id, client_id, client_secret, tech_acct_id,
+                 priv_key_data, ssl_verify=False,
+                 auth_host='ims-na1.adobelogin.com',
+                 auth_endpoint='/ims/exchange/jwt/'):
         self.org_id = org_id
-        self.tech_acct = tech_acct
-        self.ims_host = ims_host
-        self.api_key = api_key
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.tech_acct_id = tech_acct_id
+        self.priv_key_data = priv_key_data
+        self.ssl_verify = False,
+        self.auth_host = auth_host
+        self.auth_endpoint = auth_endpoint
+        self.expiry = None
+        self.bearer_token = None
 
-        self.key = key_file.read()
-        key_file.close()
-
-    def __call__(self):
+    def jwt_token(self):
         payload = {
-            "exp": self.expiry_time,
+            "exp": int(time.time()) + 60*60*24,
             "iss": self.org_id,
-            "sub": self.tech_acct,
-            "aud": "https://" + self.ims_host + "/c/" + self.api_key,
-            "https://" + self.ims_host + "/s/" + "ent_user_sdk": True
+            "sub": self.tech_acct_id,
+            "aud": "https://" + self.auth_host + "/c/" + self.client_id,
+            "https://" + self.auth_host + "/s/" + "ent_user_sdk": True
         }
 
-        # create JSON Web Token
-        # noinspection PyUnresolvedReferences
-        return jwt.encode(payload, self.key, algorithm='RS256')
+        return jwt.encode(payload, self.priv_key_data, algorithm='RS256')
 
-
-class AccessRequest(object):
-    def __init__(self, endpoint, api_key, client_secret, jwt_token, ssl_verify):
-        self.endpoint = endpoint
-        self.api_key = api_key
-        self.client_secret = client_secret
-        self.jwt_token = jwt_token
-        self.expiry = None
-        self.ssl_verify = ssl_verify
-
-    def __call__(self):
+    def refresh_bearer_token(self):
         headers = {
             "Content-Type": "application/x-www-form-urlencoded",
             "Cache-Control": "no-cache",
         }
-        body = urlparse.urlencode({
-            "client_id": self.api_key,
-            "client_secret": self.client_secret,
-            "jwt_token": self.jwt_token
-        })
 
-        r = requests.post(self.endpoint, headers=headers, data=body, verify=self.ssl_verify)
+        body = urlparse.urlencode({
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "jwt_token": self.jwt_token()
+        })
+        endpoint = f"https://{self.auth_host}/{self.auth_endpoint.strip('/')}"
+        r = requests.post(endpoint, headers=headers, data=body,
+                          verify=self.ssl_verify)
         if r.status_code != 200:
-            raise RuntimeError("Unable to authorize against {}:\n"
-                               "Response Code: {:d}, Response Text: {}\n"
-                               "Response Headers: {}]".format(self.endpoint, r.status_code, r.text, r.headers))
+            raise RuntimeError(f"Unable to authorize against {self.endpoint}:\n"
+                               f"Response Code: {r.status_code}, Response Text: {r.text}\n"
+                               f"Response Headers: {r.headers}]")
 
         self.set_expiry(r.json()['expires_in'])
 
-        return r.json()['access_token']
+        self.bearer_token = r.json()['access_token']
 
     def set_expiry(self, expires_in):
         expires_in = int(round(expires_in/1000))
         self.expiry = dt.datetime.now() + dt.timedelta(seconds=expires_in)
 
-
-# noinspection PyUnresolvedReferences
-class Auth(requests.auth.AuthBase):
-    def __init__(self, api_key, access_token):
-        self.api_key = api_key
-        self.access_token = access_token
-
     def __call__(self, r):
+        if self.bearer_token is None or self.expiry is None or \
+           self.expiry <= dt.datetime.now():
+            self.refresh_bearer_token()
         r.headers['Content-type'] = 'application/json'
         r.headers['Accept'] = 'application/json'
-        r.headers['x-api-key'] = self.api_key
-        r.headers['Authorization'] = 'Bearer ' + self.access_token
+        r.headers['x-api-key'] = self.client_id
+        r.headers['Authorization'] = 'Bearer ' + self.bearer_token
         return r

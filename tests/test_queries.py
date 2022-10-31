@@ -22,32 +22,32 @@ import pytest
 
 import mock
 
-from conftest import mock_connection_params, MockResponse
+from conftest import MockResponse
 from umapi_client import Connection, QueryMultiple, QuerySingle, ClientError, RequestError
 
 
-def test_query_single_success():
+def test_query_single_success(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200, {"result": "success", "user": {"name": "n1", "type": "user"}})
         conn = Connection(**mock_connection_params)
         assert conn.query_single("user", ["n1"]) == {"name": "n1", "type": "user"}
 
 
-def test_query_single_not_found():
+def test_query_single_not_found(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(404, text="404 Object not found")
         conn = Connection(**mock_connection_params)
         assert conn.query_single("user", ["n1"]) == {}
 
 
-def test_query_single_error():
+def test_query_single_error(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200, {"result": "error"})
         conn = Connection(**mock_connection_params)
         pytest.raises(ClientError, conn.query_single, "user", ["n1"])
 
 
-def test_qs_success():
+def test_qs_success(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200, {"result": "success",
                                                    "user": {"user": "foo@bar.com", "type": "adobeID"}})
@@ -56,7 +56,7 @@ def test_qs_success():
         assert qs.result() == {"user": "foo@bar.com", "type": "adobeID"}
 
 
-def test_qs_not_found():
+def test_qs_not_found(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(404, text="404 Object not found")
         conn = Connection(**mock_connection_params)
@@ -64,7 +64,7 @@ def test_qs_not_found():
         assert qs.result() == {}
 
 
-def test_qs_reload():
+def test_qs_reload(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200, {"result": "success",
                                                    "user": {"user": "foo1@bar.com", "type": "adobeID"}}),
@@ -79,7 +79,7 @@ def test_qs_reload():
         assert qs.result() == {"user": "foo2@bar.com", "type": "adobeID"}
 
 
-def test_query_multiple_user_success():
+def test_query_multiple_user_success(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200, {"result": "success",
                                                    "lastPage": False,
@@ -91,7 +91,7 @@ def test_query_multiple_user_success():
                                                False, 0, 0, 1, 0)
 
 
-def test_query_multiple_user_empty():
+def test_query_multiple_user_empty(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200, {"result": "success",
                                                    "lastPage": True,
@@ -100,14 +100,14 @@ def test_query_multiple_user_empty():
         assert conn.query_multiple("user") == ([], True, 0, 0, 1, 0)
 
 
-def test_query_multiple_user_not_found():
+def test_query_multiple_user_not_found(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(404, text="404 Object not found")
         conn = Connection(**mock_connection_params)
         assert conn.query_multiple("user") == ([], True, 0, 0, 0, 0)
 
 
-def test_query_multiple_user_paged():
+def test_query_multiple_user_paged(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200, {"result": "success",
                                                    "lastPage": False,
@@ -126,7 +126,7 @@ def test_query_multiple_user_paged():
                                                   True, 0, 0, 1, 0)
 
 
-def test_qm_user_iterate_complete():
+def test_qm_user_iterate_complete(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200, {"result": "success",
                                                    "lastPage": False,
@@ -147,7 +147,7 @@ def test_qm_user_iterate_complete():
                                     {"name": "n4", "type": "user"}]
 
 
-def test_qm_user_iterate_partial():
+def test_qm_user_iterate_partial(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200, {"result": "success",
                                                    "lastPage": False,
@@ -169,7 +169,7 @@ def test_qm_user_iterate_partial():
         pytest.raises(ClientError, qm.all_results)
 
 
-def test_qm_user_reload():
+def test_qm_user_reload(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200, {"result": "success",
                                                    "lastPage": False,
@@ -199,7 +199,7 @@ def test_qm_user_reload():
                                     {"name": "n7", "type": "user"},
                                     {"name": "n8", "type": "user"}]
 
-def test_query_multiple_usergroup_success():
+def test_query_multiple_usergroup_success(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200,
                                              [{"name": "n1", "type": "user-group"},
@@ -214,7 +214,7 @@ def test_query_multiple_usergroup_success():
                                                      False, 4, 2, 1, 2)
 
 
-def test_query_multiple_usergroup_empty():
+def test_query_multiple_usergroup_empty(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(200,
                                              [],
@@ -226,14 +226,14 @@ def test_query_multiple_usergroup_empty():
         assert conn.query_multiple("user-group") == ([], True, 0, 1, 1, 0)
 
 
-def test_query_multiple_usergroup_not_found():
+def test_query_multiple_usergroup_not_found(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.return_value = MockResponse(404, text="404 Object not found")
         conn = Connection(**mock_connection_params)
         assert conn.query_multiple("user-group") == ([], True, 0, 0, 0, 0)
 
 
-def test_query_multiple_usergroup_paged():
+def test_query_multiple_usergroup_paged(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200,
                                              [{"name": "n1", "type": "user-group"},
@@ -258,7 +258,7 @@ def test_query_multiple_usergroup_paged():
                                                         True, 4, 2, 2, 2)
 
 
-def test_qm_usergroup_iterate_complete():
+def test_qm_usergroup_iterate_complete(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200,
                                              [{"name": "n1", "type": "user-group"},
@@ -285,7 +285,7 @@ def test_qm_usergroup_iterate_complete():
                                     {"name": "n4", "type": "user-group"}]
 
 
-def test_qm_usergroup_iterate_partial():
+def test_qm_usergroup_iterate_partial(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200,
                                              [{"name": "n1", "type": "user-group"},
@@ -313,7 +313,7 @@ def test_qm_usergroup_iterate_partial():
         pytest.raises(RequestError, qm.all_results)
 
 
-def test_qm_usergroup_reload():
+def test_qm_usergroup_reload(mock_connection_params):
     with mock.patch("umapi_client.connection.requests.Session.get") as mock_get:
         mock_get.side_effect = [MockResponse(200,
                                              [{"name": "n1", "type": "user-group"},

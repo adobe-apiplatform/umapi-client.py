@@ -22,19 +22,17 @@ Set up for testing
 """
 
 import logging
-
+import os
 import pytest
 from io import StringIO
 
-mock_connection_params = {
-    "org_id": "N/A",
-    "auth": "N/A",
-    "user_management_endpoint": 'https://test/',
-    "logger": None,
-    "retry_max_attempts": 3,
-    "retry_first_delay": 1,
-    "retry_random_delay": 2,
-}
+@pytest.fixture
+def mock_connection_params():
+    return {
+        "org_id": "N/A",
+        "auth": "N/A",
+        "endpoint": 'https://test/',
+    }
 
 
 class MockResponse:
@@ -58,3 +56,10 @@ def log_stream():
     logger.addHandler(handler)
     yield stream, logger
     handler.close()
+
+
+@pytest.fixture
+def fixture_dir():
+    return os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__), 'fixture'))

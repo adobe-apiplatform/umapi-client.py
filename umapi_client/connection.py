@@ -31,7 +31,7 @@ import requests
 import io
 import urllib.parse as urlparse
 
-from .auth import JWT, Auth, AccessRequest
+from .auth import JWTAuth
 from .error import BatchError, UnavailableError, ClientError, RequestError, ServerError, ArgumentError
 from .version import __version__ as umapi_version
 
@@ -76,70 +76,36 @@ class APIResult:
 
 class Connection:
     """
-    An org-specific, authorized connection to the UMAPI service.  Each method
+    An org-specific, authenticated connection to the UMAPI service.  Each method
     makes a single call on the endpoint and returns the result (or raises an error).
     """
     mock_env_var = "UMAPI_MOCK"
 
     def __init__(self,
                  org_id,
-                 auth_dict=None,
-                 auth=None,
-                 ims_host="ims-na1.adobelogin.com",
-                 ims_endpoint_jwt="/ims/exchange/jwt/",
-                 user_management_endpoint="https://usermanagement.adobe.io/v2/usermanagement",
+                 auth,
+                 endpoint="https://usermanagement.adobe.io/v2/usermanagement",
                  test_mode=False,
-                 logger=logging.getLogger("umapi_client"),
-                 retry_max_attempts=4,
-                 retry_first_delay=15,
-                 retry_random_delay=5,
                  ssl_verify=True,
-                 timeout_seconds=120.0,
-                 throttle_actions=10,
-                 throttle_commands=10,
-                 throttle_groups=10,
-                 user_agent=None,
-                 **kwargs):
+                 timeout=120.0,
+                 user_agent=None):
         """
         Open a connection for the given parameters that has the given options.
-        The connection is authorized and the auth token reused on all calls.
+        The connection is authenticated and the auth token reused on all calls.
 
-        Required parameters.  You must specify org_id and one of auth *or* auth_dict
+        Required parameters.
         :param org_id: string OrganizationID from Adobe.IO integration data
-        :param auth_dict: a dictionary with auth information (see below)
-        :param auth: a umapi_client.auth.Auth object containing authorization
-
-        Auth data: if you supply an auth_dict, it must have values for these keys:
-        :param tech_acct_id: string technical account ID from Adobe.IO integration data
-        :param api_key: string api_key from Adobe.IO integration data
-        :param client_secret: string client secret from Adobe.IO integration data
-        and one of:
-        :param private_key_file: path to local private key file that matches Adobe.IO public key for integration
-        or:
-        :param private_key_data: the contents of the private_key_file (PEM format)
-        (NOTE: for compatibility with User Sync config files, the key names priv_key_path and tech_acct
-         are accepted as aliases for private_key_file and tech_acct_id, respectively.)
+        :param auth: a umapi_client.auth object that handles authentication
 
         Optional connection parameters (defaults are for Adobe production):
-        :param ims_host: the IMS host which will exchange your JWT for an access token
-        :param ims_endpoint_jwt: the exchange token endpoint on the IMS host
-        :param user_management_endpoint: the User Management API service root endpoint
+        :param endpoint: the User Management API service root endpoint
 
         Behavioral options for the connection:
         :param test_mode: Whether to pass the server-side "test mode" flag when executing actions
-        :param logger: The log handler to use (None suppresses logging, default is named "umapi_client")
-        :param retry_max_attempts: How many times to retry on temporary errors
-        :param retry_first_delay: The time to delay first retry (grows exponentially from there)
-        :param retry_random_delay: The max random delay to add on each exponential backoff retry
-        :param timeout_seconds: How many seconds to wait for server response (<= 0 or None means forever)
-        :param throttle_actions: Max number of actions to pack into a single call
-        :param throttle_commands: Max number of commands allowed in a single action
-        :param throttle_groups: Max number of groups to add/remove to/from a user
-        :param user_agent: (optional) string to use as User-Agent header (umapi-client/version data will be added)
-
-        Additional keywords are allowed to make it easy to pass a big dictionary with other values
-        :param kwargs: any keywords passed that we ignore.
+        :param timeout: How many seconds to wait for server response (<= 0 or None means forever)
+        :param ssl_verify:
         """
+        self.logger = logging.getLogger("umapi_client")
         # for testing we mock the server, either by using an http relay
         # which relays and records the requests and responses, or by
         # using a robot which plays back a previously recorded run.
@@ -147,26 +113,26 @@ class Connection:
         if mock_spec:
             if mock_spec not in ["proxy", "playback"]:
                 raise ArgumentError("Unknown value for %s: %s" % (self.mock_env_var, mock_spec))
-            if logger: logger.warning("%s override specified as '%s'", self.mock_env_var, mock_spec)
+            self.logger.warning("%s override specified as '%s'", self.mock_env_var, mock_spec)
             # mocked servers don't support https
-            if user_management_endpoint.lower().startswith("https://"):
-                user_management_endpoint = "http" + user_management_endpoint[5:]
-            # playback servers don't use authentication/authorization
+            if endpoint.lower().startswith("https://"):
+                endpoint = "http" + endpoint[5:]
+            # playback servers don't use authentication
             if mock_spec == "playback":
-                auth = Auth("mock", "mock")
+                auth = JWTAuth("mock", "mock", "mock", "mock", "mock")
 
         self.org_id = str(org_id)
-        self.endpoint = user_management_endpoint
+        self.auth = auth
+        self.endpoint = endpoint
         self.test_mode = test_mode
-        self.logger = logger
-        self.retry_max_attempts = retry_max_attempts
-        self.retry_first_delay = retry_first_delay
-        self.retry_random_delay = retry_random_delay
+        self.retry_max_attempts = 4
+        self.retry_first_delay = 15
+        self.retry_random_delay = 5
         self.ssl_verify = ssl_verify
-        self.timeout = float(timeout_seconds) if timeout_seconds and float(timeout_seconds) > 0.0 else None
-        self.throttle_actions = max(int(throttle_actions), 1)
-        self.throttle_commands = max(int(throttle_commands), 1)
-        self.throttle_groups = max(int(throttle_groups), 1)
+        self.timeout = float(timeout) if timeout and float(timeout) > 0.0 else None
+        self.throttle_actions = 10
+        self.throttle_commands = 10
+        self.throttle_groups = 10
         self.action_queue = []
         self.local_status = {"multiple-query-count": 0,
                              "single-query-count": 0,
@@ -177,34 +143,12 @@ class Connection:
                               "endpoint": self.endpoint}
         self.sync_started = False
         self.sync_ended = False
-        if auth:
-            self.auth = auth
-        elif auth_dict:
-            self.auth = self._get_auth(ims_host=ims_host, ims_endpoint_jwt=ims_endpoint_jwt, **auth_dict)
-        else:
-            raise ArgumentError("Connector create: either auth (an Auth object) or auth_dict (a dict) is required")
         self.session = requests.Session()
         ua_string = "umapi-client/" + umapi_version + " Python/" + python_version() + " (" + platform_version() + ")"
         if user_agent and user_agent.strip():
             ua_string = user_agent.strip() + " " + ua_string
         self.session.headers["User-Agent"] = ua_string
         self.uuid = str(uuid4())
-
-    def _get_auth(self, ims_host, ims_endpoint_jwt,
-                  tech_acct_id=None, api_key=None, client_secret=None,
-                  private_key_file=None, private_key_data=None,
-                  **kwargs):
-        tech_acct_id = tech_acct_id or kwargs.get("tech_acct")
-        private_key_file = private_key_file or kwargs.get("priv_key_path")
-        if not (tech_acct_id and api_key and client_secret and (private_key_data or private_key_file)):
-            raise ArgumentError("Connector create: not all required auth parameters were supplied; please see docs")
-        if private_key_data:
-            jwt = JWT(self.org_id, tech_acct_id, ims_host, api_key, io.StringIO(private_key_data))
-        else:
-            with open(private_key_file, 'r') as private_key_stream:
-                jwt = JWT(self.org_id, tech_acct_id, ims_host, api_key, private_key_stream)
-        token = AccessRequest("https://" + ims_host + ims_endpoint_jwt, api_key, client_secret, jwt(), self.ssl_verify)
-        return Auth(api_key, token())
 
     def status(self, remote=False):
         """

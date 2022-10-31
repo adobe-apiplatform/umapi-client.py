@@ -28,7 +28,7 @@ import urllib.parse as urlparse
 
 class JWTAuth(requests.auth.AuthBase):
     def __init__(self, org_id, client_id, client_secret, tech_acct_id,
-                 priv_key_data, ssl_verify=False,
+                 priv_key_data, ssl_verify=True,
                  auth_host='ims-na1.adobelogin.com',
                  auth_endpoint='/ims/exchange/jwt/'):
         self.org_id = org_id
@@ -36,7 +36,7 @@ class JWTAuth(requests.auth.AuthBase):
         self.client_secret = client_secret
         self.tech_acct_id = tech_acct_id
         self.priv_key_data = priv_key_data
-        self.ssl_verify = False,
+        self.ssl_verify = ssl_verify
         self.auth_host = auth_host
         self.auth_endpoint = auth_endpoint
         self.expiry = None

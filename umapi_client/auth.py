@@ -26,6 +26,19 @@ import requests
 import urllib.parse as urlparse
 
 
+class OAuthS2S(requests.auth.AuthBase):
+    def __init__(self, client_id, client_secret, ssl_verify=True,
+                 auth_host='ims-na1.adobelogin.com',
+                 auth_endpoint=''):
+        self.client_id = client_id
+        self.client_secret = client_secret,
+        self.ssl_verify = ssl_verify
+        self.auth_host = auth_host
+        self.auth_endpoint = auth_endpoint
+        self.expiry = None
+        self.oauth_token = None
+
+
 class JWTAuth(requests.auth.AuthBase):
     def __init__(self, org_id, client_id, client_secret, tech_acct_id,
                  priv_key_data, ssl_verify=False,

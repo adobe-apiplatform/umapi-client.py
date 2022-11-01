@@ -24,6 +24,8 @@ import time
 import jwt
 import requests
 import urllib.parse as urlparse
+from oauthlib.oauth2 import BackendApplicationClient
+from requests_oauthlib import OAuth2Session
 
 
 class OAuthS2S(requests.auth.AuthBase):
@@ -37,6 +39,26 @@ class OAuthS2S(requests.auth.AuthBase):
         self.auth_endpoint = auth_endpoint
         self.expiry = None
         self.oauth_token = None
+
+    def refresh_token(self):
+        # https://ims-na1.adobelogin.com/path/to/oauth2
+        endpoint = f"https://{self.auth_host}/{self.auth_endpoint.strip('/')}"
+        client = BackendApplicationClient(client_id=self.client_id)
+        oauth = OAuth2Session(client=client)
+        self.oauth_token = oauth.fetch_token(token_url=endpoint,
+                                             client_id=self.client_id,
+                                             client_secret=self.client_secret,
+                                             verify=self.ssl_verify)
+
+    def __call__(r):
+        if self.oauth_token is None or self.expiry is None or \
+           self.expiry <= dt.datetime.now():
+            self.refresh_token()
+        r.headers['Content-type'] = 'application/json'
+        r.headers['Accept'] = 'application/json'
+        r.headers['x-api-key'] = self.client_id
+        r.headers['Authorization'] = 'Bearer ' + self.oauth_token
+        return r
 
 
 class JWTAuth(requests.auth.AuthBase):

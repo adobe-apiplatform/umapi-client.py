@@ -105,7 +105,7 @@ class Connection:
         :param timeout: How many seconds to wait for server response (<= 0 or None means forever)
         :param ssl_verify:
         """
-        self.logger = logging.getLogger("umapi_client")
+        self.logger = logging.getLogger(__name__)
         # for testing we mock the server, either by using an http relay
         # which relays and records the requests and responses, or by
         # using a robot which plays back a previously recorded run.
@@ -174,14 +174,14 @@ class Connection:
                 result = self.session.get(components[0] + "://" + components[1] + "/status", timeout=self.timeout,
                                           verify=self.ssl_verify)
             except Exception as e:
-                if self.logger: self.logger.debug("Failed to connect to server for status: %s", e)
+                self.logger.debug("Failed to connect to server for status: %s", e)
                 result = None
             if result and result.status_code == 200:
                 self.server_status = result.json()
                 self.server_status["endpoint"] = self.endpoint
             elif result:
-                if self.logger: self.logger.debug("Server status response not understandable: Status: %d, Body: %s",
-                                                  result.status_code, result.text)
+                self.logger.debug("Server status response not understandable: Status: %d, Body: %s",
+                             result.status_code, result.text)
                 self.server_status = {"endpoint": self.endpoint,
                                       "status": ("Unexpected HTTP status " + str(result.status_code) + " at: " +
                                                  strftime("%d %b %Y %H:%M:%S +0000", gmtime()))}
@@ -212,14 +212,14 @@ class Connection:
             body = result.json()
         except RequestError as re:
             if re.result.status_code == 404:
-                if self.logger: self.logger.debug("Ran %s query: %s %s (0 found)",
-                                                  object_type, url_params, query_params)
+                self.logger.debug("Ran %s query: %s %s (0 found)",
+                             object_type, url_params, query_params)
                 return {}
             else:
                 raise re
         if body.get("result") == "success":
             value = body.get(object_type, {})
-            if self.logger: self.logger.debug("Ran %s query: %s %s (1 found)", object_type, url_params, query_params)
+            self.logger.debug("Ran %s query: %s %s (1 found)", object_type, url_params, query_params)
             return value
         else:
             raise ClientError("OK status but no 'success' result", result)
@@ -255,8 +255,8 @@ class Connection:
             body = result.json()
         except RequestError as re:
             if re.result.status_code == 404:
-                if self.logger: self.logger.debug("Ran %s query: %s %s (0 found)",
-                                                  object_type, url_params, query_params)
+                self.logger.debug("Ran %s query: %s %s (0 found)",
+                             object_type, url_params, query_params)
                 return [], True, 0, 0, 0, 0
             else:
                 raise re
@@ -272,14 +272,14 @@ class Connection:
                 values = body.get(object_type + "s", [])
                 last_page = body.get("lastPage", False)
 
-                if self.logger: self.logger.debug("Ran multi-%s query: %s %s (page %d: %d found)",
-                                                  object_type, url_params, query_params, page, len(values))
+                self.logger.debug("Ran multi-%s query: %s %s (page %d: %d found)",
+                             object_type, url_params, query_params, page, len(values))
                 return values, last_page, int(total_count), int(page_count), int(page_number), int(page_size)
             else:
                 raise ClientError("OK status but no 'success' result", result)
         elif object_type == "user-group":
-            if self.logger: self.logger.debug("Ran multi-group query: %s %s (page %d: %d found)",
-                                              url_params, query_params, page, len(body))
+            self.logger.debug("Ran multi-group query: %s %s (page %d: %d found)",
+                         url_params, query_params, page, len(body))
             return body, int(page_number) >= int(page_count), int(total_count), int(page_count), \
                    int(page_number), int(page_size)
         else:
@@ -344,17 +344,17 @@ class Connection:
         exceptions = []
         for a in actions:
             if len(a.commands) == 0:
-                if self.logger: self.logger.warning("Sending action with no commands: %s", a.frame)
+                self.logger.warning("Sending action with no commands: %s", a.frame)
             # maybe_split_groups is a UserAction attribute, so the call may throw an AttributeError
             try:
                 if a.maybe_split_groups(self.throttle_groups):
-                    if self.logger: self.logger.debug(
+                    self.logger.debug(
                         "Throttling actions %s to have a maximum of %d entries in group lists.",
                         a.frame, self.throttle_groups)
             except AttributeError:
                 pass
             if len(a.commands) > self.throttle_commands:
-                if self.logger: self.logger.debug("Throttling action %s to have a maximum of %d commands.",
+                self.logger.debug("Throttling action %s to have a maximum of %d commands.",
                                                   a.frame, self.throttle_commands)
                 split_actions += a.split(self.throttle_commands)
             else:
@@ -366,7 +366,7 @@ class Connection:
         min_size = 1 if immediate else batch_size
         while len(actions) >= min_size:
             batch, actions = actions[0:batch_size], actions[batch_size:]
-            if self.logger: self.logger.debug("Executing %d actions (%d remaining).", len(batch), len(actions))
+            self.logger.debug("Executing %d actions (%d remaining).", len(batch), len(actions))
             sent += len(batch)
             try:
                 completed += self._execute_batch(batch)
@@ -407,11 +407,11 @@ class Connection:
         body = result.json()
         if body.get("errors", None) is None:
             if body.get("result") != "success":
-                if self.logger: self.logger.warning("Server action result: no errors, but no success:\n%s", body)
+                self.logger.warning("Server action result: no errors, but no success:\n%s", body)
             return len(actions)
         try:
             if body.get("result") == "success":
-                if self.logger: self.logger.warning("Server action result: errors, but success report:\n%s", body)
+                self.logger.warning("Server action result: errors, but success report:\n%s", body)
             for error in body["errors"]:
                 actions[error["index"]].report_command_error(error)
         except:
@@ -458,19 +458,19 @@ class Connection:
                 result = call()
                 checked_result = APIResult(result).check_result()
             except requests.Timeout:
-                if self.logger: self.logger.warning("UMAPI connection timeout...(%d seconds on try %d)",
-                                                    self.timeout, num_attempts)
+                self.logger.warning("UMAPI connection timeout...(%d seconds on try %d)",
+                               self.timeout, num_attempts)
                 checked_result = APIResult(success=False, timeout=0)
             except requests.ConnectionError:
-                if self.logger: self.logger.warning("UMAPI connection error...(%d seconds on try %d)",
-                                                    self.timeout, num_attempts)
+                self.logger.warning("UMAPI connection error...(%d seconds on try %d)",
+                               self.timeout, num_attempts)
                 checked_result = APIResult(success=False, timeout=0)
             
             if checked_result.success:
                 return result
 
-            if self.logger: self.logger.warning("UMAPI request limit reached (code %s on try %d)",
-                                                checked_result.status_code, num_attempts)
+            self.logger.warning("UMAPI request limit reached (code %s on try %d)",
+                           checked_result.status_code, num_attempts)
 
             retry_wait = checked_result.timeout
             if retry_wait <= 0:
@@ -480,11 +480,11 @@ class Connection:
 
             if num_attempts < self.retry_max_attempts:
                 if retry_wait > 0:
-                    if self.logger: self.logger.warning("waiting %d seconds to continue...", retry_wait)
+                    self.logger.warning("waiting %d seconds to continue...", retry_wait)
                     sleep(retry_wait)
                 else:
-                    if self.logger: self.logger.warning("Immediate retry...")
+                    self.logger.warning("Immediate retry...")
         total_time = int(time() - start_time)
-        if self.logger: self.logger.error("UMAPI timeout...giving up after %d attempts (%d seconds).",
-                                          self.retry_max_attempts, total_time)
+        self.logger.error("UMAPI timeout...giving up after %d attempts (%d seconds).",
+                     self.retry_max_attempts, total_time)
         raise UnavailableError(self.retry_max_attempts, total_time, checked_result.result)

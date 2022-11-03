@@ -24,58 +24,94 @@ import time
 import jwt
 import requests
 import urllib.parse as urlparse
-from oauthlib.oauth2 import BackendApplicationClient
-from requests_oauthlib import OAuth2Session
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-class OAuthS2S(requests.auth.AuthBase):
-    def __init__(self, client_id, client_secret, ssl_verify=True,
-                 auth_host='ims-na1.adobelogin.com',
-                 auth_endpoint=''):
+class AdobeAuthBase(requests.auth.AuthBase):
+    def __init__(self, client_id, client_secret, auth_host, auth_endpoint,
+                 ssl_verify):
         self.client_id = client_id
-        self.client_secret = client_secret,
-        self.ssl_verify = ssl_verify
+        self.client_secret = client_secret
         self.auth_host = auth_host
         self.auth_endpoint = auth_endpoint
+        self.ssl_verify = ssl_verify
         self.expiry = None
-        self.oauth_token = None
+        self.token = None
 
-    def refresh_token(self):
-        # https://ims-na1.adobelogin.com/path/to/oauth2
-        endpoint = f"https://{self.auth_host}/{self.auth_endpoint.strip('/')}"
-        client = BackendApplicationClient(client_id=self.client_id)
-        oauth = OAuth2Session(client=client)
-        self.oauth_token = oauth.fetch_token(token_url=endpoint,
-                                             client_id=self.client_id,
-                                             client_secret=self.client_secret,
-                                             verify=self.ssl_verify)
+    def set_expiry(self, expires_in):
+        expires_in = int(round(expires_in/1000))
+        self.expiry = dt.datetime.now() + dt.timedelta(seconds=expires_in)
 
-    def __call__(r):
-        if self.oauth_token is None or self.expiry is None or \
+    def __call__(self, r):
+        if self.token is None or self.expiry is None or \
            self.expiry <= dt.datetime.now():
             self.refresh_token()
         r.headers['Content-type'] = 'application/json'
         r.headers['Accept'] = 'application/json'
         r.headers['x-api-key'] = self.client_id
-        r.headers['Authorization'] = 'Bearer ' + self.oauth_token
+        r.headers['Authorization'] = 'Bearer ' + self.token
         return r
+    
+    def refresh_token(self):
+        logger.info("auth token is missing or expired - refreshing now")
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Cache-Control": "no-cache",
+        }
+
+        endpoint = f"https://{self.auth_host}/{self.auth_endpoint.strip('/')}/"
+
+        r = requests.post(endpoint, headers=headers, data=self.post_body(),
+                          verify=self.ssl_verify)
+
+        if r.status_code != 200:
+            raise RuntimeError(f"Unable to authorize against {endpoint}:\n"
+                               f"Response Code: {r.status_code}, Response Text: {r.text}\n"
+                               f"Response Headers: {r.headers}]")
+
+        self.set_expiry(r.json()['expires_in'])
+
+        logger.debug("token expiration: %s", self.expiry)
+
+        self.token = r.json()['access_token']
 
 
-class JWTAuth(requests.auth.AuthBase):
+class OAuthS2S(AdobeAuthBase):
+    def __init__(self, client_id, client_secret,
+                 auth_host='ims-na1.adobelogin.com',
+                 auth_endpoint='/ims/token/v2',
+                 ssl_verify=True):
+        logger.info("Auth type: OAuthS2S")
+        super().__init__(
+            client_id, client_secret, auth_host, auth_endpoint, ssl_verify
+        )
+
+    def post_body(self):
+        return urlparse.urlencode({
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "grant_type": "client_credentials",
+            "scope": "openid,AdobeID,user_management_sdk",
+        })
+
+    def set_expiry(self, expires_in):
+        self.expiry = dt.datetime.now() + dt.timedelta(seconds=expires_in)
+
+
+class JWTAuth(AdobeAuthBase):
     def __init__(self, org_id, client_id, client_secret, tech_acct_id,
                  priv_key_data, ssl_verify=True,
                  auth_host='ims-na1.adobelogin.com',
                  auth_endpoint='/ims/exchange/jwt/'):
+        logger.info("Auth type: JWTAuth")
         self.org_id = org_id
-        self.client_id = client_id
-        self.client_secret = client_secret
         self.tech_acct_id = tech_acct_id
         self.priv_key_data = priv_key_data
-        self.ssl_verify = ssl_verify
-        self.auth_host = auth_host
-        self.auth_endpoint = auth_endpoint
-        self.expiry = None
-        self.bearer_token = None
+        super().__init__(
+            client_id, client_secret, auth_host, auth_endpoint, ssl_verify
+        )
 
     def jwt_token(self):
         payload = {
@@ -88,39 +124,9 @@ class JWTAuth(requests.auth.AuthBase):
 
         return jwt.encode(payload, self.priv_key_data, algorithm='RS256')
 
-    def refresh_bearer_token(self):
-        headers = {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Cache-Control": "no-cache",
-        }
-
-        body = urlparse.urlencode({
+    def post_body(self):
+        return urlparse.urlencode({
             "client_id": self.client_id,
             "client_secret": self.client_secret,
             "jwt_token": self.jwt_token()
         })
-        endpoint = f"https://{self.auth_host}/{self.auth_endpoint.strip('/')}"
-        r = requests.post(endpoint, headers=headers, data=body,
-                          verify=self.ssl_verify)
-        if r.status_code != 200:
-            raise RuntimeError(f"Unable to authorize against {self.endpoint}:\n"
-                               f"Response Code: {r.status_code}, Response Text: {r.text}\n"
-                               f"Response Headers: {r.headers}]")
-
-        self.set_expiry(r.json()['expires_in'])
-
-        self.bearer_token = r.json()['access_token']
-
-    def set_expiry(self, expires_in):
-        expires_in = int(round(expires_in/1000))
-        self.expiry = dt.datetime.now() + dt.timedelta(seconds=expires_in)
-
-    def __call__(self, r):
-        if self.bearer_token is None or self.expiry is None or \
-           self.expiry <= dt.datetime.now():
-            self.refresh_bearer_token()
-        r.headers['Content-type'] = 'application/json'
-        r.headers['Accept'] = 'application/json'
-        r.headers['x-api-key'] = self.client_id
-        r.headers['Authorization'] = 'Bearer ' + self.bearer_token
-        return r

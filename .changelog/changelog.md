@@ -1,5 +1,13 @@
 | tag | date | title |
 |---|---|---|
+| v2.22 | 2023-03-07 | umapi-client v2.22 |
+
+- 4a5773f allow username to be updated by itself
+
+---
+
+| tag | date | title |
+|---|---|---|
 | v2.21 | 2022-12-14 | umapi-client v2.21 |
 
 - 3c3d725 buid with newer poetry and drop 3.6 build

@@ -1,5 +1,1 @@
-- 3c3d725 buid with newer poetry and drop 3.6 build
-- c65be58 upgrade to newer version of cryptography
-- 74e8c1e remove old docs
-- f8dda00 #104 removing test\_delete\_account\_enterpriseid and test\_delete\_account\_adobeid
-- bd701c4 #104 remove removeFromDomain action
+- 4a5773f allow username to be updated by itself

@@ -175,8 +175,6 @@ class UserAction(Action):
         """
         if username and self.id_type != IdentityTypes.federatedID:
             raise ArgumentError("You cannot set username except for a federated ID")
-        if username and '@' in username and not email:
-            raise ArgumentError("Cannot update email-type username when email is not specified")
         if email and username and email.lower() == username.lower():
             raise ArgumentError("Specify just email to set both email and username for a federated ID")
         updates = {}

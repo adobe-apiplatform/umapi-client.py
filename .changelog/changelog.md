@@ -1,5 +1,25 @@
 | tag | date | title |
 |---|---|---|
+| v2.22 | 2023-03-07 | umapi-client v2.22 |
+
+- 4a5773f allow username to be updated by itself
+
+---
+
+| tag | date | title |
+|---|---|---|
+| v2.21 | 2022-12-14 | umapi-client v2.21 |
+
+- 3c3d725 buid with newer poetry and drop 3.6 build
+- c65be58 upgrade to newer version of cryptography
+- 74e8c1e remove old docs
+- f8dda00 #104 removing test\_delete\_account\_enterpriseid and test\_delete\_account\_adobeid
+- bd701c4 #104 remove removeFromDomain action
+
+---
+
+| tag | date | title |
+|---|---|---|
 | v2.20 | 2022-08-05 | umapi-client v2.20 |
 
 * \#103 Create users with email-type usernames that differ from email address in a single call

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "umapi-client"
-version = "2.20"
+version = "2.22"
 description = "Client for the User Management API (UMAPI) from Adobe - see https://adobe.ly/2h1pHgV"
 readme = "README.md"
 authors = ["Andrew Dorton <adorton@adobe.com>", "Dan Brotsky", "Danimae Vossen", "Kevin Bhunut"]
@@ -26,7 +26,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.6"
 requests = "^2.25.1"
-cryptography = "3.3.2"
+cryptography = "^38.0.4"
 PyJWT = "2.4.0"
 
 [tool.poetry.dev-dependencies]

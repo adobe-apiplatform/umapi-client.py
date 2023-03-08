@@ -1,1 +1,1 @@
-* \#103 Create users with email-type usernames that differ from email address in a single call
+- 4a5773f allow username to be updated by itself

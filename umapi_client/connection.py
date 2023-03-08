@@ -88,6 +88,7 @@ class Connection:
                  test_mode=False,
                  ssl_verify=True,
                  timeout=120.0,
+                 max_retries=4,
                  user_agent=None):
         """
         Open a connection for the given parameters that has the given options.
@@ -125,7 +126,7 @@ class Connection:
         self.auth = auth
         self.endpoint = endpoint
         self.test_mode = test_mode
-        self.retry_max_attempts = 4
+        self.retry_max_attempts = max_retries
         self.retry_first_delay = 15
         self.retry_random_delay = 5
         self.ssl_verify = ssl_verify

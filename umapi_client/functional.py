@@ -280,7 +280,7 @@ class UsersQuery(QueryMultiple):
     Query for users meeting (optional) criteria
     """
 
-    def __init__(self, connection, in_group="", in_domain="", identity_type="", direct_only=True):
+    def __init__(self, connection, in_group="", in_domain="", direct_only=True):
         """
         Create a query for all users, or for those in a group or domain or both
         :param connection: Connection to run the query against
@@ -290,7 +290,6 @@ class UsersQuery(QueryMultiple):
         groups = [in_group] if in_group else []
         params = {}
         if in_domain: params["domain"] = in_domain
-        if identity_type: params["type"] = identity_type
         params["directOnly"] = direct_only
         QueryMultiple.__init__(self, connection=connection, object_type="user", url_params=groups, query_params=params)
 

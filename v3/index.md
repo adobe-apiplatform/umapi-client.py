@@ -53,7 +53,7 @@ $ pip install umapi_client-x.xx-py3-none-any.whl
 
 # Getting Started
 
-The UMAPI Client requires valid credentials. UMAPI credentials can be set up easily on the
+The UMAPI Client requires valid credentials. UMAPI credentials can be set up on the
 Adobe Developer Console.
 
 > **Note**: You must have system administrator access to your organization's Admin Console in
@@ -85,6 +85,27 @@ The UMAPI Client requires these credential pieces to set up a connection:
 * Client Secret
 * Technical Account ID (**not** tech account email)
 * Private Key File
+
+# Overview
+
+With the integration set up, the next step is to learn how to create a UMAPI connection and how
+to perform various API actions.
+
+1. Set up authentication
+
+   Create a `JWTAuth` object using the credentials set up in the Adobe Developer Console.
+
+2. Create connection
+
+   Use the authentication object to establish a connection to the UMAPI.
+
+3. Query users and groups
+
+   Retrieve users and groups from the UMAPI using the query interface.
+
+4. Manage users and group
+
+   Learn how to create actions to create new users, update users and remove them.
 
 ---
 

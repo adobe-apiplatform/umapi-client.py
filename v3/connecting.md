@@ -32,8 +32,7 @@ Setting up a connection is a two-step process.
 > Connections must be constructed with an authenticator object.
 
 ```python
-from umapi_client.auth import JWTAuth
-from umapi_client import Connection
+from umapi_client import Connection, JWTAuth
 
 jwt_auth = JWTAuth(...)
 
@@ -52,8 +51,7 @@ found on the credentials page. It additionally requires the contents of a privat
 key file associated with a public key that has been registered with the service.
 
 ```python
-from umapi_client.auth import JWTAuth
-from umapi_client import Connection
+from umapi_client import Connection, JWTAuth
 
 jwt_auth = JWTAuth(
   org_id="your org ID",
@@ -113,8 +111,7 @@ requires two things.
 * `auth` - Authenticator object
 
 ```python
-from umapi_client.auth import JWTAuth
-from umapi_client import Connection
+from umapi_client import Connection, JWTAuth
 
 jwt_auth = JWTAuth(...)
 
@@ -151,8 +148,7 @@ Each Authenticator requires its own set of credentials. Once constructed,
 the auth object is passed to the `Connection` constructor:
 
 ```python
-from umapi_client.auth import JWTAuth
-from umapi_client import Connection
+from umapi_client import Connection, JWTAuth
 
 jwt_auth = JWTAuth(
   org_id="your org ID",
@@ -185,8 +181,7 @@ and after creating a user in test mode, the second count will
 match the first count.
 
 ```python
-from umapi_client.auth import JWTAuth
-from umapi_client import Connection, UsersQuery, UserAction
+from umapi_client import Connection, JWTAuth, UsersQuery, UserAction
 
 auth = JWTAuth(...)
 conn = Connection('12345@AdobeOrg', auth, test_mode=True)

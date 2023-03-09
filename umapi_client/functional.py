@@ -300,13 +300,16 @@ class UserQuery(QuerySingle):
     Query for a single user
     """
 
-    def __init__(self, connection, email):
+    def __init__(self, connection, user_string, domain=None):
         """
-        Create a query for the user with the given email
+        Create a query for the user with the given user_string (email or username)
         :param connection: Connection to run the query against
-        :param email: email of user to query for
+        :param user_string: user string identifying a user
         """
-        QuerySingle.__init__(self, connection=connection, object_type="user", url_params=[email])
+        qparam = {}
+        if domain is not None:
+            qparam['domain'] = domain
+        QuerySingle.__init__(self, connection=connection, object_type="user", url_params=[user_string], query_params=qparam)
 
 
 class UserGroupAction(Action):

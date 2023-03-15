@@ -30,7 +30,7 @@ from conftest import MockResponse
 
 from umapi_client import Connection
 from umapi_client import ArgumentError, UnavailableError, ServerError, RequestError
-from umapi_client import UserAction, GroupTypes, IdentityTypes, UserGroupAction
+from umapi_client import UserAction, IdentityTypes, UserGroupAction
 from umapi_client import __version__ as umapi_version
 from umapi_client.auth import JWTAuth
 
@@ -360,12 +360,12 @@ def test_large_group_assignment_split():
     """
     group_prefix = "G"
     add_groups = [group_prefix+str(n+1) for n in range(0, 15)]
-    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
-    user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
+    user = UserAction(user="user@example.com")
+    user.add_to_groups(groups=add_groups)
     assert user.maybe_split_groups(10) is True
     assert len(user.commands) == 2
-    assert user.commands[0]["add"][GroupTypes.usergroup.name] == add_groups[0:10]
-    assert user.commands[1]["add"][GroupTypes.usergroup.name] == add_groups[10:]
+    assert user.commands[0]["add"]["group"] == add_groups[0:10]
+    assert user.commands[1]["add"]["group"] == add_groups[10:]
 
 
 def test_large_group_assignment_split_recursive():
@@ -375,8 +375,8 @@ def test_large_group_assignment_split_recursive():
     """
     group_prefix = "G"
     add_groups = [group_prefix+str(n+1) for n in range(0, 100)]
-    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
-    user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
+    user = UserAction(user="user@example.com")
+    user.add_to_groups(groups=add_groups)
     assert user.maybe_split_groups(10) is True
     assert len(user.commands) == 10
 
@@ -390,15 +390,15 @@ def test_large_group_mix_split():
     group_prefix = "G"
     add_groups = [group_prefix+str(n+1) for n in range(0, 15)]
     remove_groups = [group_prefix+str(n+1) for n in range(15, 30)]
-    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
-    user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup) \
-        .remove_from_groups(groups=remove_groups, group_type=GroupTypes.usergroup)
+    user = UserAction(user="user@example.com")
+    user.add_to_groups(groups=add_groups) \
+        .remove_from_groups(groups=remove_groups)
     assert user.maybe_split_groups(10) is True
     assert len(user.commands) == 4
-    assert user.commands[0]["add"][GroupTypes.usergroup.name] == add_groups[0:10]
-    assert user.commands[1]["add"][GroupTypes.usergroup.name] == add_groups[10:]
-    assert user.commands[2]["remove"][GroupTypes.usergroup.name] == remove_groups[0:10]
-    assert user.commands[3]["remove"][GroupTypes.usergroup.name] == remove_groups[10:]
+    assert user.commands[0]["add"]["group"] == add_groups[0:10]
+    assert user.commands[1]["add"]["group"] == add_groups[10:]
+    assert user.commands[2]["remove"]["group"] == remove_groups[0:10]
+    assert user.commands[3]["remove"]["group"] == remove_groups[10:]
 
 
 def test_large_group_action_split(mock_connection_params):
@@ -414,8 +414,8 @@ def test_large_group_action_split(mock_connection_params):
 
         group_prefix = "G"
         add_groups = [group_prefix+str(n+1) for n in range(0, 150)]
-        user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
-        user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
+        user = UserAction(user="user@example.com")
+        user.add_to_groups(groups=add_groups)
         assert conn.execute_single(user, immediate=True) == (0, 2, 2)
 
 
@@ -432,8 +432,8 @@ def test_group_size_limit(mock_connection_params):
 
         group_prefix = "G"
         add_groups = [group_prefix+str(n+1) for n in range(0, 150)]
-        user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
-        user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
+        user = UserAction(user="user@example.com")
+        user.add_to_groups(groups=add_groups)
         assert conn.execute_single(user, immediate=True) == (0, 3, 3)
 
 
@@ -442,8 +442,9 @@ def test_split_add_user():
     Make sure split doesn't do anything when we have a non-add/remove group action
     :return:
     """
-    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
-    user.create(first_name="Example", last_name="User", country="US", email="user@example.com")
+    user = UserAction(user="user@example.com")
+    user.create(id_type=IdentityTypes.enterpriseID, first_name="Example", last_name="User",
+                country="US", email="user@example.com")
     user.update(first_name="EXAMPLE")
     assert user.maybe_split_groups(10) is False
     assert len(user.commands) == 2
@@ -463,32 +464,10 @@ def test_no_group_split():
     """
     group_prefix = "G"
     add_groups = [group_prefix+str(n+1) for n in range(0, 5)]
-    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
-    user.add_to_groups(groups=add_groups, group_type=GroupTypes.usergroup)
+    user = UserAction(user="user@example.com")
+    user.add_to_groups(groups=add_groups)
     assert user.maybe_split_groups(10) is False
     assert len(user.commands) == 1
-
-
-def test_complex_group_split():
-    """
-    Test a complex command with add and remove directive, with multiple group types
-    UserAction's interface doesn't support this, so we build our own command array
-    :return:
-    """
-    group_prefix = "G"
-    add_groups = [group_prefix+str(n+1) for n in range(0, 150)]
-    add_products = [group_prefix+str(n+1) for n in range(0, 26)]
-    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
-    user.commands = [{
-        "add": {
-            GroupTypes.usergroup.name: add_groups,
-            GroupTypes.group.name: add_products,
-        },
-    }]
-    assert user.maybe_split_groups(10) is True
-    assert len(user.commands) == 15
-    assert len([c for c in user.commands if 'group' in c['add']]) == 3
-    assert GroupTypes.group.name not in user.commands[3]['add']
 
 
 def test_split_remove_all():
@@ -498,7 +477,7 @@ def test_split_remove_all():
     """
     group_prefix = "G"
     add_groups = [group_prefix+str(n+1) for n in range(0, 11)]
-    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
+    user = UserAction(user="user@example.com")
     user.remove_from_groups(all_groups=True)
     assert user.maybe_split_groups(1) is False
     assert user.wire_dict() == {'do': [{'remove': 'all'}], 'user': 'user@example.com'}

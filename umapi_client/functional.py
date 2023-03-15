@@ -31,14 +31,6 @@ class IdentityTypes(Enum):
     federatedID = 3
 
 
-class GroupTypes(Enum):
-    # product use is deprecated!
-    product = 1
-    usergroup = 2
-    productConfiguration = 3
-    group = 4
-
-
 class IfAlreadyExistsOptions(Enum):
     ignoreIfAlreadyExists = 1
     updateIfAlreadyExists = 2
@@ -50,7 +42,7 @@ class UserAction(Action):
     A sequence of commands to perform on a single user.
     """
 
-    def __init__(self, user=None, domain=None, use_adobe_id=False, **kwargs):
+    def __init__(self, user, domain=None, use_adobe_id=False, **kwargs):
         """
         Create an Action for a user identified either by email or by username and domain.
         You should pretty much always use just email, unless the user has a Federated ID and his
@@ -71,7 +63,13 @@ class UserAction(Action):
         """
         if '@' not in user and domain is None:
             raise ArgumentError("Domain required for non-email username")
-        super().__init__(user=user, domain=domain, useAdobeID=use_adobe_id, **kwargs)
+        if '@' in user and domain is not None:
+            raise ArgumentError("Domain not allowed for email-type username")
+        if domain is not None:
+            kwargs['domain'] = domain
+        if use_adobe_id:
+            kwargs['useAdobeID'] = True
+        super().__init__(user=user, **kwargs)
 
     def __str__(self):
         return "UserAction "+str(self.__dict__)
@@ -100,7 +98,7 @@ class UserAction(Action):
             raise ArgumentError("Identity type (%s) must be one of %s" % (id_type, [i.name for i in IdentityTypes]))
         # first validate the params: email, on_conflict, first_name, last_name, country
         create_params = {}
-        create_params["email"] = self.email
+        create_params["email"] = email
         if on_conflict in IfAlreadyExistsOptions.__members__:
             on_conflict = IfAlreadyExistsOptions[on_conflict]
         if on_conflict not in IfAlreadyExistsOptions:
@@ -112,9 +110,10 @@ class UserAction(Action):
         if country: create_params["country"] = country
 
         # each type is created using a different call
-        if self.id_type == IdentityTypes.adobeID:
+        if id_type == IdentityTypes.adobeID:
+            self.frame['useAdobeID'] = True
             return self.insert(addAdobeID=dict(**create_params))
-        elif self.id_type == IdentityTypes.enterpriseID:
+        elif id_type == IdentityTypes.enterpriseID:
             return self.insert(createEnterpriseID=dict(**create_params))
         else:
             return self.insert(createFederatedID=dict(**create_params))
@@ -129,8 +128,6 @@ class UserAction(Action):
         :param country: new country for this user
         :return: the User, so you can do User(...).update(...).add_to_groups(...)
         """
-        if username and self.id_type != IdentityTypes.federatedID:
-            raise ArgumentError("You cannot set username except for a federated ID")
         updates = {}
         for k, v in dict(email=email, username=username,
                          firstname=first_name, lastname=last_name,
@@ -139,53 +136,39 @@ class UserAction(Action):
                 updates[k] = v
         return self.append(update=updates)
 
-    def add_to_groups(self, groups=None, all_groups=False, group_type=None):
+    def add_to_groups(self, groups=None, all_groups=False):
         """
         Add user to some (typically PLC) groups.  Note that, if you add to no groups, the effect
         is simply to do an "add to organization Everybody group", so we let that be done.
         :param groups: list of group names the user should be added to
-        :param all_groups: a boolean meaning add to all (don't specify groups or group_type in this case)
-        :param group_type: the type of group (defaults to "group")
+        :param all_groups: a boolean meaning add to all (don't specify groups)
         :return: the User, so you can do User(...).add_to_groups(...).???()
         """
         if all_groups:
-            if groups or group_type:
-                raise ArgumentError("When adding to all groups, do not specify specific groups or types")
+            if groups:
+                raise ArgumentError("When adding to all groups, do not specify specific groups")
             glist = "all"
         else:
             if not groups:
                 groups = []
-            if not group_type:
-                group_type = GroupTypes.group
-            elif group_type in GroupTypes.__members__:
-                group_type = GroupTypes[group_type]
-            if group_type not in GroupTypes:
-                raise ArgumentError("You must specify a GroupType value for argument group_type")
-            glist = {group_type.name: [group for group in groups]}
+            glist = {"group": [group for group in groups]}
         return self.append(add=glist)
 
     def remove_from_groups(self, groups=None, all_groups=False, group_type=None):
         """
         Remove user from some PLC groups, or all of them.
         :param groups: list of group names the user should be removed from
-        :param all_groups: a boolean meaning remove from all (don't specify groups or group_type in this case)
-        :param group_type: the type of group (defaults to "group")
+        :param all_groups: a boolean meaning remove from all (don't specify groups)
         :return: the User, so you can do User(...).remove_from_groups(...).???(...)
         """
         if all_groups:
-            if groups or group_type:
-                raise ArgumentError("When removing from all groups, do not specify specific groups or types")
+            if groups:
+                raise ArgumentError("When removing from all groups, do not specify specific groups")
             glist = "all"
         else:
             if not groups:
                 raise ArgumentError("You must specify groups from which to remove the user")
-            if not group_type:
-                group_type = GroupTypes.group
-            elif group_type in GroupTypes.__members__:
-                group_type = GroupTypes[group_type]
-            if group_type not in GroupTypes:
-                raise ArgumentError("You must specify a GroupType value for argument group_type")
-            glist = {group_type.name: [group for group in groups]}
+            glist = {"group": [group for group in groups]}
         return self.append(remove=glist)
 
     def remove_from_organization(self, delete_account=False):
@@ -279,7 +262,7 @@ class UserGroupAction(Action):
         else:
             if not products:
                 raise ArgumentError("You must specify products to which to add the user group")
-            plist = {GroupTypes.productConfiguration.name: [product for product in products]}
+            plist = {"productConfiguration": [product for product in products]}
         return self.append(add=plist)
 
     def remove_from_products(self, products=None, all_products=False):
@@ -296,7 +279,7 @@ class UserGroupAction(Action):
         else:
             if not products:
                 raise ArgumentError("You must specify products from which to remove the user group")
-            plist = {GroupTypes.productConfiguration.name: [product for product in products]}
+            plist = {"productConfiguration": [product for product in products]}
         return self.append(remove=plist)
 
     def add_users(self, users=None):

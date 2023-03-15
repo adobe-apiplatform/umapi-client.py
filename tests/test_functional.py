@@ -25,7 +25,7 @@ import pytest
 from conftest import MockResponse
 from umapi_client import ArgumentError, RequestError
 from umapi_client import Connection
-from umapi_client import IdentityTypes, GroupTypes, RoleTypes
+from umapi_client import IdentityTypes, GroupTypes
 from umapi_client import UserAction, UserGroupAction
 from umapi_client import UsersQuery
 
@@ -297,33 +297,6 @@ def test_remove_from_groups_federatedid_all_error():
     user = UserAction(id_type='federatedID', email="dbrotsky@k.on-the-side.net")
     with pytest.raises(ValueError):
         user.remove_from_groups(all_groups=True, group_type="usergroup")
-
-
-def test_add_role_enterpriseid():
-    user = UserAction(id_type=IdentityTypes.enterpriseID, email="dbrotsky@o.on-the-side.net")
-    user.add_role(groups=["Photoshop", "Illustrator"])
-    assert user.wire_dict() == {"do": [{"addRoles": {"admin": ["Photoshop", "Illustrator"]}}],
-                                "user": "dbrotsky@o.on-the-side.net"}
-
-
-def test_add_role_enterpriseid_unicode():
-    user = UserAction(id_type=IdentityTypes.enterpriseID, email="dbrotsky@o.on-the-side.net")
-    user.add_role(groups=[u"người quản lý"])
-    assert user.wire_dict() == {"do": [{"addRoles": {"admin": [u"người quản lý"]}}],
-                                "user": "dbrotsky@o.on-the-side.net"}
-
-
-def test_add_role_enterpriseid_error():
-    user = UserAction(id_type=IdentityTypes.enterpriseID, email="dbrotsky@o.on-the-side.net")
-    with pytest.raises(ValueError):
-        user.add_role(groups=[], role_type=RoleTypes.admin)
-
-
-def test_remove_role_enterpriseid():
-    user = UserAction(id_type='enterpriseID', email="dbrotsky@o.on-the-side.net")
-    user.remove_role(groups=["Photoshop", "Illustrator"], role_type="productAdmin")
-    assert user.wire_dict() == {"do": [{"removeRoles": {"productAdmin": ["Photoshop", "Illustrator"]}}],
-                                "user": "dbrotsky@o.on-the-side.net"}
 
 
 def test_remove_from_organization_federatedid():

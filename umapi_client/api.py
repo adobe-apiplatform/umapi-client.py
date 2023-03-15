@@ -134,7 +134,7 @@ class Action:
         split_commands = []
         # return True if we split at least once
         maybe_split = False
-        valid_step_keys = ['add', 'addRoles', 'remove']
+        valid_step_keys = ['add', 'remove']
         for command in self.commands:
             # commands are assumed to contain a single key
             step_key, step_args = next(iter(command.items()))

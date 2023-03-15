@@ -30,7 +30,7 @@ from conftest import MockResponse
 
 from umapi_client import Connection
 from umapi_client import ArgumentError, UnavailableError, ServerError, RequestError
-from umapi_client import UserAction, GroupTypes, IdentityTypes, RoleTypes, UserGroupAction
+from umapi_client import UserAction, GroupTypes, IdentityTypes, UserGroupAction
 from umapi_client import __version__ as umapi_version
 from umapi_client.auth import JWTAuth
 
@@ -454,15 +454,6 @@ def test_split_add_user():
                                                                'option': 'ignoreIfAlreadyExists'}},
                                        {'update': {'firstname': 'EXAMPLE'}}],
                                 'user': 'user@example.com'}
-
-
-def test_split_role_assignment():
-    group_prefix = "G"
-    add_groups = [group_prefix+str(n+1) for n in range(0, 25)]
-    user = UserAction(id_type=IdentityTypes.enterpriseID, email="user@example.com")
-    user.add_role(groups=add_groups, role_type=RoleTypes.admin)
-    assert user.maybe_split_groups(10) is True
-    assert len(user.commands) == 3
 
 
 def test_no_group_split():

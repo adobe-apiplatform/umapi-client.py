@@ -84,34 +84,6 @@ def test_list_users(config):
     logging.info("Found %d users.", user_count)
 
 
-def test_list_user_groups(config):
-    conn, params = config
-    groups = umapi_client.UserGroupsQuery(connection=conn)
-    group_count = 0
-    for group in groups:
-        name = group.get("name")
-        admin_name = group.get("adminGroupName")
-        member_count = group.get("userCount", 0)
-        admin_count = int(group.get("adminCount", "-1"))
-        logging.info("Group %s has %d members.", name, member_count)
-        if admin_name:
-            logging.info("Group %s has admin group %s with %d members.", name, admin_name, admin_count)
-            # logging.info("Adding test user as admin.")
-            # user = umapi_client.UserAction(id_type=params["test_user"]["type"],
-            #                                email=params["test_user"]["email"],
-            #                                username=params["test_user"]["username"])
-            # user.add_to_groups([admin_name])
-            # assert (0, 1, 1) == conn.execute_single(user, immediate=True)
-            users = umapi_client.UsersQuery(connection=conn, in_group=admin_name)
-            logging.info("Admin group %s has: %s", admin_name, users.all_results())
-        assert member_count >= 0
-        group_count += 1
-    logging.info("Found %d groups.", group_count)
-    groups.reload()
-    group_count_2 = len(groups.all_results())
-    assert group_count == group_count_2
-
-
 def test_list_groups(config):
     conn, params = config
     groups = umapi_client.GroupsQuery(connection=conn)

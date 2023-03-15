@@ -55,7 +55,7 @@ class UserAction(Action):
     A sequence of commands to perform on a single user.
     """
 
-    def __init__(self, id_type=IdentityTypes.adobeID, email=None, username=None, domain=None, **kwargs):
+    def __init__(self, user=None, domain=None, use_adobe_id=False, **kwargs):
         """
         Create an Action for a user identified either by email or by username and domain.
         You should pretty much always use just email, unless the user has a Federated ID and his
@@ -70,50 +70,13 @@ class UserAction(Action):
         will be used to break ties if there is both an AdobeID and an EnterpriseID or FederatedID user
         with that same email.  Normally, we choose Enterprise ID or Federated ID *over* Adobe ID, but
         if you specify the type as Adobe ID then we will act on the Adobe ID user instead.
-        :param id_type: IdentityTypes enum value (or the name of one), defaults to adobeID
-        :param email: The user's email.  Typically this is also the user's username.
-        :param username: The username on the Adobe side.  If it's the same as email, it's ignored.
-        :param domain: string, needed only if you specified a username but NOT an email.
+        :param user: Primary user identifier. Should be username for "create" operations or email address otherwise
+        :param domain: Domain of non-email username
         :param kwargs: other key/value pairs for the action, such as requestID
         """
-        if id_type in IdentityTypes.__members__:
-            id_type = IdentityTypes[id_type]
-        if id_type not in IdentityTypes:
-            raise ArgumentError("Identity type (%s) must be one of %s" % (id_type, [i.name for i in IdentityTypes]))
-        self.id_type = id_type
-        self.email = None
-        self.domain = None
-        if username is not None:
-            if email and username.lower() == email.lower():
-                # ignore the username if it's the same as the email (policy default)
-                username = None
-            elif id_type is not IdentityTypes.federatedID:
-                raise ArgumentError("Username must match email except for Federated ID")
-            else:
-                if domain:
-                    self.domain = domain
-        if email is not None:
-            if '@' not in email:
-                raise ArgumentError("Invalid email address: %s" % email)
-            self.email = email
-            if not self.domain:
-                atpos = email.index('@')
-                self.domain = email[atpos + 1:]
-        elif not username:
-                raise ArgumentError("No user identity specified.")
-        elif not domain:
-            raise ArgumentError("Both username and domain must be specified")
-        
-        if id_type == IdentityTypes.adobeID:
-            # by default if two users have the same email address, the UMAPI server will prefer the matching
-            # Federated or Enterprise ID user; so we use the undocumented option to prefer the AdobeID match
-            Action.__init__(self, user=email, useAdobeID=True, **kwargs)
-        elif username and '@' in username:
-            Action.__init__(self, user=username, **kwargs)
-        elif username and '@' not in username:
-            Action.__init__(self, user=username, domain=self.domain, **kwargs)
-        else:
-            Action.__init__(self, user=email, **kwargs)
+        if '@' not in user and domain is None:
+            raise ArgumentError("Domain required for non-email username")
+        super().__init__(user=user, domain=domain, useAdobeID=use_adobe_id, **kwargs)
 
     def __str__(self):
         return "UserAction "+str(self.__dict__)
@@ -121,7 +84,8 @@ class UserAction(Action):
     def __repr__(self):
         return "UserAction "+str(self.__dict__)
 
-    def create(self, first_name=None, last_name=None, country=None, email=None,
+    def create(self, email, first_name=None,
+               last_name=None, country=None, id_type=IdentityTypes.federatedID,
                on_conflict=IfAlreadyExistsOptions.ignoreIfAlreadyExists):
         """
         Create the user on the Adobe back end.
@@ -135,15 +99,12 @@ class UserAction(Action):
         :param on_conflict: IfAlreadyExistsOption (or string name thereof) controlling creation of existing users
         :return: the User, so you can do User(...).create(...).add_to_groups(...)
         """
+        if id_type in IdentityTypes.__members__:
+            id_type = IdentityTypes[id_type]
+        if id_type not in IdentityTypes:
+            raise ArgumentError("Identity type (%s) must be one of %s" % (id_type, [i.name for i in IdentityTypes]))
         # first validate the params: email, on_conflict, first_name, last_name, country
         create_params = {}
-        if email is None:
-            if not self.email:
-                raise ArgumentError("You must specify email when creating a user")
-        elif self.email is None:
-            self.email = email
-        elif self.email.lower() != email.lower():
-            raise ArgumentError("Specified email (%s) doesn't match user's email (%s)" % (email, self.email))
         create_params["email"] = self.email
         if on_conflict in IfAlreadyExistsOptions.__members__:
             on_conflict = IfAlreadyExistsOptions[on_conflict]
@@ -151,9 +112,9 @@ class UserAction(Action):
             raise ArgumentError("on_conflict must be one of {}".format([o.name for o in IfAlreadyExistsOptions]))
         if on_conflict != IfAlreadyExistsOptions.errorIfAlreadyExists:
             create_params["option"] = on_conflict.name
-        if first_name: create_params["firstname"] = first_name  # per issue #54 now allowed for all identity types
-        if last_name: create_params["lastname"] = last_name     # per issue #54 now allowed for all identity types
-        if country: create_params["country"] = country          # per issue #55 should not be defaulted
+        if first_name: create_params["firstname"] = first_name
+        if last_name: create_params["lastname"] = last_name
+        if country: create_params["country"] = country
 
         # each type is created using a different call
         if self.id_type == IdentityTypes.adobeID:

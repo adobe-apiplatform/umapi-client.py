@@ -118,20 +118,18 @@ class UserAction(Action):
         else:
             return self.insert(createFederatedID=dict(**create_params))
 
-    def update(self, email=None, username=None, first_name=None, last_name=None, country=None):
+    def update(self, email=None, username=None, first_name=None, last_name=None):
         """
         Update values on an existing user.  See the API docs for what kinds of update are possible.
         :param email: new email for this user
         :param username: new username for this user
         :param first_name: new first name for this user
         :param last_name: new last name for this user
-        :param country: new country for this user
         :return: the User, so you can do User(...).update(...).add_to_groups(...)
         """
         updates = {}
         for k, v in dict(email=email, username=username,
-                         firstname=first_name, lastname=last_name,
-                         country=country).items():
+                         firstname=first_name, lastname=last_name).items():
             if v:
                 updates[k] = v
         return self.append(update=updates)

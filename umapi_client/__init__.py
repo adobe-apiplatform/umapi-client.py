@@ -22,7 +22,7 @@ from .api import Action, QuerySingle, QueryMultiple
 from .auth import JWTAuth, OAuthS2S
 from .connection import Connection
 from .error import BatchError, ClientError, RequestError, ServerError, UnavailableError, ArgumentError
-from .functional import IdentityType, IfAlreadyExistsOptions
+from .functional import IdentityType, IfAlreadyExistsOption
 from .functional import UserAction, UserQuery, UsersQuery
 from .functional import UserGroupAction, GroupsQuery
 from .version import __version__

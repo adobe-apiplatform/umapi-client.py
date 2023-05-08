@@ -31,7 +31,7 @@ class IdentityType(Enum):
     federatedID = 3
 
 
-class IfAlreadyExistsOptions(Enum):
+class IfAlreadyExistsOption(Enum):
     ignoreIfAlreadyExists = 1
     updateIfAlreadyExists = 2
     errorIfAlreadyExists = 3
@@ -79,7 +79,7 @@ class UserAction(Action):
 
     def create(self, email, first_name=None,
                last_name=None, country=None, id_type=IdentityType.federatedID,
-               on_conflict=IfAlreadyExistsOptions.ignoreIfAlreadyExists):
+               on_conflict=IfAlreadyExistsOption.ignoreIfAlreadyExists):
         """
         Create the user on the Adobe back end.
         See [Issue 32](https://github.com/adobe-apiplatform/umapi-client.py/issues/32): because
@@ -99,11 +99,11 @@ class UserAction(Action):
         # first validate the params: email, on_conflict, first_name, last_name, country
         create_params = {}
         create_params["email"] = email
-        if on_conflict in IfAlreadyExistsOptions.__members__:
-            on_conflict = IfAlreadyExistsOptions[on_conflict]
-        if on_conflict not in IfAlreadyExistsOptions:
-            raise ArgumentError("on_conflict must be one of {}".format([o.name for o in IfAlreadyExistsOptions]))
-        if on_conflict != IfAlreadyExistsOptions.errorIfAlreadyExists:
+        if on_conflict in IfAlreadyExistsOption.__members__:
+            on_conflict = IfAlreadyExistsOption[on_conflict]
+        if on_conflict not in IfAlreadyExistsOption:
+            raise ArgumentError("on_conflict must be one of {}".format([o.name for o in IfAlreadyExistsOption]))
+        if on_conflict != IfAlreadyExistsOption.errorIfAlreadyExists:
             create_params["option"] = on_conflict.name
         if first_name: create_params["firstname"] = first_name
         if last_name: create_params["lastname"] = last_name
@@ -306,7 +306,7 @@ class UserGroupAction(Action):
         ulist = {"user": [user for user in users]}
         return self.append(remove=ulist)
 
-    def create(self, option=IfAlreadyExistsOptions.ignoreIfAlreadyExists, description=None):
+    def create(self, option=IfAlreadyExistsOption.ignoreIfAlreadyExists, description=None):
         # only validate name on create/update so we can allow profiles and users to be managed for
         # system groups
         self._validate(self.frame['usergroup'])

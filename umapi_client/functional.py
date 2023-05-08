@@ -25,7 +25,7 @@ from .api import Action, QuerySingle, QueryMultiple
 from .error import ArgumentError, UnsupportedError
 
 
-class IdentityTypes(Enum):
+class IdentityType(Enum):
     adobeID = 1
     enterpriseID = 2
     federatedID = 3
@@ -78,7 +78,7 @@ class UserAction(Action):
         return "UserAction "+str(self.__dict__)
 
     def create(self, email, first_name=None,
-               last_name=None, country=None, id_type=IdentityTypes.federatedID,
+               last_name=None, country=None, id_type=IdentityType.federatedID,
                on_conflict=IfAlreadyExistsOptions.ignoreIfAlreadyExists):
         """
         Create the user on the Adobe back end.
@@ -92,10 +92,10 @@ class UserAction(Action):
         :param on_conflict: IfAlreadyExistsOption (or string name thereof) controlling creation of existing users
         :return: the User, so you can do User(...).create(...).add_to_groups(...)
         """
-        if id_type in IdentityTypes.__members__:
-            id_type = IdentityTypes[id_type]
-        if id_type not in IdentityTypes:
-            raise ArgumentError("Identity type (%s) must be one of %s" % (id_type, [i.name for i in IdentityTypes]))
+        if id_type in IdentityType.__members__:
+            id_type = IdentityType[id_type]
+        if id_type not in IdentityType:
+            raise ArgumentError("Identity type (%s) must be one of %s" % (id_type, [i.name for i in IdentityType]))
         # first validate the params: email, on_conflict, first_name, last_name, country
         create_params = {}
         create_params["email"] = email
@@ -110,10 +110,10 @@ class UserAction(Action):
         if country: create_params["country"] = country
 
         # each type is created using a different call
-        if id_type == IdentityTypes.adobeID:
+        if id_type == IdentityType.adobeID:
             self.frame['useAdobeID'] = True
             return self.insert(addAdobeID=dict(**create_params))
-        elif id_type == IdentityTypes.enterpriseID:
+        elif id_type == IdentityType.enterpriseID:
             return self.insert(createEnterpriseID=dict(**create_params))
         else:
             return self.insert(createFederatedID=dict(**create_params))

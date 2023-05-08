@@ -30,7 +30,7 @@ from conftest import MockResponse
 
 from umapi_client import Connection
 from umapi_client import ArgumentError, UnavailableError, ServerError, RequestError
-from umapi_client import UserAction, IdentityTypes, UserGroupAction
+from umapi_client import UserAction, IdentityType, UserGroupAction
 from umapi_client import __version__ as umapi_version
 from umapi_client.auth import JWTAuth
 
@@ -443,7 +443,7 @@ def test_split_add_user():
     :return:
     """
     user = UserAction(user="user@example.com")
-    user.create(id_type=IdentityTypes.enterpriseID, first_name="Example", last_name="User",
+    user.create(id_type=IdentityType.enterpriseID, first_name="Example", last_name="User",
                 country="US", email="user@example.com")
     user.update(first_name="EXAMPLE")
     assert user.maybe_split_groups(10) is False

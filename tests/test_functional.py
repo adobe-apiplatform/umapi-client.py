@@ -25,7 +25,7 @@ import pytest
 from conftest import MockResponse
 from umapi_client import ArgumentError, RequestError
 from umapi_client import Connection
-from umapi_client import IdentityTypes
+from umapi_client import IdentityType
 from umapi_client import UserAction, UserGroupAction
 from umapi_client import UsersQuery
 
@@ -54,7 +54,7 @@ def test_user_username():
 
 def test_create_user_adobeid():
     user = UserAction(user="user@example.com")
-    user.create(email="user@example.com", id_type=IdentityTypes.adobeID)
+    user.create(email="user@example.com", id_type=IdentityType.adobeID)
     assert user.wire_dict() == {"do": [{"addAdobeID": {"email": "user@example.com",
                                                        "option": "ignoreIfAlreadyExists"}}],
                                 "user": "user@example.com",
@@ -63,7 +63,7 @@ def test_create_user_adobeid():
 
 def test_create_user_adobeid_country():
     user = UserAction(user="user@example.com")
-    user.create(email="user@example.com", country="US", id_type=IdentityTypes.adobeID)
+    user.create(email="user@example.com", country="US", id_type=IdentityType.adobeID)
     assert user.wire_dict() == {"do": [{"addAdobeID": {"email": "user@example.com",
                                                        "country": "US",
                                                        "option": "ignoreIfAlreadyExists"}}],
@@ -74,7 +74,7 @@ def test_create_user_adobeid_country():
 def test_create_user_enterpriseid():
     user = UserAction(user="user@example.com")
     user.create(email="user@example.com", first_name="Example", last_name="User",
-                id_type=IdentityTypes.enterpriseID)
+                id_type=IdentityType.enterpriseID)
     assert user.wire_dict() == {"do": [{"createEnterpriseID": {"email": "user@example.com",
                                                                "firstname": "Example", "lastname": "User",
                                                                "option": "ignoreIfAlreadyExists"}}],
@@ -84,7 +84,7 @@ def test_create_user_enterpriseid():
 def test_create_user_federatedid():
     user = UserAction(user="user@example.com")
     user.create(email="user@example.com", first_name="Example", last_name="User",
-                country="US", id_type=IdentityTypes.federatedID)
+                country="US", id_type=IdentityType.federatedID)
     assert user.wire_dict() == {"do": [{"createFederatedID": {"email": "user@example.com",
                                                               "firstname": "Example", "lastname": "User",
                                                               "country": "US",

@@ -134,22 +134,13 @@ class UserAction(Action):
                 updates[k] = v
         return self.append(update=updates)
 
-    def add_to_groups(self, groups=None, all_groups=False):
+    def add_to_groups(self, groups=list()):
         """
-        Add user to some (typically PLC) groups.  Note that, if you add to no groups, the effect
-        is simply to do an "add to organization Everybody group", so we let that be done.
+        Add user to one or more groups
         :param groups: list of group names the user should be added to
-        :param all_groups: a boolean meaning add to all (don't specify groups)
         :return: the User, so you can do User(...).add_to_groups(...).???()
         """
-        if all_groups:
-            if groups:
-                raise ArgumentError("When adding to all groups, do not specify specific groups")
-            glist = "all"
-        else:
-            if not groups:
-                groups = []
-            glist = {"group": [group for group in groups]}
+        glist = {"group": [group for group in groups]}
         return self.append(add=glist)
 
     def remove_from_groups(self, groups=None, all_groups=False):

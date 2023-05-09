@@ -170,19 +170,6 @@ def test_add_products():
                                 "user": "user@example.com"}
 
 
-def test_add_to_groups_all():
-    user = UserAction(user="user@example.com")
-    user.add_to_groups(all_groups=True)
-    assert user.wire_dict() == {"do": [{"add": "all"}],
-                                "user": "user@example.com"}
-
-
-def test_add_to_groups_all_error():
-    user = UserAction(user="user@example.com")
-    with pytest.raises(ValueError):
-        user.add_to_groups(all_groups=True, groups=["Photoshop"])
-
-
 def test_add_to_usergroups():
     user = UserAction(user="user@example.com")
     user.add_to_groups(groups=["Photoshop", "Illustrator"])

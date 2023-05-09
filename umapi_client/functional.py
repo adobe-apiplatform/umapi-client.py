@@ -152,7 +152,7 @@ class UserAction(Action):
             glist = {"group": [group for group in groups]}
         return self.append(add=glist)
 
-    def remove_from_groups(self, groups=None, all_groups=False, group_type=None):
+    def remove_from_groups(self, groups=None, all_groups=False):
         """
         Remove user from some PLC groups, or all of them.
         :param groups: list of group names the user should be removed from

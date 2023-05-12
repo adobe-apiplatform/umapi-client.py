@@ -26,7 +26,7 @@ from conftest import MockResponse
 from umapi_client import ArgumentError, RequestError
 from umapi_client import Connection
 from umapi_client import IdentityType
-from umapi_client import UserAction, UserGroupAction
+from umapi_client import UserAction, GroupAction
 from umapi_client import UsersQuery
 
 
@@ -227,72 +227,72 @@ def test_remove_from_organization_delete_adobeid():
                                 "useAdobeID": True}
 
 def test_add_to_products():
-    group = UserGroupAction(group_name="SampleUsers")
+    group = GroupAction(group_name="SampleUsers")
     group.add_to_products(products=["Photoshop", "Illustrator"])
     assert group.wire_dict() == {"do": [{"add": {"productConfiguration": ["Photoshop", "Illustrator"]}}],
                                  "usergroup": "SampleUsers"}
 
 def test_add_to_products_all():
-    group = UserGroupAction(group_name="SampleUsers")
+    group = GroupAction(group_name="SampleUsers")
     group.add_to_products(all_products=True)
     assert group.wire_dict() == {"do": [{"add": "all"}],
                                  "usergroup": "SampleUsers"}
 
 
 def test_add_to_products_all_error():
-    group = UserGroupAction(group_name="SampleUsers")
+    group = GroupAction(group_name="SampleUsers")
     with pytest.raises(ValueError):
         group.add_to_products(all_products=True, products=["Photoshop"])
 
 
 def test_remove_from_products():
-    group = UserGroupAction(group_name="SampleUsers")
+    group = GroupAction(group_name="SampleUsers")
     group.remove_from_products(products=["Photoshop", "Illustrator"])
     assert group.wire_dict() == {"do": [{"remove": {"productConfiguration": ["Photoshop", "Illustrator"]}}],
                                  "usergroup": "SampleUsers"}
 
 
 def test_remove_from_products_all():
-    group = UserGroupAction(group_name="SampleUsers")
+    group = GroupAction(group_name="SampleUsers")
     group.remove_from_products(all_products=True)
     assert group.wire_dict() == {"do": [{"remove": "all"}],
                                  "usergroup": "SampleUsers"}
 
 
 def test_remove_from_products_all_error():
-    group = UserGroupAction(group_name="SampleUsers")
+    group = GroupAction(group_name="SampleUsers")
     with pytest.raises(ValueError):
         group.remove_from_products(all_products=True, products=["Photoshop"])
 
 
 def test_add_users():
-    group = UserGroupAction(group_name="SampleUsers")
+    group = GroupAction(group_name="SampleUsers")
     group.add_users(users=["user1@example.com", "user2@mydomain.net"])
     assert group.wire_dict() == {"do": [{"add": {"user": ["user1@example.com", "user2@mydomain.net"]}}],
                                  "usergroup": "SampleUsers"}
 
 
 def test_add_users_error():
-    group = UserGroupAction(group_name="SampleUsers")
+    group = GroupAction(group_name="SampleUsers")
     with pytest.raises(ValueError):
         group.add_users(users=[])
 
 
 def test_remove_users():
-    group = UserGroupAction(group_name="SampleUsers")
+    group = GroupAction(group_name="SampleUsers")
     group.remove_users(users=["user1@example.com", "user2@mydomain.net"])
     assert group.wire_dict() == {"do": [{"remove": {"user": ["user1@example.com", "user2@mydomain.net"]}}],
                                  "usergroup": "SampleUsers"}
 
 
 def test_remove_users_error():
-    group = UserGroupAction(group_name="SampleUsers")
+    group = GroupAction(group_name="SampleUsers")
     with pytest.raises(ValueError):
         group.remove_users(users=[])
 
 
 def test_create_user_group():
-    group = UserGroupAction(group_name="Test Group")
+    group = GroupAction(group_name="Test Group")
     group.create(description="Test Group Description")
     assert group.wire_dict() == {'do': [{'createUserGroup': {'option': 'ignoreIfAlreadyExists',
                                                              'description': 'Test Group Description'}}],
@@ -300,14 +300,14 @@ def test_create_user_group():
 
 
 def test_create_user_group_error():
-    group = UserGroupAction(group_name="Test Group")
+    group = GroupAction(group_name="Test Group")
     group.create(description="Test Group Description")
     with pytest.raises(ArgumentError):
         group.create()
 
 
 def test_invalid_user_group_name():
-    group = UserGroupAction(group_name="_Invalid Group Name")
+    group = GroupAction(group_name="_Invalid Group Name")
     with pytest.raises(ArgumentError):
         group.create()
     with pytest.raises(ArgumentError):
@@ -320,7 +320,7 @@ def test_long_user_group_name():
     aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. 
     Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur 
     sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."""
-    group = UserGroupAction(group_name=long_group_name)
+    group = GroupAction(group_name=long_group_name)
     with pytest.raises(ArgumentError):
         group.create()
     with pytest.raises(ArgumentError):
@@ -328,7 +328,7 @@ def test_long_user_group_name():
 
 
 def test_update_user_group():
-    group = UserGroupAction(group_name="Test Group")
+    group = GroupAction(group_name="Test Group")
     group.update(name="Renamed Test Group", description="Test Group Description")
     assert group.wire_dict() == {'do': [{'updateUserGroup': {'name': 'Renamed Test Group',
                                                              'description': 'Test Group Description'}}],
@@ -336,7 +336,7 @@ def test_update_user_group():
 
 
 def test_delete_user_group():
-    group = UserGroupAction("Test Group")
+    group = GroupAction("Test Group")
     group.delete()
     assert group.wire_dict() == {'do': [{'deleteUserGroup': {}}],
                                  'usergroup': 'Test Group'}

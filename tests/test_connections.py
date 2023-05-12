@@ -30,7 +30,7 @@ from conftest import MockResponse
 
 from umapi_client import Connection
 from umapi_client import ArgumentError, UnavailableError, ServerError, RequestError
-from umapi_client import UserAction, IdentityType, UserGroupAction
+from umapi_client import UserAction, IdentityType, GroupAction
 from umapi_client import __version__ as umapi_version
 from umapi_client.auth import JWTAuth
 
@@ -501,7 +501,7 @@ def test_split_remove_all():
 def test_split_group_action():
     user_template = "user.{}@example.com"
     add_users = [user_template.format(n+1) for n in range(0, 25)]
-    group = UserGroupAction(group_name="Test Group")
+    group = GroupAction(group_name="Test Group")
     group.add_users(users=add_users)
     assert group.maybe_split_groups(10) is True
     assert len(group.commands) == 3

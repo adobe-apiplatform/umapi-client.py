@@ -207,7 +207,7 @@ class UserQuery(QuerySingle):
         QuerySingle.__init__(self, connection=connection, object_type="user", url_params=[user_string], query_params=qparam)
 
 
-class UserGroupAction(Action):
+class GroupAction(Action):
     """
     A sequence of commands to perform on a single user group.
     """

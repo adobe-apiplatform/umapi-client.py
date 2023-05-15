@@ -237,38 +237,22 @@ class GroupAction(Action):
             ArgumentError("You must provide the name of the group")
         Action.__init__(self, usergroup=group_name, **kwargs)
 
-    def add_to_products(self, products=None, all_products=False):
+    def add_to_products(self, products):
         """
         Add user group to some product license configuration groups (PLCs), or all of them.
         :param products: list of product names the user should be added to
-        :param all_products: a boolean meaning add to all (don't specify products in this case)
         :return: the Group, so you can do Group(...).add_to_products(...).add_users(...)
         """
-        if all_products:
-            if products:
-                raise ArgumentError("When adding to all products, do not specify specific products")
-            plist = "all"
-        else:
-            if not products:
-                raise ArgumentError("You must specify products to which to add the user group")
-            plist = {"productConfiguration": [product for product in products]}
+        plist = {"productConfiguration": list(products)}
         return self.append(add=plist)
 
-    def remove_from_products(self, products=None, all_products=False):
+    def remove_from_products(self, products):
         """
         Remove user group from some product license configuration groups (PLCs), or all of them.
         :param products: list of product names the user group should be removed from
-        :param all_products: a boolean meaning remove from all (don't specify products in this case)
         :return: the Group, so you can do Group(...).remove_from_products(...).add_users(...)
         """
-        if all_products:
-            if products:
-                raise ArgumentError("When removing from all products, do not specify specific products")
-            plist = "all"
-        else:
-            if not products:
-                raise ArgumentError("You must specify products from which to remove the user group")
-            plist = {"productConfiguration": [product for product in products]}
+        plist = {"productConfiguration": list(products)}
         return self.append(remove=plist)
 
     def add_users(self, users=None):

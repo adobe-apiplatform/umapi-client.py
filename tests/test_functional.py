@@ -232,37 +232,12 @@ def test_add_to_products():
     assert group.wire_dict() == {"do": [{"add": {"productConfiguration": ["Photoshop", "Illustrator"]}}],
                                  "usergroup": "SampleUsers"}
 
-def test_add_to_products_all():
-    group = GroupAction(group_name="SampleUsers")
-    group.add_to_products(all_products=True)
-    assert group.wire_dict() == {"do": [{"add": "all"}],
-                                 "usergroup": "SampleUsers"}
-
-
-def test_add_to_products_all_error():
-    group = GroupAction(group_name="SampleUsers")
-    with pytest.raises(ValueError):
-        group.add_to_products(all_products=True, products=["Photoshop"])
-
 
 def test_remove_from_products():
     group = GroupAction(group_name="SampleUsers")
     group.remove_from_products(products=["Photoshop", "Illustrator"])
     assert group.wire_dict() == {"do": [{"remove": {"productConfiguration": ["Photoshop", "Illustrator"]}}],
                                  "usergroup": "SampleUsers"}
-
-
-def test_remove_from_products_all():
-    group = GroupAction(group_name="SampleUsers")
-    group.remove_from_products(all_products=True)
-    assert group.wire_dict() == {"do": [{"remove": "all"}],
-                                 "usergroup": "SampleUsers"}
-
-
-def test_remove_from_products_all_error():
-    group = GroupAction(group_name="SampleUsers")
-    with pytest.raises(ValueError):
-        group.remove_from_products(all_products=True, products=["Photoshop"])
 
 
 def test_add_users():

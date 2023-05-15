@@ -31,15 +31,51 @@ Setting up a connection is a two-step process.
 > **Note**: The `auth_dict` option is no longer available as it was in `2.x` releases.
 > Connections must be constructed with an authenticator object.
 
+Example:
+
 ```python
-from umapi_client import Connection, JWTAuth
+from umapi_client import Connection, OAuthS2S
 
-jwt_auth = JWTAuth(...)
+oauth = OAuthS2S(...)
 
-conn = Connection(org_id="your org id", auth=jwt_auth)
+conn = Connection(org_id="your org id", auth=oauth)
+```
+
+# OAuth Server-to-Server (`OAuthS2S`)
+
+Unless you are working with a legacy (deprecated) JWT integration and cannot
+migrate it, you should plan to use the `OAuthS2S` authenticator to create a
+UMAPI connection.
+
+Refer to the [Developer Console
+documentation](https://developer.adobe.com/developer-console/docs/guides/authentication/ServerToServerAuthentication/implementation/)
+for details on how to create an OAuth Server-to-Server integration. An
+`OAuthS2S` object is constructed with two parameters:
+
+- `client_id` - Unique identifier of the UMAPI client
+- `client_secret` - Secret token used to authenticate API calls
+
+These items can be found on the "Credential Details" page for the UMAPI
+integration. The Organization ID is also needed to create the `Connection`
+object.
+
+Example:
+
+```python
+from umapi_client import Connection, OAuthS2S
+
+oauth = OAuthS2S(
+  client_id="your client ID",
+  client_secret="your client secret",
+)
+
+conn = Connection(org_id="your org id", auth=oauth)
 ```
 
 # JWT Service Account Authentication (`JWTAuth`)
+
+**WARNING:** JWT authentication is deprecated. New UMAPI integrations should use
+OAuth Server-to-Server and existing integrations should be switched over.
 
 The `JWTAuth` authenticator is designed to work with Service Account (JWT) credentials
 created in the [Adobe Developer Console](https://developer.adobe.com/console/).
@@ -64,18 +100,19 @@ jwt_auth = JWTAuth(
 conn = Connection(org_id="your org id", auth=jwt_auth)
 ```
 
-## Additional `JWTAuth` Options
+## Additional Authenicator Options
 
-`JWTAuth`'s constructor supports a few optional parameters.
+Both `OAuthS2S` and `JWTAuth` objects can be constructed with a few optional
+parameters.
 
 ### `ssl_verify`
 
 (default: `True`)
 
-SSL verification can be optionally disabled if needed. This should only be done if
-you are having trouble connecting to the UMAPI's authentication endpoint. Certain
-network configurations may make it difficult or impossible to make a valid SSL
-connection.
+SSL verification can be optionally disabled if needed. This should only be done
+if you are having trouble connecting to the UMAPI's authentication endpoint.
+Certain network configurations may make it difficult or impossible to make a
+valid SSL connection.
 
 > It is always better to resolve connection issues in the environment. Use this
 > option as a last resort.
@@ -97,8 +134,6 @@ be changed.
 
 ### `auth_endpoint`
 
-(default: `/ims/exchange/jwt/`)
-
 Controls the authentication endpoint. This setting should generally never need to
 be changed.
 
@@ -111,15 +146,15 @@ requires two things.
 * `auth` - Authenticator object
 
 ```python
-from umapi_client import Connection, JWTAuth
+from umapi_client import Connection, OAuthS2S
 
-jwt_auth = JWTAuth(...)
+oauth = OAuthS2S(...)
 
 # keyword arguments
-conn = Connection(org_id="your org id", auth=jwt_auth)
+conn = Connection(org_id="your org id", auth=oauth)
 
 # no keyword arguments
-conn = Connection("your org id", jwt_auth)
+conn = Connection("your org id", oauth)
 ```
 
 These parameters are described here, along with some optional connection

@@ -53,47 +53,29 @@ $ pip install umapi_client-x.xx-py3-none-any.whl
 
 # Getting Started
 
-The UMAPI Client requires valid credentials. UMAPI credentials can be set up on the
-Adobe Developer Console.
+Before you can use the UMAPI client, you must set up a project in the [Adobe
+Developer Console](https://developer-stage.adobe.com/console/) and add the User
+Management API. This creates an integration which contains credentials that are
+used to authenticate API calls.
 
-> **Note**: You must have system administrator access to your organization's Admin Console in
-> order to create UMAPI credentials.
+The [Developer Console
+documentation](https://developer.adobe.com/developer-console/docs/guides/authentication/ServerToServerAuthentication/implementation/)
+provides a detailed guide for setting up OAuth Server-to-Server credentials.
 
-1. Log into the [Adobe Developer Console](https://developer.adobe.com/console)
-2. Make sure the correct organization is selected - there is a picker in the upper-right corner of the page
-3. Click “Create New Project”
-4. Click “Edit Project”, give it a descriptive name
-5. Click “Add API”
-6. Click “Adobe Services”, “User Management API” then “Next”
-7. Click “Generate Keypair” (blue button)
-8. Click “Save Configured API”
-9. Scroll down and you’ll see your credentials
-
-You can alternatively supply your own keypair for Step 7. Adobe provides official documentation for this
-process [here](https://developer.adobe.com/developer-console/docs/guides/authentication/JWT/JWTCertificate/).
-
-> **Tip**: The [Adobe User Sync Tool](https://github.com/adobe-apiplatform/user-sync.py/) has a certificate
-> generator built into it. It provides an easier experience than OpenSSL because it knows how to generate
-> the keypair in the format required by the Developer Console. You do not have to fully configure the Sync Tool
-> to use this feature. More information can be found
-> [here](https://adobe-apiplatform.github.io/user-sync.py/en/user-manual/additional_tools.html#certificate-generation).
-
-The UMAPI Client requires these credential pieces to set up a connection:
-
-* Organization ID
-* Client ID
-* Client Secret
-* Technical Account ID (**not** tech account email)
-* Private Key File
+> **Note:** JWT-based autentication is deprecated. New UMAPI integrations should
+> use OAuth Server-to-Server. See
+> [here](https://developer.adobe.com/developer-console/docs/guides/authentication/ServerToServerAuthentication/migration/)
+> for a migration guide.
 
 # Overview
 
-With the integration set up, the next step is to learn how to create a UMAPI connection and how
-to perform various API actions.
+With the integration set up, the next step is to learn how to create a UMAPI
+connection and how to perform various API actions.
 
 1. Set up authentication
 
-   Create a `JWTAuth` object using the credentials set up in the Adobe Developer Console.
+   Create an `OAuthS2S` object using the credentials set up in the Adobe Developer
+   Console.
 
 2. Create connection
 
@@ -105,7 +87,8 @@ to perform various API actions.
 
 4. Manage users and group
 
-   Learn how to create actions to create new users, update users and remove them.
+   Learn how to create actions to create new users, update users and remove
+   them.
 
 ---
 

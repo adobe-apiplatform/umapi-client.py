@@ -227,6 +227,13 @@ advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-w
 
 # Connection Methods
 
+This is an overview of the methods of the `Connection` class. Note that some
+these methods are used in conjunction with other objects while others are
+not intended to be used directly. These caveats are noted as needed.
+
+Feel free to [proceed to the next section](queries.md). Relevant methods will be explained
+as needed throughout the documentation.
+
 ## `status`
 
 `status()` returns a tuple consisting of a local status and remote status.
@@ -271,6 +278,9 @@ object's action queue contains fewer than 10 pending actions. If a call to
 `execute_single()` gets the pending queue size to 10, or if `immediate=True`
 is passed then the pending action queue will be executed.
 
+> **Note:** This method operates on a `UserAction` object.
+> See [Managing Users](managing.md#the-useraction-object) for more information.
+
 **Parameters**
 
 * `action` (required)
@@ -296,6 +306,9 @@ conn.execute_single(action, immediate=True)
 ```
 
 ## `execute_multiple`
+
+> **Note:** This method operates on `UserAction` objects.
+> See [Managing Users](managing.md#the-useraction-object) for more information.
 
 Queue and/or execute a single user action. Queuing occurs when the `Connection`
 object's action queue contains fewer than 10 pending actions. If a call to

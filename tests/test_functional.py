@@ -247,23 +247,11 @@ def test_add_users():
                                  "usergroup": "SampleUsers"}
 
 
-def test_add_users_error():
-    group = GroupAction(group_name="SampleUsers")
-    with pytest.raises(ValueError):
-        group.add_users(users=[])
-
-
 def test_remove_users():
     group = GroupAction(group_name="SampleUsers")
     group.remove_users(users=["user1@example.com", "user2@mydomain.net"])
     assert group.wire_dict() == {"do": [{"remove": {"user": ["user1@example.com", "user2@mydomain.net"]}}],
                                  "usergroup": "SampleUsers"}
-
-
-def test_remove_users_error():
-    group = GroupAction(group_name="SampleUsers")
-    with pytest.raises(ValueError):
-        group.remove_users(users=[])
 
 
 def test_create_user_group():

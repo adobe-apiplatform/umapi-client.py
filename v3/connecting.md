@@ -329,7 +329,7 @@ is passed then the pending action queue will be executed.
   `execute_single()`.
 
 ```python
-action = UserAction(email="user@example.com").create(first_name="Test", last_name="User")
+action = UserAction(email="user@example.com").create(firstname"Test", lastname"User")
 
 # immediate is "False" by default so here the action will be queued
 # and executed when batch limit is reached
@@ -374,9 +374,9 @@ UMAPI actions regardless of how many are in the queue.
 
 ```python
 actions = [
-    UserAction(email="user1@example.com").create(first_name="Test", last_name="User 1"),
-    UserAction(email="user2@example.com").create(first_name="Test", last_name="User 2"),
-    UserAction(email="user3@example.com").create(first_name="Test", last_name="User 3"),
+    UserAction(email="user1@example.com").create(firstname"Test", lastname"User 1"),
+    UserAction(email="user2@example.com").create(firstname"Test", lastname"User 2"),
+    UserAction(email="user3@example.com").create(firstname"Test", lastname"User 3"),
 ]
 
 # immediate is "False" by default so here the actions will be queued

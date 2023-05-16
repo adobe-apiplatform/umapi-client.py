@@ -109,8 +109,8 @@ There are two things to remember when creating a user.
    and then assign groups) before executing it.
 2. Invoke the `create()` method to specify user details.
   - `email` - Email address of user
-  - `first_name` - User's given name
-  - `last_name` - User's surname
+  - `firstname` - User's given name
+  - `lastname` - User's surname
   - `country` - User's [two-letter ISO-3166-1 alpha-2 country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)
   - `id_type` (default: Federated ID) - User's identity type. For ESM environments, this should be the
     user's linked account type.
@@ -126,8 +126,8 @@ This creates a user with the default identity type (Federated ID).
    user = UserAction("test.username@example.com")
    user.create(
      email="test.email@example.com",
-     first_name="Test",
-     last_name="User",
+     firstname"Test",
+     lastname"User",
      country="GB",
    )
    conn.execute_single(user, immediate=True)
@@ -144,8 +144,8 @@ To specify the identity type when creating a user, use the `IdentityType` enum.
    user = UserAction("test.username@example.com")
    user.create(
      email="test.email@example.com",
-     first_name="Test",
-     last_name="User",
+     firstname"Test",
+     lastname"User",
      country="GB",
      # default: IdentityType.federatedID
      # also accepted: IdentityType.adobeID
@@ -164,8 +164,8 @@ The following parameters are accepted by `update()`. All are optional.
 
 - `email` - Email address of user
 - `username` - User's username
-- `first_name` - User's given name
-- `last_name` - User's surname
+- `firstname` - User's given name
+- `lastname` - User's surname
 
 ### Basic Example
 
@@ -178,7 +178,7 @@ with the user's **current** email address, not the new address.
    conn = Connection(...)
    user = UserAction("sal.smith@example.com")
    user.update(
-     last_name="Jones",
+     lastname"Jones",
      email="sal.jones@example.com",
    )
    conn.execute_single(user, immediate=True)

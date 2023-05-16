@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "umapi-client"
-version = "2.22"
+version = "3.0"
 description = "Client for the User Management API (UMAPI) from Adobe - see https://adobe.ly/2h1pHgV"
 readme = "README.md"
 authors = ["Andrew Dorton <adorton@adobe.com>", "Dan Brotsky", "Danimae Vossen", "Kevin Bhunut"]

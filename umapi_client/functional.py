@@ -77,16 +77,16 @@ class UserAction(Action):
     def __repr__(self):
         return "UserAction "+str(self.__dict__)
 
-    def create(self, email, first_name=None,
-               last_name=None, country=None, id_type=IdentityType.federatedID,
+    def create(self, email, firstname=None,
+               lastname=None, country=None, id_type=IdentityType.federatedID,
                on_conflict=IfAlreadyExistsOption.ignoreIfAlreadyExists):
         """
         Create the user on the Adobe back end.
         See [Issue 32](https://github.com/adobe-apiplatform/umapi-client.py/issues/32): because
         we retry create calls if they time out, the default conflict handling for creation is to ignore the
         create call if the user already exists (possibly from an earlier call that timed out).
-        :param first_name: (optional) user first name
-        :param last_name: (optional) user last name
+        :param firstname: (optional) user first name
+        :param lastname: (optional) user last name
         :param country: (optional except for Federated ID) user 2-letter ISO country code
         :param email: user email, if not already specified at create time
         :param on_conflict: IfAlreadyExistsOption (or string name thereof) controlling creation of existing users
@@ -96,7 +96,7 @@ class UserAction(Action):
             id_type = IdentityType[id_type]
         if id_type not in IdentityType:
             raise ArgumentError("Identity type (%s) must be one of %s" % (id_type, [i.name for i in IdentityType]))
-        # first validate the params: email, on_conflict, first_name, last_name, country
+        # first validate the params: email, on_conflict, firstname, lastname, country
         create_params = {}
         create_params["email"] = email
         if on_conflict in IfAlreadyExistsOption.__members__:
@@ -105,8 +105,8 @@ class UserAction(Action):
             raise ArgumentError("on_conflict must be one of {}".format([o.name for o in IfAlreadyExistsOption]))
         if on_conflict != IfAlreadyExistsOption.errorIfAlreadyExists:
             create_params["option"] = on_conflict.name
-        if first_name: create_params["firstname"] = first_name
-        if last_name: create_params["lastname"] = last_name
+        if firstname: create_params["firstname"] = firstname
+        if lastname: create_params["lastname"] = lastname
         if country: create_params["country"] = country
 
         # each type is created using a different call
@@ -118,18 +118,18 @@ class UserAction(Action):
         else:
             return self.insert(createFederatedID=dict(**create_params))
 
-    def update(self, email=None, username=None, first_name=None, last_name=None):
+    def update(self, email=None, username=None, firstname=None, lastname=None):
         """
         Update values on an existing user.  See the API docs for what kinds of update are possible.
         :param email: new email for this user
         :param username: new username for this user
-        :param first_name: new first name for this user
-        :param last_name: new last name for this user
+        :param firstname: new first name for this user
+        :param lastname: new last name for this user
         :return: the User, so you can do User(...).update(...).add_to_groups(...)
         """
         updates = {}
         for k, v in dict(email=email, username=username,
-                         firstname=first_name, lastname=last_name).items():
+                         firstname=firstname, lastname=lastname).items():
             if v:
                 updates[k] = v
         return self.append(update=updates)

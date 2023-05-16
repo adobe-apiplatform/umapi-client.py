@@ -73,7 +73,7 @@ def test_create_user_adobeid_country():
 
 def test_create_user_enterpriseid():
     user = UserAction(user="user@example.com")
-    user.create(email="user@example.com", first_name="Example", last_name="User",
+    user.create(email="user@example.com", firstname="Example", lastname="User",
                 id_type=IdentityType.enterpriseID)
     assert user.wire_dict() == {"do": [{"createEnterpriseID": {"email": "user@example.com",
                                                                "firstname": "Example", "lastname": "User",
@@ -83,7 +83,7 @@ def test_create_user_enterpriseid():
 
 def test_create_user_federatedid():
     user = UserAction(user="user@example.com")
-    user.create(email="user@example.com", first_name="Example", last_name="User",
+    user.create(email="user@example.com", firstname="Example", lastname="User",
                 country="US", id_type=IdentityType.federatedID)
     assert user.wire_dict() == {"do": [{"createFederatedID": {"email": "user@example.com",
                                                               "firstname": "Example", "lastname": "User",
@@ -92,7 +92,7 @@ def test_create_user_federatedid():
                                 "user": "user@example.com"}
 
     user = UserAction(user="user@example.com")
-    user.create(email="user@example.com", first_name="Example", last_name="User",
+    user.create(email="user@example.com", firstname="Example", lastname="User",
                 country="US")
     assert user.wire_dict() == {"do": [{"createFederatedID": {"email": "user@example.com",
                                                               "firstname": "Example", "lastname": "User",
@@ -103,7 +103,7 @@ def test_create_user_federatedid():
 
 def test_create_user_federatedid_username():
     user = UserAction(user="user", domain="example.com")
-    user.create(first_name="Example", last_name="User", country="US", email="user@example.com")
+    user.create(firstname="Example", lastname="User", country="US", email="user@example.com")
     assert user.wire_dict() == {"do": [{"createFederatedID": {"email": "user@example.com",
                                                               "firstname": "Example", "lastname": "User",
                                                               "country": "US",
@@ -124,7 +124,7 @@ def test_create_user_email_username_domain():
 def test_different_email_username():
     # pass username to identify user on create
     user = UserAction(user="user.username@example.com")
-    user.create(email="user.email@example.com", first_name="User", last_name="Name", country="US")
+    user.create(email="user.email@example.com", firstname="User", lastname="Name", country="US")
     assert user.wire_dict() == {"do": [{"createFederatedID": {"email": "user.email@example.com",
                                                               "firstname": "User",
                                                               "lastname": "Name",
@@ -135,7 +135,7 @@ def test_different_email_username():
 
 def test_update_user_adobeid():
     user = UserAction(user="user@example.com", use_adobe_id=True)
-    user.update(first_name="User Updated", last_name="Name Updated")
+    user.update(firstname="User Updated", lastname="Name Updated")
     assert user.wire_dict() == {"do": [{"update": {"firstname": "User Updated", "lastname": "Name Updated"}}],
                                 "user": "user@example.com",
                                 "useAdobeID": True}
@@ -143,7 +143,7 @@ def test_update_user_adobeid():
 
 def test_update_user():
     user = UserAction(user="user@example.com")
-    user.update(first_name="User Updated", last_name="Name Updated")
+    user.update(firstname="User Updated", lastname="Name Updated")
     assert user.wire_dict() == {"do": [{"update": {"firstname": "User Updated", "lastname": "Name Updated"}}],
                                 "user": "user@example.com"}
 

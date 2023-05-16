@@ -443,9 +443,9 @@ def test_split_add_user():
     :return:
     """
     user = UserAction(user="user@example.com")
-    user.create(id_type=IdentityType.enterpriseID, first_name="Example", last_name="User",
+    user.create(id_type=IdentityType.enterpriseID, firstname="Example", lastname="User",
                 country="US", email="user@example.com")
-    user.update(first_name="EXAMPLE")
+    user.update(firstname="EXAMPLE")
     assert user.maybe_split_groups(10) is False
     assert len(user.commands) == 2
     assert user.wire_dict() == {'do': [{'createEnterpriseID': {'country': 'US',

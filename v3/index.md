@@ -55,8 +55,8 @@ $ pip install umapi_client-x.xx-py3-none-any.whl
 
 Before you can use the UMAPI client, you must set up a project in the [Adobe
 Developer Console](https://developer-stage.adobe.com/console/) and add the User
-Management API. This creates an integration which contains credentials that are
-used to authenticate API calls.
+Management API. This creates an integration which contains credentials used to
+authenticate the client and authorize API calls.
 
 The [Developer Console
 documentation](https://developer.adobe.com/developer-console/docs/guides/authentication/ServerToServerAuthentication/implementation/)
@@ -85,7 +85,7 @@ connection and how to perform various API actions.
 
    Retrieve users and groups from the UMAPI using the query interface.
 
-4. Manage users and group
+4. Manage users and groups
 
    Learn how to create actions to create new users, update users and remove
    them.

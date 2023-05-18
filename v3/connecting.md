@@ -100,7 +100,7 @@ jwt_auth = JWTAuth(
 conn = Connection(org_id="your org id", auth=jwt_auth)
 ```
 
-## Additional Authenicator Options
+## Additional Authenticator Options
 
 Both `OAuthS2S` and `JWTAuth` objects can be constructed with a few optional
 parameters.

@@ -1,3 +1,13 @@
+| tag    | date       | title               |
+|--------|------------|---------------------|
+| v3.0.1 | 2023-07-20 | umapi-client v3.0.1 |
+
+# Fixes
+
+* d22a6c4 Suppress log messages - can be enabled by library consumer if desired
+
+---
+
 | tag | date | title |
 |---|---|---|
 | v3.0 | 2023-05-18 | umapi-client v3.0 |

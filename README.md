@@ -63,7 +63,7 @@ the instructions documented on Poetry's website to install it on your system.
    ```
    $ poetry build
    $ ls dist
-   umapi-client-3.0.tar.gz  umapi_client-3.0-py3-none-any.whl
+   umapi-client-3.0.1.tar.gz  umapi_client-3.0.1-py3-none-any.whl
    ```
 
 4. Some of the packages required by this module use encryption, and so may

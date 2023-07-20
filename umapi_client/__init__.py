@@ -26,3 +26,6 @@ from .functional import IdentityType, IfAlreadyExistsOption
 from .functional import UserAction, UserQuery, UsersQuery
 from .functional import GroupAction, GroupsQuery
 from .version import __version__
+import logging
+from logging import NullHandler
+logging.getLogger(__name__).addHandler(NullHandler())

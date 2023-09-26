@@ -44,12 +44,16 @@ class APIResult:
 
     def __init__(self, result=None, success=False, timeout=None):
         self.result = result
+        try:
+            self.result_details = result.json()
+        except ValueError:
+            self.result_details = {}
         self.success = success
         self.timeout = timeout
         self.status_code = result.status_code if hasattr(result, 'status_code') else 'Error'
 
     def check_result(self):
-        if self.result.status_code in self.success_codes:
+        if self.result.status_code in self.success_codes and not self.result_details.get('errors'):
             self.success = True
             return self
         if self.result.status_code in self.timeout_codes:
